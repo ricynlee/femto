@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="simtop_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="simtop" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="114166666fs"></ZoomStartTime>
+      <ZoomEndTime time="1177166667fs"></ZoomEndTime>
+      <Cursor1Time time="1000000000fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="139"></NameColumnWidth>
+      <ValueColumnWidth column_width="58"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="40" />
+   <wvobject fp_name="/simtop/top/core/pc_IF" type="array">
+      <obj_property name="ElementShortName">pc_IF[31:0]</obj_property>
+      <obj_property name="ObjectShortName">pc_IF[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/pipeline_cleared" type="logic">
+      <obj_property name="ElementShortName">pipeline_cleared</obj_property>
+      <obj_property name="ObjectShortName">pipeline_cleared</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/jump" type="logic">
+      <obj_property name="ElementShortName">jump</obj_property>
+      <obj_property name="ObjectShortName">jump</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/pipeline_held" type="logic">
+      <obj_property name="ElementShortName">pipeline_held</obj_property>
+      <obj_property name="ObjectShortName">pipeline_held</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/pipeline_released" type="logic">
+      <obj_property name="ElementShortName">pipeline_released</obj_property>
+      <obj_property name="ObjectShortName">pipeline_released</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/iresp_latched" type="logic">
+      <obj_property name="ElementShortName">iresp_latched</obj_property>
+      <obj_property name="ObjectShortName">iresp_latched</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/bus_acc" type="array">
+      <obj_property name="ElementShortName">bus_acc[1:0]</obj_property>
+      <obj_property name="ObjectShortName">bus_acc[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/bus_req_type" type="array">
+      <obj_property name="ElementShortName">bus_req_type[0:0]</obj_property>
+      <obj_property name="ObjectShortName">bus_req_type[0:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/bus_req" type="logic">
+      <obj_property name="ElementShortName">bus_req</obj_property>
+      <obj_property name="ObjectShortName">bus_req</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/bus_resp" type="logic">
+      <obj_property name="ElementShortName">bus_resp</obj_property>
+      <obj_property name="ObjectShortName">bus_resp</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/bus_wr_b" type="logic">
+      <obj_property name="ElementShortName">bus_wr_b</obj_property>
+      <obj_property name="ObjectShortName">bus_wr_b</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/bus_addr" type="array">
+      <obj_property name="ElementShortName">bus_addr[31:0]</obj_property>
+      <obj_property name="ObjectShortName">bus_addr[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/bus_rdata" type="array">
+      <obj_property name="ElementShortName">bus_rdata[31:0]</obj_property>
+      <obj_property name="ObjectShortName">bus_rdata[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/IF2ID_fifo/full" type="logic">
+      <obj_property name="ElementShortName">full</obj_property>
+      <obj_property name="ObjectShortName">full</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/IF2ID_fifo/empty" type="logic">
+      <obj_property name="ElementShortName">empty</obj_property>
+      <obj_property name="ObjectShortName">empty</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/pipeline_held" type="logic">
+      <obj_property name="ElementShortName">pipeline_held</obj_property>
+      <obj_property name="ObjectShortName">pipeline_held</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/IF_vld" type="logic">
+      <obj_property name="ElementShortName">IF_vld</obj_property>
+      <obj_property name="ObjectShortName">IF_vld</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/IF2ID_vld" type="logic">
+      <obj_property name="ElementShortName">IF2ID_vld</obj_property>
+      <obj_property name="ObjectShortName">IF2ID_vld</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/pc_ID" type="array">
+      <obj_property name="ElementShortName">pc_ID[31:0]</obj_property>
+      <obj_property name="ObjectShortName">pc_ID[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/ir_ID" type="array">
+      <obj_property name="ElementShortName">ir_ID[31:0]</obj_property>
+      <obj_property name="ObjectShortName">ir_ID[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/alu_a_ID" type="array">
+      <obj_property name="ElementShortName">alu_a_ID[31:0]</obj_property>
+      <obj_property name="ObjectShortName">alu_a_ID[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/alu_a_EX" type="array">
+      <obj_property name="ElementShortName">alu_a_EX[31:0]</obj_property>
+      <obj_property name="ObjectShortName">alu_a_EX[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/ID2EX_vld" type="logic">
+      <obj_property name="ElementShortName">ID2EX_vld</obj_property>
+      <obj_property name="ObjectShortName">ID2EX_vld</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/pc_EX" type="array">
+      <obj_property name="ElementShortName">pc_EX[31:0]</obj_property>
+      <obj_property name="ObjectShortName">pc_EX[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/ir_EX" type="array">
+      <obj_property name="ElementShortName">ir_EX[31:0]</obj_property>
+      <obj_property name="ObjectShortName">ir_EX[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core/x" type="array">
+      <obj_property name="ElementShortName">x[0:15][31:0]</obj_property>
+      <obj_property name="ObjectShortName">x[0:15][31:0]</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+   </wvobject>
+   <wvobject type="divider" fp_name="divider356">
+   </wvobject>
+   <wvobject fp_name="/simtop/top/core_fault" type="logic">
+      <obj_property name="ElementShortName">core_fault</obj_property>
+      <obj_property name="ObjectShortName">core_fault</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus_fault" type="logic">
+      <obj_property name="ElementShortName">bus_fault</obj_property>
+      <obj_property name="ObjectShortName">bus_fault</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus_rom_fault" type="logic">
+      <obj_property name="ElementShortName">bus_rom_fault</obj_property>
+      <obj_property name="ObjectShortName">bus_rom_fault</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus_tcm_fault" type="logic">
+      <obj_property name="ElementShortName">bus_tcm_fault</obj_property>
+      <obj_property name="ObjectShortName">bus_tcm_fault</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus_sram_fault" type="logic">
+      <obj_property name="ElementShortName">bus_sram_fault</obj_property>
+      <obj_property name="ObjectShortName">bus_sram_fault</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus_qspinor_fault" type="logic">
+      <obj_property name="ElementShortName">bus_qspinor_fault</obj_property>
+      <obj_property name="ObjectShortName">bus_qspinor_fault</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus_gpio_fault" type="logic">
+      <obj_property name="ElementShortName">bus_gpio_fault</obj_property>
+      <obj_property name="ObjectShortName">bus_gpio_fault</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus_uart_fault" type="logic">
+      <obj_property name="ElementShortName">bus_uart_fault</obj_property>
+      <obj_property name="ObjectShortName">bus_uart_fault</obj_property>
+   </wvobject>
+   <wvobject type="divider" fp_name="divider910">
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus/invld_addr" type="logic">
+      <obj_property name="ElementShortName">invld_addr</obj_property>
+      <obj_property name="ObjectShortName">invld_addr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus/invld_acc" type="logic">
+      <obj_property name="ElementShortName">invld_acc</obj_property>
+      <obj_property name="ObjectShortName">invld_acc</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus/invld_wr" type="logic">
+      <obj_property name="ElementShortName">invld_wr</obj_property>
+      <obj_property name="ObjectShortName">invld_wr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/simtop/top/bus/invld_d" type="logic">
+      <obj_property name="ElementShortName">invld_d</obj_property>
+      <obj_property name="ObjectShortName">invld_d</obj_property>
+   </wvobject>
+</wave_config>
