@@ -1,593 +1,590 @@
 `include "sim/timescale.vh"
 `include "femto.vh"
 
-`define NOP_AS_FENCE_I  // JAL_AS_FENCE_I/NOP_AS_FENCE_I
-/* FENCE.I */
-/* for current 2-stage pipelined non-cached core, NOP (ADDI x0, ?, ?) works */
-/* for a deeper pipeline, JAL (JAL x0, pc+4) can be a must */
-/* FENCE */
-/* NOP (ADDI x0, ?, ?) always works for a single-hart design */
-
-// Actually 2-stage pipelined core
 module core (
     input wire  clk,
     input wire  rstn,
 
     // fault
     output reg              core_fault,
-    output reg [`XLEN-1:0]  core_fault_pc,
+    output reg[`XLEN-1:0]   core_fault_pc,
 
     // bus interface
-    output wire [`XLEN-1:0]                 bus_addr, // byte addr
-    output wire                             bus_wr_b,
-    output wire [$clog2(`BUS_ACC_CNT)-1:0]  bus_acc,
-    input wire [`BUS_WIDTH-1:0]             bus_rdata,
-    output wire [`BUS_WIDTH-1:0]            bus_wdata,
+    output wire[`XLEN-1:0]                  bus_addr, // byte addr
+    output wire                             bus_w_rb,
+    output wire[$clog2(`BUS_ACC_CNT)-1:0]   bus_acc,
+    input wire[`BUS_WIDTH-1:0]              bus_rdata,
+    output wire[`BUS_WIDTH-1:0]             bus_wdata,
     output wire                             bus_req,
     input wire                              bus_resp
 );
 
+    `include "operation.vh"
+
     /**********************************************************************************************************************/
-    // BEGIN {IF & MEM} // mem timing mode supported: data comes no later than next req
+    // pipeline flow control
+    wire jmp, hld;
+    wire[`XLEN-1:0] jump_addr;
+    wire jump_triggered; // jump req sent to bus, no resp yet
 
-    // Feedback signals
-    reg [$clog2(`BUS_R_CNT)-1:0] bus_req_type;
-    wire [`XLEN-1:0] dreq_addr;
-    reg [`BUS_WIDTH-1:0] dreq_wdata;
-    reg [$clog2(`BUS_ACC_CNT)-1:0] dreq_acc;
-    reg dreq_wr_b;
-    reg jump;
+    // data access
+    wire d_req;
+    wire d_req_w_rb;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] d_req_acc;
+    wire[`XLEN-1:0] d_req_addr;
+    wire[`BUS_WIDTH-1:0] d_req_wdata;
 
-    // Mem access req mux
-    wire [`XLEN-1:0] pc_IF;
-    bus_req_mux bus_req_mux(
-        .bus_req_type(bus_req_type),
-        .ireq_addr   (pc_IF       ),
-        .dreq_addr   (dreq_addr   ),
-        .dreq_acc    (dreq_acc    ),
-        .dreq_wr_b   (dreq_wr_b   ),
-        .bus_addr    (bus_addr    ),
-        .bus_acc     (bus_acc     ),
-        .bus_wr_b    (bus_wr_b    )
-    );
-    assign bus_wdata = dreq_wdata;
+    wire d_req_launched;
 
-    wire [$clog2(`BUS_R_CNT)-1:0] bus_resp_type;
-    wire [`XLEN-1:0] bus_resp_addr; // bus_resp corresponding addr, typ. pc of fetched instruction
+    wire d_resp_latched;
+    wire d_resp_w_rb;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] d_resp_acc;
+    wire[`BUS_WIDTH-1:0] d_resp_data;
 
-    dff #(
-        .WIDTH($clog2(`BUS_R_CNT)+`XLEN),
-        .VALID("sync"                  ),
-        .RESET("none"                  ),
-        .CLEAR("none"                  )
-    ) bus_rr_dff (
-        .clk(clk                          ),
-        .vld(bus_req                      ),
-        .in ({bus_req_type,bus_addr}      ),
-        .out({bus_resp_type,bus_resp_addr})
-    );
+    // instruction access
+    wire pf_req;
+    wire[`XLEN-1:0] pf_req_addr;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] pf_req_acc;
 
-    // PC mux
-    wire [$clog2(`PC_MUX_CNT)-1:0] pc_sel = jump ? `PC_JMP : `PC_INC;
-    wire [`XLEN-1:0] pc_jump_addr;
-    wire ireq_launched = bus_req && bus_req_type==`BUS_R_I; // IF req vld
-    pc_IF_mux pc_IF_mux(
-        .clk         (clk          ),
-        .rstn        (rstn         ),
-        .pc_sel      (pc_sel       ),
-        .pc_inc_trig (ireq_launched),
-        .pc_jump_addr(pc_jump_addr ),
-        .pc_out      (pc_IF        )
-    );
-    wire iresp_latched = bus_resp_type==`BUS_R_I && bus_resp;
-    wire dreq_launched = bus_req && bus_req_type==`BUS_R_D;
-    wire dresp_latched = bus_resp_type==`BUS_R_D && bus_resp;
+    wire pf_req_launched;
 
-    wire held_for_jump, held_for_dreq;
-    keeper #(
-        .WIDTH(1)
-    ) held_for_jump_keeper (
-        .clk (clk                 ),
-        .rstn(rstn                ),
-        .vld (jump | iresp_latched),
-        .in  (jump                ),
-        .out (held_for_jump       )
-    );
+    wire pf_resp_latched;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] pf_resp_acc;
+    wire[`ILEN-1:0] pf_resp_data;
 
-    keeper #(
-        .WIDTH(1)
-    ) held_for_dreq_keeper (
-        .clk (clk                                    ),
-        .rstn(rstn                                   ),
-        .vld (bus_req_type==`BUS_R_D || dresp_latched),
-        .in  (bus_req_type==`BUS_R_D                 ),
-        .out (held_for_dreq                          )
-    );
+    // pipeline stages
+    wire if_vld;
+    wire if_c;
+    wire[`ILEN-1:0] if_ir;
+    wire[`XLEN-1:0] if_pc;
 
-    wire pipeline_held = held_for_jump | held_for_dreq;
-    wire pipeline_was_held;
-    dff #(
-        .CLEAR("none")
-    ) prev_hold_dff (
-        .clk (clk              ),
-        .rstn(rstn             ),
-        .in  (pipeline_held    ),
-        .out (pipeline_was_held)
-    );
-    wire pipeline_released = {pipeline_was_held, pipeline_held}==2'b10;
+    wire s1_vld;
+    wire s1_c; // whether compressed
+    wire[`ILEN-1:0] s1_ir;
+    wire[`XLEN-1:0] s1_pc;
 
-    // Initial bus req
-    reg init_bus_req;
-    reg init_bus_req_sent;
-    always @ (posedge clk) begin
-        if (rstn==0) begin
-            init_bus_req <= 0;
-            init_bus_req_sent <= 0;
-        end else if (init_bus_req_sent==0) begin
-            init_bus_req <= 1;
-            init_bus_req_sent <= 1;
-        end else begin
-            init_bus_req <= 0;
-        end
-    end
-    assign bus_req = init_bus_req | bus_resp;
+    wire s2_vld;
+    wire s2_c;
+    wire[`ILEN-1:0] s2_ir;
+    wire[`XLEN-1:0] s2_pc;
 
-    // END {IF & MEM}
-    /**********************************************************************************************************************/
-    wire IF2ID_vld = (iresp_latched & ~pipeline_held) | pipeline_released;
-
-    wire [`ILEN-1:0] ir_ID;
-    keeper #(
-        .WIDTH      (`ILEN     ),
-        .INITIALIZER(`NOP_INSTR) // this initializer can be ignored
-    ) ir_IF2ID_keeper (
-        .clk (clk          ),
-        .rstn(rstn         ),
-        .vld (iresp_latched),
-        .in  (bus_rdata    ),
-        .out (ir_ID        )
-    );
-
-    wire [`XLEN-1:0] pc_ID;
-    keeper #(
-        .WIDTH      (`XLEN    ),
-        .INITIALIZER(`RESET_PC) // this initializer can be ignored
-    ) pc_IF2ID_keeper (
-        .clk (clk          ),
-        .rstn(rstn         ),
-        .vld (iresp_latched),
-        .in  (bus_resp_addr),
-        .out (pc_ID        )
-    );
-    /**********************************************************************************************************************/
-    // BEGIN {ID}
-    localparam  OPCODE_IMMCAL = 7'b0010011,
-                OPCODE_LUI    = 7'b0110111,
-                OPCODE_AUIPC  = 7'b0010111,
-                OPCODE_CAL    = 7'b0110011,
-                OPCODE_JAL    = 7'b1101111,
-                OPCODE_JALR   = 7'b1100111,
-                OPCODE_BRANCH = 7'b1100011,
-                OPCODE_LOAD   = 7'b0000011,
-                OPCODE_STORE  = 7'b0100011,
-                OPCODE_FENCE  = 7'b0001111,
-                //
-                OPCODE_SYSTEM = 7'b1110011;
-
-    wire [31:0] i_type_imm = {{20{ir_ID[31]}}, ir_ID[31:20]};
-    wire [31:0] s_type_imm = {{20{ir_ID[31]}}, ir_ID[31:25], ir_ID[11:7]};
-    wire [31:0] b_type_imm = {{20{ir_ID[31]}}, ir_ID[7], ir_ID[30:25], ir_ID[11:8], 1'b0};
-    wire [31:0] u_type_imm = {ir_ID[31:12], 12'd0};
-    wire [31:0] j_type_imm = {{11{ir_ID[31]}}, ir_ID[31], ir_ID[19:12], ir_ID[20], ir_ID[30:21], 1'b0};
-    wire [6:0]  funct7 = ir_ID[31:25];
-    wire [2:0]  funct3 = ir_ID[14:12];
-    wire [4:0]  rs2   = ir_ID[24:20];
-    wire [4:0]  rs1   = ir_ID[19:15];
-    wire [4:0]  rd    = ir_ID[11:7];
-    wire [31:0] shamt = {27'd0, rs2};
-    wire [6:0]  opcode = ir_ID[6:0];
-
-    // Reg file (read-only)
-    wire [`XLEN-1:0] x[0:15];
+    // other global signals
     wire regfile_wreq;
     wire [3:0] regfile_windex;
     wire [`XLEN-1:0] regfile_wdata;
-    regfile regfile(
-        .clk   (clk           ),
-        .wreq  (regfile_wreq  ),
-        .windex(regfile_windex),
-        .wdata (regfile_wdata ),
-        .x0    (x[0 ]         ),
-        .x1    (x[1 ]         ),
-        .x2    (x[2 ]         ),
-        .x3    (x[3 ]         ),
-        .x4    (x[4 ]         ),
-        .x5    (x[5 ]         ),
-        .x6    (x[6 ]         ),
-        .x7    (x[7 ]         ),
-        .x8    (x[8 ]         ),
-        .x9    (x[9 ]         ),
-        .x10   (x[10]         ),
-        .x11   (x[11]         ),
-        .x12   (x[12]         ),
-        .x13   (x[13]         ),
-        .x14   (x[14]         ),
-        .x15   (x[15]         )
-    );
 
-    // Decode
-    wire [`XLEN-1:0] rs1_val, rs2_val;
-    wire [`XLEN-1:0] imm_val;
+    wire [3:0] s1_rd; // dest reg index
+    wire [`XLEN-1:0] s1_alu_a, s1_alu_b;
+    wire [7:0] s1_alu_op; // alu operation
+    wire [7:0] s1_op; // instruction operation
+    wire s1_jump, s1_d_req;
 
-    assign rs1_val =
-        (regfile_wreq && rs1[3:0]==regfile_windex) ?
-            regfile_wdata :
-        /* otherwise */
-            x[rs1[3:0]];
-    assign rs2_val =
-        (regfile_wreq && rs2[3:0]==regfile_windex) ?
-            regfile_wdata :
-        /* otherwise */
-            x[rs2[3:0]];
-    assign imm_val =
-        (opcode==OPCODE_LUI || opcode==OPCODE_AUIPC) ? 
-            u_type_imm :
-        (opcode==OPCODE_JAL) ? 
-            j_type_imm :
-        (opcode==OPCODE_JALR || opcode==OPCODE_LOAD || (opcode==OPCODE_IMMCAL && funct3^3'b001 && funct3^3'b101) || opcode==OPCODE_FENCE) ? 
-            i_type_imm /* available (yet do-not-care) for FENCE.I, do-not-care (and unavailable) for FENCE */:
-        (opcode==OPCODE_BRANCH) ?
-            b_type_imm :
-        (opcode==OPCODE_STORE) ?
-            s_type_imm :
-        /* otherwise */
-            shamt;
-    wire [3:0] rd_ID =
-        (opcode==OPCODE_BRANCH || opcode==OPCODE_STORE || opcode==OPCODE_FENCE) /* rd not available */ ?
-            4'd0 /* available yet should not be used for FENCE.I/FENCE */ :
-        /* rd available */
-            rd[3:0];
-    wire [`XLEN-1:0] alu_a_ID =
-        (opcode==OPCODE_LUI) ?
-            x[0] :
-        (opcode==OPCODE_AUIPC || opcode==OPCODE_JAL || opcode==OPCODE_BRANCH || opcode==OPCODE_FENCE) ?
-            pc_ID /* do-not-care for FENCE. used for FENCE.I if JAL-as-FENCE.I, otherwise do-not-care */ :
-        /* otherwise */
-            rs1_val;
-    wire [`XLEN-1:0] alu_b_ID =
-        (opcode==OPCODE_CAL) ?
-            rs2_val :
-        (opcode==OPCODE_FENCE) ?
-            4 /* do-not-care for FENCE. used for FENCE.I if JAL-as-FENCE.I, otherwise do-not-care */ :
-        /* otherwise */
-            imm_val;
-    wire [7:0] alu_op_ID =
-        (opcode==OPCODE_CAL || opcode==OPCODE_IMMCAL) ?
-        (
-            funct3==3'd1 ?
-                `ALU_SL :
-            funct3==3'd2 ?
-                `ALU_LT :
-            funct3==3'd3 ?
-                `ALU_LTU :
-            funct3==3'd4 ?
-                `ALU_XOR :
-            funct3==3'd5 ?
-            (
-                funct7[5]==1'b0 ?
-                    `ALU_SRL :
-                /* 1'b1 */
-                    `ALU_SRA
-            ) :
-            funct3==3'd6 ?
-                `ALU_OR :
-            funct3==3'd7 ?
-                `ALU_AND :
-            /* 3'd0 */
-            (
-                (opcode==OPCODE_CAL && funct7[5]) ?
-                    `ALU_SUB :
-                /* else */
-                    `ALU_ADD
-            )
-        ) :
-        /* otherwise (even if unimplemented) */
-            `ALU_ADD;
+    wire [3:0] s2_rd; // dest reg index
+    wire [`XLEN-1:0] s2_alu_a, s2_alu_b;
+    wire [7:0] s2_alu_op; // alu operation
+    wire [7:0] s2_op; // instruction operation
 
-    wire branch_vld =
-        opcode==OPCODE_BRANCH &&
-        (
-            funct3[2:1]==2'd2 ?
-                (funct3[0]^($signed(rs1_val)<$signed(rs2_val))/* ({~rs1_val[`XLEN-1], rs1_val[`XLEN-2:0]}<{~rs2_val[`XLEN-1], rs2_val[`XLEN-2:0]}) */) :
-            funct3[2:1]==2'd3 ?
-                (funct3[0]^(rs1_val<rs2_val)) :
-            /* 2'd0 or undefined */
-                (funct3[0]^(rs1_val==rs2_val))
+    // fault indicators
+    wire undef_instr, overshift;
+
+    /**********************************************************************************************************************/
+    begin:BUS_REQ_MUX
+        // Bus busy indicator
+        wire bus_busy_post, bus_busy;
+        dff #(
+            .RESET("sync"),
+            .VALID("sync")
+        ) bus_busy_dff (
+            .clk (clk               ),
+            .rstn(rstn              ),
+            .vld (bus_req | bus_resp),
+            .in  (bus_req           ),
+            .out (bus_busy_post     )
         );
-    
-    wire [7:0] op_ID =
-        (opcode==OPCODE_LOAD) ?
-            (
-                funct3==3'd0 ?
-                    `OP_LB :
-                funct3==3'd1 ?
-                    `OP_LH :
-                funct3==3'd4 ?
-                    `OP_LBU :
-                funct3==3'd5 ?
-                    `OP_LHU :
-                /* seen as LW */
-                    `OP_LW
-            ) :
-`ifdef JAL_AS_FENCE_I
-        (opcode==OPCODE_JAL || (opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */ )) ?
-`else
-        (opcode==OPCODE_JAL) ?
-`endif
-            `OP_JAL :
-        (opcode==OPCODE_JALR) ?
-            `OP_JALR :
-        /* otherwise */
-            `OP_STD;
+        assign bus_busy = ~bus_resp & bus_busy_post;
 
-    // Initiate data/jump req
-    always @ (posedge clk) begin
-        if (rstn==0) begin
-            jump <= 0;
-            bus_req_type <= `BUS_R_I;
-        end else begin
-            if (IF2ID_vld) begin
-`ifdef JAL_AS_FENCE_I
-                jump <= (opcode==OPCODE_JALR || opcode==OPCODE_JAL || branch_vld || (opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */ ));
-`else
-                jump <= (opcode==OPCODE_JALR || opcode==OPCODE_JAL || branch_vld);
-`endif
-                bus_req_type <= (opcode==OPCODE_LOAD || opcode==OPCODE_STORE) ? `BUS_R_D : `BUS_R_I;
-                dreq_acc <= funct3[1:0]==2'd0 ? `BUS_ACC_1B : funct3[1:0]==2'd1 ? `BUS_ACC_2B : `BUS_ACC_4B;
-                dreq_wr_b <= (opcode==OPCODE_STORE);
-                dreq_wdata <= rs2_val;
-            end else if (ireq_launched) begin
-                jump <= 0;
-            end else if (dreq_launched) begin
-                bus_req_type <= `BUS_R_I;
-            end
-        end
+        // Bus req mux (D req>PF req) / resp demux
+        assign bus_req  = (d_req | pf_req) & ~bus_busy;
+        assign bus_addr = d_req ? d_req_addr : pf_req_addr;
+        assign bus_w_rb = d_req ? d_req_w_rb : 1'b0;
+        assign bus_acc  = d_req ? d_req_acc  : pf_req_acc;
+        assign bus_wdata = d_req_wdata;
+
+        assign pf_req_launched = ~d_req & pf_req & ~bus_busy;
+        assign d_req_launched  = d_req  & ~bus_busy;
     end
 
-    // Fault
-    wire undef_instr =
-        IF2ID_vld && (
-            (opcode==OPCODE_LUI || opcode==OPCODE_AUIPC || opcode==OPCODE_JAL) ?
-                rd[4] :
-            (opcode==OPCODE_JALR) ?
-                (rd[4] || rs1[4] || funct3) :
-            (opcode==OPCODE_BRANCH) ?
-                (rs1[4] || rs2[4] || funct3[2:1]==2'b01) :
-            (opcode==OPCODE_LOAD) ?
-                (rd[4] | rs1[4] | (funct3[1]&funct3[0]) | (funct3[2]&funct3[1])) :
-            (opcode==OPCODE_STORE) ?
-                (rs1[4] | rs2[4] | funct3[2] | (funct3[1]&funct3[0])) :
-            (opcode==OPCODE_IMMCAL) ?
-                (rd[4] || rs1[4] || (funct3[1:0]==2'b01 && ({funct7[6], funct7[4:0]} || (~funct3[2] & funct7[5])))) :
-            (opcode==OPCODE_CAL) ?
-                (rd[4] || rs1[4] || rs2[4] || {funct7[6], funct7[4:0]} || (funct7[5] && (funct3[1] || (funct3[2]^funct3[0])))) :
-            (opcode==OPCODE_FENCE) ?
-                (rd[4] || rs1[4] || funct3[2:1]) :
-            /* undefined / unimplemented opcode */
-                1'b1
+    /**********************************************************************************************************************/
+    begin:BUS_RESP_DEMUX
+        wire bus_resp_w_rb, bus_resp_is_pf;
+        wire[$clog2(`BUS_ACC_CNT)-1:0] bus_resp_acc;
+        dff #(
+            .WIDTH(1 + $clog2(`BUS_ACC_CNT) + 1),
+            .VALID("sync"),
+            .CLEAR("sync") // so as to cancel pf_req
+        ) bus_resp_dff (
+            .clk(clk    ),
+            .clr(jmp    ),
+            .vld(bus_req),
+            .in ({pf_req_launched, bus_acc, bus_w_rb}),
+            .out({bus_resp_is_pf, bus_resp_acc, bus_resp_w_rb})
         );
 
-    // END {ID}
+        assign d_resp_latched = bus_resp & ~bus_resp_is_pf;
+        assign d_resp_acc = bus_resp_acc;
+        assign d_resp_data = bus_rdata;
+        assign d_resp_w_rb = bus_resp_w_rb;
+
+        assign pf_resp_latched = bus_resp & bus_resp_is_pf;
+        assign pf_resp_acc = bus_resp_acc;
+        assign pf_resp_data = bus_rdata;
+    end
+
     /**********************************************************************************************************************/
-    wire [`XLEN-1:0] pc_EX;
-    dff #(
-        .WIDTH(`XLEN ),
-        .RESET("none"),
-        .CLEAR("none"),
-        .VALID("sync")
-    ) pc_ID2EX_dff (
-        .clk(clk      ),
-        .vld(IF2ID_vld),
-        .in (pc_ID    ),
-        .out(pc_EX    )
-    );
-
-    wire [`XLEN-1:0] ir_EX;
-    dff #(
-        .WIDTH(`XLEN ),
-        .RESET("none"),
-        .CLEAR("none"),
-        .VALID("sync")
-    ) ir_ID2EX_dff (
-        .clk(clk      ),
-        .vld(IF2ID_vld),
-        .in (ir_ID    ),
-        .out(ir_EX    )
-    );
-
-    wire [3:0] rd_EX;
-    dff #(
-        .WIDTH(4),
-        .RESET("none"),
-        .CLEAR("none"),
-        .VALID("sync")
-    ) rd_ID2EX_dff (
-        .clk(clk      ),
-        .vld(IF2ID_vld),
-        .in (rd_ID    ),
-        .out(rd_EX    )
-    );
-
-    wire [7:0] alu_op_EX;
-    dff #(
-        .WIDTH(8),
-        .RESET("none"),
-        .CLEAR("none"),
-        .VALID("sync")
-    ) alu_op_ID2EX_dff (
-        .clk(clk      ),
-        .vld(IF2ID_vld),
-        .in (alu_op_ID),
-        .out(alu_op_EX)
-    );
-
-    wire [`XLEN-1:0] alu_a_EX;
-    dff #(
-        .WIDTH(`XLEN),
-        .RESET("none"),
-        .CLEAR("none"),
-        .VALID("sync")
-    ) alu_a_ID2EX_dff (
-        .clk(clk      ),
-        .vld(IF2ID_vld),
-        .in (alu_a_ID ),
-        .out(alu_a_EX )
-    );
-
-    wire [`XLEN-1:0] alu_b_EX;
-    dff #(
-        .WIDTH(`XLEN),
-        .RESET("none"),
-        .CLEAR("none"),
-        .VALID("sync")
-    ) alu_b_ID2EX_dff (
-        .clk(clk      ),
-        .vld(IF2ID_vld),
-        .in (alu_b_ID ),
-        .out(alu_b_EX )
-    );
-
-    wire [7:0] op_EX;
-    dff #(
-        .WIDTH      (8        ),
-        .INITIALIZER(`OP_UNDEF),
-        .CLEAR      ("none"   ),
-        .VALID      ("sync"   )
-    ) op_ID2EX_dff (
-        .clk (clk      ),
-        .rstn(rstn     ),
-        .vld (IF2ID_vld),
-        .in  (op_ID    ),
-        .out (op_EX    )
-    );
-
-    wire ID2EX_vld;
-    dff #(
-        .CLEAR("none")
-    ) ID2EX_vld_dff (
-        .clk (clk      ),
-        .rstn(rstn     ),
-        .in  (IF2ID_vld),
-        .out (ID2EX_vld)
-    );
-    /**********************************************************************************************************************/
-    // BEGIN {EX}
-    wire calc_ret_pc = (op_EX==`OP_JAL || op_EX==`OP_JALR) && iresp_latched && ~jump;
-    wire [`XLEN-1:0] alu_a_pc = pc_EX;
-    wire [`XLEN-1:0] alu_b_4  = 4;
-    wire [`XLEN-1:0] alu_r;
-    alu alu(
-        .op(calc_ret_pc ? `ALU_ADD : alu_op_EX),
-        .a (calc_ret_pc ? alu_a_pc : alu_a_EX ),
-        .b (calc_ret_pc ? alu_b_4  : alu_b_EX ),
-        .r (alu_r                             )
-    );
-
-    // Fault
-    wire overshift = ID2EX_vld && (alu_op_EX==`ALU_SL || alu_op_EX==`ALU_SRL || alu_op_EX==`ALU_SRA) && alu_b_EX[`XLEN-1:5];
-
-    assign pc_jump_addr = op_EX==`OP_JALR ? {alu_r[`XLEN-1:1], 1'b0} : alu_r;
-    assign dreq_addr = alu_r;
-
-    assign regfile_wreq = regfile_windex &&
-        (
-            (op_EX==`OP_JAL || op_EX==`OP_JALR) ?
-                (iresp_latched & ~pipeline_held) :
-            (op_EX==`OP_LB || op_EX==`OP_LH || op_EX==`OP_LW || op_EX==`OP_LBU || op_EX==`OP_LHU) ?
-                (dresp_latched & ~pipeline_held) :
-            /* otherwise */
-                ID2EX_vld
+    begin:PREFETCHER
+        wire[`XLEN-1:0] pf_next_req_addr = jmp ? jump_addr : (pf_req_acc==`BUS_ACC_2B) ? (pf_req_addr+2) : (pf_req_addr+4);
+        dff #(
+            .WIDTH      (`XLEN    ),
+            .INITIALIZER(`RESET_PC),
+            .RESET      ("sync"   ),
+            .VALID      ("sync"   )
+        ) pf_req_addr_dff ( // note that pf_req_addr is not subject to PF Q's in_req, but pf_req & pf_req_acc are
+            .clk (clk                  ),
+            .rstn(rstn                 ),
+            .vld (jmp | pf_req_launched),
+            .in  (pf_next_req_addr     ),
+            .out (pf_req_addr          )
         );
-    assign regfile_windex = rd_EX;
-    assign regfile_wdata =
-        (op_EX==`OP_LB) ?
-            {{24{bus_rdata[7]}}, bus_rdata[7:0]} :
-        (op_EX==`OP_LH) ?
-            {{16{bus_rdata[15]}}, bus_rdata[15:0]} :
-        (op_EX==`OP_LW) ?
-            (bus_rdata) :
-        (op_EX==`OP_LBU) ?
-            {24'd0, bus_rdata[7:0]} :
-        (op_EX==`OP_LHU) ?
-            {16'd0, bus_rdata[15:0]} :
-        /* otherwise `OP_STD */
-            alu_r;
-    // END {EX}
+
+        wire pf_resp_16_32b = (pf_resp_acc==`BUS_ACC_2B);
+        wire[1:0] pf_vacant_entry16;
+        assign pf_req = (pf_vacant_entry16!=2'd0);
+        assign pf_req_acc = pf_req_addr[1] ? `BUS_ACC_2B : `BUS_ACC_4B;
+
+        wire[1:0] pf_filled_entry16;
+        wire[`ILEN-1:0] if_ir_raw;
+        prefetch_queue prefetch_queue(
+            .clk             (clk              ),
+            .rstn            (rstn             ),
+            .clr             (jmp              ),
+
+            .in_req          (pf_resp_latched  ),
+            .in_req_16_32bar (pf_resp_16_32b   ),
+            .in              (pf_resp_data     ),
+            .vacant_entry16  (pf_vacant_entry16),
+
+            .out_req         (if_vld           ),
+            .out_req_16_32bar(if_c             ),
+            .out             (if_ir_raw        ),
+            .filled_entry16  (pf_filled_entry16)
+        );
+
+        assign if_vld = ~hld & ((pf_filled_entry16==2'd2) || (pf_filled_entry16 && if_c)); // instruction fetch control
+
+        expander expander(
+            .in_instr (if_ir_raw),
+            .out_instr(if_ir    ),
+            .out_c    (if_c     )
+        );
+
+        wire[`XLEN-1:0] if_next_pc = jmp ? jump_addr : if_c ? (if_pc+2) : (if_pc+4);
+        dff #(
+            .WIDTH      (`XLEN    ),
+            .INITIALIZER(`RESET_PC),
+            .RESET      ("sync"   ),
+            .VALID      ("sync"   )
+        ) if_pc_dff (
+            .clk (clk         ),
+            .rstn(rstn        ),
+            .vld (jmp | if_vld),
+            .in  (if_next_pc  ),
+            .out (if_pc       )
+        );
+    end // PREFETCHER
+
+    /**********************************************************************************************************************/
+    begin:PIPELINE // can be seen as part of stage1
+        pipeline pipeline(
+            .clk   (clk   ),
+            .rstn  (rstn  ),
+            .clr   (jmp   ),
+            .hld   (hld   ),
+            .in_ir (if_ir ),
+            .in_pc (if_pc ),
+            .in_c  (if_c  ),
+            .in_vld(if_vld),
+            .s1_ir (s1_ir ),
+            .s1_pc (s1_pc ),
+            .s1_c  (s1_c  ),
+            .s1_vld(s1_vld),
+            .s2_ir (s2_ir ),
+            .s2_pc (s2_pc ),
+            .s2_c  (s2_c  ),
+            .s2_vld(s2_vld)
+        );
+
+        localparam PLC_NORMAL = 0, // pipeline control(PLC)
+                   PLC_JUMP_P = 1, // jump preparing
+                   PLC_JUMP_I = 2, // jump initiating
+                   PLC_JUMP_E = 3, // jump executing
+                   PLC_DATA_I = 4, // data req initiating
+                   PLC_DATA_E = 5, // data req executing
+                   PLC_BUTT   = 6;
+        wire[7:0] state; // pipeline control FSM
+        reg[7:0] next_state;
+        always@(*) begin
+            if(~rstn)begin
+                next_state = PLC_NORMAL;
+            end else case(state)
+                PLC_NORMAL:
+                    if (s1_vld & s1_jump)
+                        next_state = PLC_JUMP_P;
+                    else if (s1_vld & s1_d_req)
+                        next_state = PLC_DATA_I;
+                    else // do not infer latch
+                        next_state = PLC_NORMAL;
+                PLC_JUMP_P:
+                    next_state = PLC_JUMP_I;
+                PLC_JUMP_I:
+                    if (pf_req_launched)
+                        next_state = PLC_JUMP_E;
+                    else
+                        next_state = PLC_JUMP_I;
+                PLC_JUMP_E:
+                    if (pf_resp_latched) begin
+                        if (s1_vld & s1_jump)
+                            next_state = PLC_JUMP_P;
+                        else if (s1_vld & s1_d_req)
+                            next_state = PLC_DATA_I;
+                        else // do not infer latch
+                            next_state = PLC_NORMAL;
+                    end else
+                        next_state = PLC_JUMP_E;
+                PLC_DATA_I:
+                    if (d_req_launched)
+                        next_state = PLC_DATA_E;
+                    else
+                        next_state = PLC_DATA_I;
+                PLC_DATA_E:
+                    if (d_resp_latched) begin
+                        if (s1_vld & s1_jump)
+                            next_state = PLC_JUMP_P;
+                        else if (s1_vld & s1_d_req)
+                            next_state = PLC_DATA_I;
+                        else // do not infer latch
+                            next_state = PLC_NORMAL;
+                    end else
+                        next_state = PLC_DATA_E;
+                default:
+                    next_state = PLC_NORMAL;
+            endcase
+        end
+
+        dff #(
+            .RESET      ("sync"    ),
+            .WIDTH      (8         ),
+            .INITIALIZER(PLC_NORMAL)
+        ) plc_state_dff (
+            .clk (clk       ),
+            .rstn(rstn      ),
+            .in  (next_state),
+            .out (state     )
+        );
+
+        assign jump_triggered = state==PLC_JUMP_E;
+        assign jmp = state==PLC_JUMP_P;
+        assign hld = (state==PLC_JUMP_P || state==PLC_JUMP_I || state==PLC_DATA_I) ||
+                     (state==PLC_JUMP_E && ~pf_resp_latched) ||
+                     (state==PLC_DATA_E && ~d_resp_latched);
+    end // PIPELINE
+
+    /**********************************************************************************************************************/
+    begin:STAGE1 // instruction expansion & decoding
+        // regfile
+        wire [`XLEN-1:0] x[0:15];
+        regfile regfile(
+            .clk   (clk           ),
+            .wreq  (regfile_wreq  ),
+            .windex(regfile_windex),
+            .wdata (regfile_wdata ),
+            .x0    (x[0 ]         ),
+            .x1    (x[1 ]         ),
+            .x2    (x[2 ]         ),
+            .x3    (x[3 ]         ),
+            .x4    (x[4 ]         ),
+            .x5    (x[5 ]         ),
+            .x6    (x[6 ]         ),
+            .x7    (x[7 ]         ),
+            .x8    (x[8 ]         ),
+            .x9    (x[9 ]         ),
+            .x10   (x[10]         ),
+            .x11   (x[11]         ),
+            .x12   (x[12]         ),
+            .x13   (x[13]         ),
+            .x14   (x[14]         ),
+            .x15   (x[15]         )
+        );
+
+        wire[$clog2(`BUS_ACC_CNT)-1:0] s1_d_req_acc;
+        wire s1_d_req_w_rb;
+        wire[`BUS_WIDTH-1:0] s1_d_req_wdata;
+        begin:DECODE
+            // decoder
+            wire [31:0] i_type_imm = {{20{s1_ir[31]}}, s1_ir[31:20]};
+            wire [31:0] s_type_imm = {{20{s1_ir[31]}}, s1_ir[31:25], s1_ir[11:7]};
+            wire [31:0] b_type_imm = {{20{s1_ir[31]}}, s1_ir[7], s1_ir[30:25], s1_ir[11:8], 1'b0};
+            wire [31:0] u_type_imm = {s1_ir[31:12], 12'd0};
+            wire [31:0] j_type_imm = {{11{s1_ir[31]}}, s1_ir[31], s1_ir[19:12], s1_ir[20], s1_ir[30:21], 1'b0};
+            wire [6:0]  funct7 = s1_ir[31:25];
+            wire [2:0]  funct3 = s1_ir[14:12];
+            wire [4:0]  rs2   = s1_ir[24:20];
+            wire [4:0]  rs1   = s1_ir[19:15];
+            wire [4:0]  rd    = s1_ir[11:7];
+            wire [31:0] shamt = {27'd0, rs2};
+            wire [6:0]  opcode = s1_ir[6:0];
+
+            wire [`XLEN-1:0] rs1_val, rs2_val;
+            wire [`XLEN-1:0] imm_val;
+
+            assign rs1_val =
+                (regfile_wreq && rs1[3:0]==regfile_windex) ?
+                    regfile_wdata :
+                /* otherwise */
+                    x[rs1[3:0]];
+
+            assign rs2_val =
+                (regfile_wreq && rs2[3:0]==regfile_windex) ?
+                    regfile_wdata :
+                /* otherwise */
+                    x[rs2[3:0]];
+
+            assign imm_val =
+                (opcode==OPCODE_BRANCH) ?
+                    b_type_imm :
+                (opcode==OPCODE_LUI || opcode==OPCODE_AUIPC) ?
+                    u_type_imm :
+                (opcode==OPCODE_JAL) ?
+                    j_type_imm :
+                (opcode==OPCODE_LOAD || opcode==OPCODE_JALR || (opcode==OPCODE_IMMCAL && funct3^3'b001 && funct3^3'b101)) ?
+                    i_type_imm :
+                (opcode==OPCODE_STORE) ?
+                    s_type_imm :
+                (opcode==OPCODE_FENCE) ?
+                    4 : /* 4 for FENCE.I, do-not-care for FENCE */
+                /* otherwise */
+                    shamt;
+
+            // signals for wider use
+            assign s1_rd =
+                (opcode==OPCODE_BRANCH || opcode==OPCODE_STORE || opcode==OPCODE_FENCE) /* rd not available */ ?
+                    4'd0 /* available yet should not be used for FENCE.I/FENCE */ :
+                /* rd available */
+                    rd[3:0];
+
+            assign s1_alu_a =
+                (opcode==OPCODE_LUI) ?
+                    0 :
+                (opcode==OPCODE_AUIPC || opcode==OPCODE_JAL || opcode==OPCODE_BRANCH || opcode==OPCODE_FENCE) ?
+                    s1_pc /* do-not-care for FENCE. used for FENCE.I */ :
+                /* otherwise */
+                    rs1_val;
+
+            assign s1_alu_b =
+                (opcode==OPCODE_CAL) ?
+                    rs2_val :
+                /* otherwise */
+                    imm_val;
+
+            assign s1_alu_op =
+                (opcode==OPCODE_CAL || opcode==OPCODE_IMMCAL) ?
+                (
+                    funct3==3'd1 ?
+                        ALU_SL :
+                    funct3==3'd2 ?
+                        ALU_LT :
+                    funct3==3'd3 ?
+                        ALU_LTU :
+                    funct3==3'd4 ?
+                        ALU_XOR :
+                    funct3==3'd5 ?
+                    (
+                        funct7[5]==1'b0 ?
+                            ALU_SRL :
+                        /* 1'b1 */
+                            ALU_SRA
+                    ) :
+                    funct3==3'd6 ?
+                        ALU_OR :
+                    funct3==3'd7 ?
+                        ALU_AND :
+                    /* 3'd0 */
+                    (
+                        (opcode==OPCODE_CAL && funct7[5]) ?
+                            ALU_SUB :
+                        /* else */
+                            ALU_ADD
+                    )
+                ) :
+                /* otherwise (even if unimplemented) */
+                    ALU_ADD;
+
+            assign s1_op =
+                (opcode==OPCODE_LOAD) ?
+                (
+                    (funct3==3'd4 || funct3==3'd5) ?
+                        OP_LDU :
+                    /*otherwise*/
+                        OP_LD
+                ) :
+                (opcode==OPCODE_STORE) ?
+                    OP_SD :
+                (opcode==OPCODE_JAL || (opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */ )) ?
+                    OP_JAL :
+                (opcode==OPCODE_JALR) ?
+                    OP_JALR :
+                /* otherwise */
+                    OP_STD;
+
+            assign s1_jump =
+            (
+                opcode==OPCODE_BRANCH && (
+                    funct3[2:1]==2'd2 ?
+                        (funct3[0]^($signed(rs1_val)<$signed(rs2_val))/* ({~rs1_val[`XLEN-1], rs1_val[`XLEN-2:0]}<{~rs2_val[`XLEN-1], rs2_val[`XLEN-2:0]}) */) :
+                    funct3[2:1]==2'd3 ?
+                        (funct3[0]^(rs1_val<rs2_val)) :
+                    /* 2'd0 or undefined */
+                        (funct3[0]^(rs1_val==rs2_val))
+                )
+            ) || (
+                opcode==OPCODE_JALR
+            ) || (
+                opcode==OPCODE_JAL
+            ) || (
+                opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */
+            );
+
+            assign s1_d_req = opcode==OPCODE_LOAD || opcode==OPCODE_STORE;
+            assign s1_d_req_acc = (funct3[1:0]==2'd0 ? `BUS_ACC_1B : funct3[1:0]==2'd1 ? `BUS_ACC_2B : `BUS_ACC_4B);
+            assign s1_d_req_w_rb = (opcode==OPCODE_STORE);
+            assign s1_d_req_wdata = rs2_val;
+
+            assign undef_instr =
+                s1_vld && (
+                    (opcode==OPCODE_LUI || opcode==OPCODE_AUIPC || opcode==OPCODE_JAL) ?
+                        rd[4] :
+                    (opcode==OPCODE_JALR) ?
+                        (rd[4] || rs1[4] || funct3) :
+                    (opcode==OPCODE_BRANCH) ?
+                        (rs1[4] || rs2[4] || funct3[2:1]==2'b01) :
+                    (opcode==OPCODE_LOAD) ?
+                        (rd[4] | rs1[4] | (funct3[1]&funct3[0]) | (funct3[2]&funct3[1])) :
+                    (opcode==OPCODE_STORE) ?
+                        (rs1[4] | rs2[4] | funct3[2] | (funct3[1]&funct3[0])) :
+                    (opcode==OPCODE_IMMCAL) ?
+                        (rd[4] || rs1[4] || (funct3[1:0]==2'b01 && ({funct7[6], funct7[4:0]} || (~funct3[2] & funct7[5])))) :
+                    (opcode==OPCODE_CAL) ?
+                        (rd[4] || rs1[4] || rs2[4] || {funct7[6], funct7[4:0]} || (funct7[5] && (funct3[1] || (funct3[2]^funct3[0])))) :
+                    (opcode==OPCODE_FENCE) ?
+                        (rd[4] || rs1[4] || funct3[2:1]) :
+                    /* undefined / unimplemented opcode */
+                        1'b1
+                );
+        end // DECODE
+
+        dff #(
+            .RESET("sync"),
+            .VALID("sync"),
+            .CLEAR("sync")
+        ) d_req_dff (
+            .clk (clk              ),
+            .rstn(rstn             ),
+            .clr (d_req_launched   ),
+            .vld (s1_vld & s1_d_req),
+            .in  (s1_d_req         ),
+            .out (d_req            )
+        );
+
+        dff #(
+            .WIDTH($clog2(`BUS_ACC_CNT)+1+`BUS_WIDTH),
+            .VALID("sync")
+        ) d_req_info_dff (
+            .clk(clk),
+            .vld(s1_vld),
+            .in ({s1_d_req_acc,s1_d_req_w_rb,s1_d_req_wdata}),
+            .out({d_req_acc,   d_req_w_rb,   d_req_wdata   })
+        );
+    end // STAGE1
+
+    /**********************************************************************************************************************/
+    begin:STAGE2 // executing, mem access & write back
+        dff #(
+            .WIDTH(4+`XLEN+`XLEN+8+8),
+            .VALID("sync")
+        ) s2_op_dff (
+            .clk (clk),
+            .vld (s1_vld),
+            .in  ({s1_rd,s1_alu_a,s1_alu_b,s1_alu_op,s1_op}),
+            .out ({s2_rd,s2_alu_a,s2_alu_b,s2_alu_op,s2_op})
+        );
+
+        // ALU
+        // jump_triggered functions as alu mux control: return addr can be calculated
+        wire[7:0]       alu_op = jump_triggered ? ALU_ADD        : s2_alu_op;
+        wire[`XLEN-1:0] alu_a  = jump_triggered ? s2_pc          : s2_alu_a ;
+        wire[`XLEN-1:0] alu_b  = jump_triggered ? (s2_c ? 2 : 4) : s2_alu_b ;
+        wire[`XLEN-1:0] alu_r;
+        alu alu(
+            .op(alu_op),
+            .a (alu_a ),
+            .b (alu_b ),
+            .r (alu_r )
+        );
+
+        assign jump_addr = s2_op==OP_JALR ? {alu_r[`XLEN-1:1], 1'b0} : alu_r;
+        assign d_req_addr = alu_r;
+
+        // Regfile W access
+        assign regfile_wreq = s2_vld && regfile_windex;
+        assign regfile_windex = s2_rd;
+        assign regfile_wdata =
+            (s2_op==OP_LD) ? (
+                (d_resp_acc==`BUS_ACC_1B) ?
+                    {{24{d_resp_data[7]}}, d_resp_data[7:0]} :
+                (d_resp_acc==`BUS_ACC_2B) ?
+                    {{16{d_resp_data[15]}}, d_resp_data[15:0]} :
+                /*otherwise*/
+                    d_resp_data
+            ) :
+            ((s2_op==OP_LDU)) ? (
+                (d_resp_acc==`BUS_ACC_1B) ?
+                    {24'd0, d_resp_data[7:0]} :
+                /*d_resp_acc==`BUS_ACC_2B*/
+                    {16'd0, d_resp_data[15:0]}
+            ) :
+            /* otherwise treated as OP_STD */
+                alu_r;
+
+        // Fault signal
+        assign overshift = s2_vld && (s2_alu_op==ALU_SL || s2_alu_op==ALU_SRL || s2_alu_op==ALU_SRA) && s2_alu_b[`XLEN-1:5];
+    end // STAGE2
+
     /**********************************************************************************************************************/
     always @(posedge clk) begin
-        if (rstn==0) begin
+        if (~rstn) begin
             core_fault <= 0;
         end else if (undef_instr) begin
             core_fault <= 1;
-            core_fault_pc <= pc_ID;
+            core_fault_pc <= s1_pc;
+            $display("FAULT: undefined instruction");
         end else if (overshift) begin
             core_fault <= 1;
-            core_fault_pc <= pc_EX;
+            core_fault_pc <= s2_pc;
+            $display("FAULT: over shift");
         end
     end
-
 endmodule
 
-/****************************************************************/
-// submodules
-module bus_req_mux(
-    input wire [$clog2(`BUS_R_CNT)-1:0] bus_req_type,
-
-    // I req input
-    input wire [`XLEN-1:0]  ireq_addr, // pc_IF
-
-    // D req input
-    input wire [`XLEN-1:0]                  dreq_addr,
-    input wire [$clog2(`BUS_ACC_CNT)-1:0]   dreq_acc,
-    input wire                              dreq_wr_b,
-
-    // bus req output
-    output wire [`XLEN-1:0]                 bus_addr,
-    output wire [$clog2(`BUS_ACC_CNT)-1:0]  bus_acc,
-    output wire                             bus_wr_b
-);
-    assign bus_addr = bus_req_type==`BUS_R_D ? dreq_addr : ireq_addr;
-    assign bus_acc = bus_req_type==`BUS_R_D ? dreq_acc : `BUS_ACC_I ;
-    assign bus_wr_b = bus_req_type==`BUS_R_I ? 0 : dreq_wr_b;
-endmodule
-
-module pc_IF_mux(
-    input wire clk,
-    input wire rstn,
-
-    input wire [$clog2(`PC_MUX_CNT)-1:0]    pc_sel,
-
-    // required by PC_INC
-    input wire pc_inc_trig, // pc increase trigger
-
-    // required by PC_JMP
-    input wire [`XLEN-1:0]  pc_jump_addr,
-
-    // output
-    output wire [`XLEN-1:0] pc_out
-);
-    reg [`XLEN-1:0] pc_IF_reg;
-    always  @ (posedge clk) begin
-        if (rstn==0) begin
-            pc_IF_reg <= `RESET_PC;
-        end else if (pc_inc_trig) begin
-            pc_IF_reg <= pc_out + 4;
-        end
-    end
-
-    assign pc_out = pc_sel==`PC_INC ? pc_IF_reg : pc_jump_addr;
-endmodule
-
+/**********************************************************************************************************************/
 module alu(
     input wire [7:0]       op,
     input wire [`XLEN-1:0]  a,
@@ -597,20 +594,23 @@ module alu(
     wire [`XLEN-1:0] sra_r = $signed(a)>>>b,
                      lt_r  = $signed(a)<$signed(b);
 
+    `include "operation.vh"
+
     assign r =
-        op==`ALU_ADD ? (a+b)   :
-        op==`ALU_SUB ? (a-b)   :
-        op==`ALU_AND ? (a&b)   :
-        op==`ALU_OR  ? (a|b)   :
-        op==`ALU_XOR ? (a^b)   :
-        op==`ALU_LTU ? (a<b)   :
-        op==`ALU_LT  ? (lt_r) :
-        op==`ALU_SRL ? (a>>b)  :
-        op==`ALU_SRA ? (sra_r) :
-        op==`ALU_SL  ? (a<<b)  :
+        op==ALU_ADD ? (a+b)   :
+        op==ALU_SUB ? (a-b)   :
+        op==ALU_AND ? (a&b)   :
+        op==ALU_OR  ? (a|b)   :
+        op==ALU_XOR ? (a^b)   :
+        op==ALU_LTU ? (a<b)   :
+        op==ALU_LT  ? (lt_r) :
+        op==ALU_SRL ? (a>>b)  :
+        op==ALU_SRA ? (sra_r) :
+        op==ALU_SL  ? (a<<b)  :
         0;
 endmodule
 
+/**********************************************************************************************************************/
 module regfile(
     input wire              clk,
 
@@ -659,4 +659,244 @@ module regfile(
             xreg[windex] <= wdata;
         end
     end
+endmodule
+
+/**********************************************************************************************************************/
+module prefetch_queue (
+    input wire          clk,
+    input wire          rstn,
+
+    input wire          in_req,
+    input wire          in_req_16_32bar,
+    input wire[31:0]    in,
+
+    input wire          out_req,
+    input wire          out_req_16_32bar,
+    output wire[31:0]   out,
+
+    input wire          clr,
+
+    output wire[1:0]    vacant_entry16,
+    output wire[1:0]    filled_entry16
+);
+    generate
+        for(genvar i=0;i<2;i=i+1) begin:pingpong
+            wire w, r;
+            wire full, empty;
+            wire almost_full, almost_empty;
+            wire [15:0] din, dout;
+            fifo #(
+                .WIDTH(16    ),
+                .DEPTH(2     ),
+                .CLEAR("sync")
+            ) fifo (
+                .clk         (clk         ),
+                .rstn        (rstn        ),
+                .din         (din         ),
+                .dout        (dout        ),
+                .w           (w           ),
+                .r           (r           ),
+                .clr         (clr         ),
+                .full        (full        ),
+                .empty       (empty       ),
+                .almost_full (almost_full ),
+                .almost_empty(almost_empty)
+            );
+        end
+    endgenerate
+
+    reg wsel, rsel;
+
+    // note: both fifos are 2 entries in depth, and we'are not expecting 2-0 situation
+    // note: actual capacity of the queue is 4 entries, but we would reserve 2
+    assign vacant_entry16 =
+        (pingpong[0].full & pingpong[1].full) ?
+            2'd0 : // actually 0
+        ((pingpong[0].full & pingpong[1].almost_full) | (pingpong[1].full & pingpong[0].almost_full)) ?
+            2'd0 : // actually 1
+        (pingpong[0].almost_full & pingpong[1].almost_full) ?
+            2'd0 : // actually 2
+        (pingpong[0].almost_full ^ pingpong[1].almost_full) ?
+            2'd1 : // actually 3
+        /* ~pingpong[0].almost_full & ~pingpong[1].almost_full */
+            2'd2;  // actually >=4
+
+    assign filled_entry16 =
+        (pingpong[0].empty & pingpong[1].empty) ?
+            2'd0 : // actually 0
+        ((pingpong[0].empty & pingpong[1].almost_empty) | (pingpong[1].empty & pingpong[0].almost_empty)) ?
+            2'd1 : // actually 1
+        (pingpong[0].almost_empty & pingpong[1].almost_empty) ?
+            2'd2 : // actually 2
+        (pingpong[0].almost_empty ^ pingpong[1].almost_empty) ?
+            2'd2 : // actually 3
+        /* ~pingpong[0].almost_empty & ~pingpong[1].almost_empty */
+            2'd2;  // actually >=4
+
+    assign pingpong[0].w = in_req & (~in_req_16_32bar | ~wsel);
+    assign pingpong[1].w = in_req & (~in_req_16_32bar | wsel);
+
+    assign pingpong[0].r = out_req & (~out_req_16_32bar | ~rsel);
+    assign pingpong[1].r = out_req & (~out_req_16_32bar | rsel);
+
+    assign pingpong[0].din = wsel ? in[31:16] : in[15:0];
+    assign pingpong[1].din = wsel ? in[15:0] : in[31:16];
+
+    assign out[15:0] = rsel ? pingpong[1].dout : pingpong[0].dout;
+    assign out[31:16] = rsel ? pingpong[0].dout : pingpong[1].dout;
+
+    always @ (posedge clk) begin
+        if (~rstn | clr) begin
+            wsel <= 1'b0;
+            rsel <= 1'b0;
+        end else begin
+            if (~(pingpong[0].full & pingpong[1].full) & in_req & in_req_16_32bar) begin
+                wsel <= ~wsel;
+            end
+            if (~(pingpong[0].empty & pingpong[1].empty) & out_req & out_req_16_32bar) begin
+                rsel <= ~rsel;
+            end
+        end
+    end
+endmodule
+
+module expander( // conpressed instruction expansion
+    input wire[`ILEN-1:0]   in_instr,
+    output wire[`ILEN-1:0]  out_instr,
+    output wire             out_c
+);
+
+`include "operation.vh"
+
+    assign out_c = in_instr[1:0]!=OPCODE_NC;
+    // 16-32bit expansion
+    wire[1:0] opcode = in_instr[1:0];
+    wire[2:0] funct3 = in_instr[15:13];
+    wire[4:0] rd_rs1 = in_instr[11:7];
+    wire[4:0] rs2 = in_instr[6:2];
+    wire[2:0] rd_q_rs1_q = in_instr[9:7];
+    wire[2:0] rd_q_rs2_q = in_instr[4:2];
+
+    wire undef_instr_c = out_c &&
+        (
+            (opcode==OPCODE_C0 && (
+                (funct3==3'b000 && in_instr[12:5]==8'd0) ||
+                (funct3==3'b001) ||
+                (funct3==3'b011) ||
+                (funct3==3'b100) ||
+                (funct3==3'b101) ||
+                (funct3==3'b111)
+            )) ||
+            (opcode==OPCODE_C1 && (
+                (funct3==3'b011 && {in_instr[12],in_instr[6:2]}==6'd0) ||
+                (funct3==3'b100 && in_instr[11:10]!=2'b10 && in_instr[12])
+            )) ||
+            (opcode==OPCODE_C2 && (
+                (funct3==3'b000 && in_instr[12]) ||
+                (funct3==3'b001) ||
+                (funct3==3'b010 && rd_rs1==5'd0) ||
+                (funct3==3'b011) ||
+                (funct3==3'b100 && (
+                    (~in_instr[12] && rd_rs1==5'd0 && rs2==5'd0) ||
+                    (in_instr[12] && rd_rs1==5'd0 && rs2==5'd0) //c.ebreak
+                )) ||
+                (funct3==3'b101) ||
+                (funct3==3'b111)
+            ))
+        );
+
+    assign out_instr =
+        undef_instr_c ? {`ILEN{1'b0}} : (
+            (opcode==OPCODE_C0) ? (
+                funct3==3'b000 ? {{2'd0,in_instr[10:7],in_instr[12:11],in_instr[4],in_instr[5],2'd0},5'd2/*x2*/,3'b000,{2'b01,rd_q_rs2_q},OPCODE_IMMCAL} : //c.addi4spn
+                funct3==3'b010 ? {{5'd0,in_instr[5],in_instr[12:10],in_instr[6],2'd0},{2'b01,rd_q_rs1_q},3'b010,{2'b01,rd_q_rs2_q},OPCODE_LOAD} : //c.lw
+                /*funct3==3'b110*/ {{5'd0,in_instr[5],in_instr[12]},{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b010,{in_instr[11:10],in_instr[6],2'd0},OPCODE_STORE} //c.sw
+            ) :
+            (in_instr[1:0]==OPCODE_C1) ? (
+                funct3==3'b000 ? {{{7{in_instr[12]}},in_instr[6:2]},rd_rs1,3'b000,rd_rs1,OPCODE_IMMCAL} : //c.addi
+                funct3==3'b001 ? {{in_instr[12],in_instr[8],in_instr[10:9],in_instr[6],in_instr[7],in_instr[2],in_instr[11],in_instr[5:3],{9{in_instr[12]}}},5'd1/*x1*/,OPCODE_JAL} : //c.jal
+                funct3==3'b010 ? {{{7{in_instr[12]}},in_instr[6:2]},5'd0/*x0*/,3'b000,rd_rs1,OPCODE_IMMCAL} : //c.li
+                funct3==3'b011 ? (
+                    rd_rs1==5'd2 ? {{{3{in_instr[12]}},in_instr[4:3],in_instr[5],in_instr[2],in_instr[6],4'd0},5'd2/*x2*/,3'b000,5'd2/*x2*/,OPCODE_IMMCAL} : //c.addi16sp
+                                   {{{15{in_instr[12]}},in_instr[6:2]},rd_rs1,OPCODE_LUI} //c.lui
+                ) :
+                funct3==3'b100 ? (
+                    in_instr[11:10]==2'b00 ? {7'b0000000,in_instr[6:2],{2'b01,rd_q_rs1_q},3'b101,{2'b01,rd_q_rs1_q},OPCODE_IMMCAL} : //c.srli
+                    in_instr[11:10]==2'b01 ? {7'b0100000,in_instr[6:2],{2'b01,rd_q_rs1_q},3'b101,{2'b01,rd_q_rs1_q},OPCODE_IMMCAL} : //c.srai
+                    in_instr[11:10]==2'b10 ? {{{7{in_instr[12]}},in_instr[6:2]},{2'b01,rd_q_rs1_q},3'b111,{2'b01,rd_q_rs1_q},OPCODE_IMMCAL} : //c.andi
+                    /*in_instr[11:10]==2'b11*/ (
+                        in_instr[6:5]==2'b00 ? {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b000,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.sub
+                        in_instr[6:5]==2'b01 ? {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b100,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.xor
+                        in_instr[6:5]==2'b10 ? {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b110,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.or
+                        /*in_instr[6:5]==2'b11*/ {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b111,{2'b01,rd_q_rs1_q},OPCODE_CAL} //c.and
+                    )
+                ) :
+                funct3==3'b101 ? {{in_instr[12],in_instr[8],in_instr[10:9],in_instr[6],in_instr[7],in_instr[2],in_instr[11],in_instr[5:3],{9{in_instr[12]}}},5'd0/*x0*/,OPCODE_JAL} : //c.j
+                funct3==3'b110 ? {{{4{in_instr[12]}},in_instr[6:5],in_instr[2]},5'd0/*x0*/,{2'b01,rd_q_rs1_q},3'b000,{in_instr[11:10],in_instr[4:3],in_instr[12]},OPCODE_BRANCH} : //c.beqz
+                /*funct3==3'b111*/ {{{4{in_instr[12]}},in_instr[6:5],in_instr[2]},5'd0/*x0*/,{2'b01,rd_q_rs1_q},3'b001,{in_instr[11:10],in_instr[4:3],in_instr[12]},OPCODE_BRANCH} //c.bnez
+            ) :
+            (in_instr[1:0]==OPCODE_C2) ? (
+                funct3==3'b000 ? {7'b0000000,in_instr[6:2],rd_rs1,3'b001,rd_rs1,OPCODE_IMMCAL} : //c.slli
+                funct3==3'b010 ? {{4'd0,in_instr[3:2],in_instr[12],in_instr[6:4],2'd0},5'd2/*x2*/,3'b010,rd_rs1,OPCODE_LOAD} : //c.lwsp
+                funct3==3'b100 ? (
+                    (~in_instr[12]) ? (
+                        (in_instr[6:2]==5'd0) ? {12'd0,rd_rs1,3'b000,5'd0/*x0*/,OPCODE_JALR} : //c.jr
+                        /*in_instr[6:2]!=5'd0*/ {7'b0000000,rs2,5'd0/*x0*/,3'b000,rd_rs1,OPCODE_CAL} //c.mv
+                    ) :
+                    /*in_instr[12]*/ (
+                        (in_instr[6:2]==5'd0) ? {12'd0,rd_rs1,3'b000,5'd1/*x1*/,OPCODE_JALR} : //c.jalr
+                        /*in_instr[6:2]!=5'd0*/ {7'b0000000,rs2,rd_rs1,3'b000,rd_rs1,OPCODE_CAL} //c.add
+                    )
+                ) :
+                /*funct3==3'b110*/ {{4'd0,in_instr[8:7],in_instr[12]},{2'b01,rd_q_rs2_q},5'd2/*x2*/,3'b010,{in_instr[11:9],2'd0},OPCODE_STORE} //j.swsp
+            ) :
+            /* OPCODE_NC */
+                in_instr
+        );
+endmodule
+
+module pipeline( // SR
+    input wire  clk,
+    input wire  rstn,
+
+    input wire  clr,
+    input wire  hld,
+
+    input wire[`ILEN-1:0]   in_ir,
+    input wire[`XLEN-1:0]   in_pc,
+    input wire              in_c,
+    input wire              in_vld,
+
+    output wire[`ILEN-1:0]  s1_ir,
+    output wire[`XLEN-1:0]  s1_pc,
+    output wire             s1_c,
+    output wire             s1_vld,
+
+    output wire[`ILEN-1:0]  s2_ir,
+    output wire[`XLEN-1:0]  s2_pc,
+    output wire             s2_c,
+    output wire             s2_vld
+);
+    reg[`ILEN+`XLEN+2-1:0]  s1, s2;
+
+    always @(posedge clk) begin
+        if (~rstn) begin
+            s1[0] <= 1'b0;
+            s2[0] <= 1'b0;
+        end else if (clr) begin
+            s1[`ILEN+`XLEN+2-1:1] <= {(`ILEN+`XLEN+1){1'bx}};
+            s1[0] <= 1'b0;
+            // s2[0] <= 1'b0; // clr, i.e. jmp, should not clear ex/wb stage's vld flag
+        end else if (hld) begin
+            // do nothing
+        end else begin
+            s1 <= {in_ir,in_pc,in_c,in_vld};
+            s2 <= s1;
+        end
+    end
+
+    assign {s1_ir,s1_pc,s1_c} = s1[`ILEN+`XLEN+2-1:1];
+    assign {s2_ir,s2_pc,s2_c} = s2[`ILEN+`XLEN+2-1:1];
+    assign s1_vld = s1[0] & ~hld;
+    assign s2_vld = s2[0] & ~hld;
 endmodule

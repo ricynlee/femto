@@ -1,4 +1,5 @@
-`include "femto.vh"
+`include "sim/timescale.vh"
+// `include "femto.vh"
 
 // Intended to support 1-1-1 and 4-4-4 protocols under mode 0
 
@@ -41,8 +42,10 @@ module qspinor_controller #(
     wire [`QSPINOR_ABW-1:0] addr_kept;
     wire [15:0]             wdata_kept;
     wire [1:0]              acc_kept;
-    keeper #(
-        .WIDTH(1+1+`QSPINOR_ABW+16+2)
+    dff #(
+        .WIDTH(1+1+`QSPINOR_ABW+16+2),
+        .RESET("sync"),
+        .VALID("async")
     ) req_keeper (
         .clk (clk ),
         .rstn(rstn),
@@ -381,8 +384,10 @@ module qspi_io(
     wire [8:0] bytes_in_kept;
     wire       bytes_in_vld_kept;
     wire       quad_en_kept;
-    keeper #(
-        .WIDTH(11)
+    dff #(
+        .WIDTH(11),
+        .RESET("sync"),
+        .VALID("async")
     ) req_keeper (
         .clk (clk ),
         .rstn(rstn),
@@ -501,8 +506,10 @@ module qspinor_read(
     wire [7:0]  cmd_kept;
     wire        quad_en_kept;
     wire [3:0]  dummy_cycles_kept;
-    keeper #(
-        .WIDTH(24+$clog2(`BUS_ACC_CNT)+8+1+4)
+    dff #(
+        .WIDTH(24+$clog2(`BUS_ACC_CNT)+8+1+4),
+        .RESET("sync"),
+        .VALID("async")
     ) req_keeper (
         .clk (clk ),
         .rstn(rstn),

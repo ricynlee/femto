@@ -1,5 +1,9 @@
 .Xil
 femto.cache
 femto.hw
+femto.ip_user_files
+femto.runs
 femto.sim
-vivado.*
+*.jou
+*.log
+*.str

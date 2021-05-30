@@ -20,7 +20,7 @@ uart_t* const uart = UART;
 #define debug_printf(...) \
     ({                                                                  \
         char debug_buffer[256];                                         \
-        int ret = sprintf(debug_buffer, __VA_ARGS__);                 \
+        int ret = sprintf(debug_buffer, __VA_ARGS__);                   \
         for (int i=0; i<sizeof(debug_buffer) && debug_buffer[i]; i++) { \
             while(uart->txq_full);                                      \
             uart->txd = debug_buffer[i];                                \

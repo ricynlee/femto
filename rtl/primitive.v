@@ -1,35 +1,11 @@
 `include "sim/timescale.vh"
 
-module keeper # (
-    parameter   WIDTH       = 32,
-    parameter   INITIALIZER = 0
-)(
-    input wire  clk,
-    input wire  rstn,
-    // Input
-    input wire              vld,
-    input wire [WIDTH-1:0]  in,
-    // Output
-    output wire [WIDTH-1:0] out
-);
-    reg [WIDTH-1:0] keeper_reg;
-    always @ (posedge clk) begin
-        if (rstn==0) begin
-            keeper_reg <= INITIALIZER;
-        end else if(vld) begin
-            keeper_reg <= in;
-        end
-    end
-
-    assign out = vld ? in : keeper_reg;
-endmodule
-
 module dff #( // D-type flip-flop
     parameter   WIDTH       = 1,
-    parameter   INITIALIZER = 0,
-    parameter   VALID       = "none", // sync, none
-    parameter   RESET       = "sync", // async, sync, none
-    parameter   CLEAR       = "async" // async, sync, none
+    parameter   RESET       = "none", // async, sync, none
+    parameter   CLEAR       = "none", // async, sync, none
+    parameter   VALID       = "none", // async, sync, none
+    parameter   INITIALIZER = 0 // reset value
 )(
     input wire              clk,
     input wire              rstn,
@@ -39,56 +15,251 @@ module dff #( // D-type flip-flop
     output wire [WIDTH-1:0] out
 );
     reg [WIDTH-1:0] d;
-    wire _clr;
-    wire [WIDTH-1:0] _in;
 
     generate
-        if (CLEAR=="none") begin
-            assign _clr = 0;
-        end else begin
-            assign _clr = clr;
-        end
-
-        if (VALID=="none")begin
-            assign _in = in;
-        end else begin
-            assign _in = vld ? in : d;
-        end
-
-        if (RESET=="sync") begin
+        if (RESET=="none" && CLEAR=="none" && VALID=="none") begin
             always @ (posedge clk) begin
-                if (rstn==0) begin
-                    d <= INITIALIZER;
-                end else if (_clr) begin
-                    d <= {WIDTH{1'b0}};
-                end else begin
-                    d <= _in;
-                end
+                d <= in;
             end
-        end else if (RESET=="async") begin
-            always @ (posedge clk, negedge rstn) begin
-                if (rstn==0) begin
-                    d <= INITIALIZER;
-                end else if (_clr) begin
-                    d <= {WIDTH{1'b0}};
-                end else begin
-                    d <= _in;
-                end
-            end
-        end else begin
-            always @ (posedge clk) begin
-                if (_clr) begin
-                    d <= {WIDTH{1'b0}};
-                end else begin
-                    d <= _in;
-                end
-            end
-        end
-
-        if (CLEAR=="async") begin
-            assign out = _clr ? {WIDTH{1'b0}} : d;
-        end else begin
             assign out = d;
+        end else if (RESET=="none" && CLEAR=="none" && VALID=="sync") begin
+            always @ (posedge clk) begin
+                if(vld) d <= in;
+            end
+            assign out = d;
+        end else if (RESET=="none" && CLEAR=="none" && VALID=="async") begin
+            always @ (posedge clk) begin
+                if(vld) d <= in;
+            end
+            assign out = vld ? in : d;
+        end else if (RESET=="none" && CLEAR=="sync" && VALID=="none") begin
+            always @ (posedge clk) begin
+                if(clr)
+                    d <= {WIDTH{1'b0}};
+                else
+                    d <= in;
+            end
+            assign out = d;
+        end else if (RESET=="none" && CLEAR=="sync" && VALID=="sync") begin
+            always @ (posedge clk) begin
+                if(clr)
+                    d <= {WIDTH{1'b0}};
+                else if(vld)
+                    d <= in;
+            end
+            assign out = d;
+        end else if (RESET=="none" && CLEAR=="sync" && VALID=="async") begin
+            always @ (posedge clk) begin
+                if(clr)
+                    d <= {WIDTH{1'b0}};
+                else if(vld)
+                    d <= in;
+            end
+            assign out = vld ? in : d;
+        end else if (RESET=="none" && CLEAR=="async" && VALID=="none") begin
+            always @ (posedge clk) begin
+                if(clr)
+                    d <= {WIDTH{1'b0}};
+                else
+                    d <= in;
+            end
+            assign out = clr ? {WIDTH{1'b0}} : d;
+        end else if (RESET=="none" && CLEAR=="async" && VALID=="sync") begin
+            always @ (posedge clk) begin
+                if(clr)
+                    d <= {WIDTH{1'b0}};
+                else if(vld)
+                    d <= in;
+            end
+            assign out = clr ? {WIDTH{1'b0}} : d;
+        end else if (RESET=="none" && CLEAR=="async" && VALID=="async") begin
+            always @ (posedge clk) begin
+                if(clr)
+                    d <= {WIDTH{1'b0}};
+                else if(vld)
+                    d <= in;
+            end
+            assign out = clr ? {WIDTH{1'b0}} : (vld ? in : d);
+        end else if (RESET=="sync" && CLEAR=="none" && VALID=="none") begin
+            always @ (posedge clk) begin
+                if(rstn)
+                    d <= in;
+                else
+                    d <= INITIALIZER;
+            end
+            assign out = d;
+        end else if (RESET=="sync" && CLEAR=="none" && VALID=="sync") begin
+            always @ (posedge clk) begin
+                if(rstn) begin
+                    if(vld) d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = d;
+        end else if (RESET=="sync" && CLEAR=="none" && VALID=="async") begin
+            always @ (posedge clk) begin
+                if(rstn) begin
+                    if(vld) d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = vld ? in : d;
+        end else if (RESET=="sync" && CLEAR=="sync" && VALID=="none") begin
+            always @ (posedge clk) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = d;
+        end else if (RESET=="sync" && CLEAR=="sync" && VALID=="sync") begin
+            always @ (posedge clk) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else if(vld)
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = d;
+        end else if (RESET=="sync" && CLEAR=="sync" && VALID=="async") begin
+            always @ (posedge clk) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else if(vld)
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = vld ? in : d;
+        end else if (RESET=="sync" && CLEAR=="async" && VALID=="none") begin
+            always @ (posedge clk) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = clr ? {WIDTH{1'b0}} : d;
+        end else if (RESET=="sync" && CLEAR=="async" && VALID=="sync") begin
+            always @ (posedge clk) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else if(vld)
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = clr ? {WIDTH{1'b0}} : d;
+        end else if (RESET=="sync" && CLEAR=="async" && VALID=="async") begin
+            always @ (posedge clk) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else if(vld)
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = clr ? {WIDTH{1'b0}} : (vld ? in : d);
+        end else if (RESET=="async" && CLEAR=="none" && VALID=="none") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn)
+                    d <= in;
+                else
+                    d <= INITIALIZER;
+            end
+            assign out = d;
+        end else if (RESET=="async" && CLEAR=="none" && VALID=="sync") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn) begin
+                    if(vld) d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = d;
+        end else if (RESET=="async" && CLEAR=="none" && VALID=="async") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn) begin
+                    if(vld) d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = rstn ? (vld ? in : d) : INITIALIZER;
+        end else if (RESET=="async" && CLEAR=="sync" && VALID=="none") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = d;
+        end else if (RESET=="async" && CLEAR=="sync" && VALID=="sync") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else if(vld)
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = d;
+        end else if (RESET=="async" && CLEAR=="sync" && VALID=="async") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else if(vld)
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = rstn ? (vld ? in : d) : INITIALIZER;
+        end else if (RESET=="async" && CLEAR=="async" && VALID=="none") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = rstn ? (clr ? {WIDTH{1'b0}} : d) : INITIALIZER;
+        end else if (RESET=="async" && CLEAR=="async" && VALID=="sync") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else if(vld)
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = rstn ? (clr ? {WIDTH{1'b0}} : d) : INITIALIZER;
+        end else if (RESET=="async" && CLEAR=="async" && VALID=="async") begin
+            always @ (posedge clk, negedge rstn) begin
+                if(rstn) begin
+                    if(clr)
+                        d <= {WIDTH{1'b0}};
+                    else if(vld)
+                        d <= in;
+                end else
+                    d <= INITIALIZER;
+            end
+            assign out = rstn ? (clr ? {WIDTH{1'b0}} : (vld ? in : d)) : INITIALIZER;
         end
     endgenerate
 endmodule
@@ -138,21 +309,26 @@ module fifo # (
         end
     endgenerate
 
+    integer elem_cnt;
+
     always @ (posedge clk) begin
         if (rstn==0) begin
             wptr <= 0;
             rptr <= 0;
             full <= 0;
             empty <= 1;
+            elem_cnt <= 0;
         end else if (_clr) begin
             wptr <= rptr;
             full <= 0;
             empty <= 1;
+            elem_cnt <= 0;
         end else case ({w, r, full, empty})
             4'b1001: begin
                 array[wptr]<=din;
                 wptr <= next_wptr;
                 empty <= 0;
+                elem_cnt <= elem_cnt+1;
             end
             4'b1000: begin
                 array[wptr]<=din;
@@ -160,16 +336,19 @@ module fifo # (
                 if (almost_full) begin
                     full <= 1;
                 end
+                elem_cnt <= elem_cnt+1;
             end
             4'b0110: begin
                 rptr <= next_rptr;
                 full <= 0;
+                elem_cnt <= elem_cnt-1;
             end
             4'b0100: begin
                 rptr <= next_rptr;
                 if (almost_empty) begin
                     empty <= 1;
                 end
+                elem_cnt <= elem_cnt-1;
             end
             4'b1100, 4'b1101, 4'b1110: begin
                 rptr <= next_rptr;

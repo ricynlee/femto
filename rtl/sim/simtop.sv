@@ -1,48 +1,63 @@
 `include "timescale.vh"
+`include "simpaths.vh"
 
-module simtop;
+module simtop #(
+    parameter NOR_TYPE = "spi", // spi, qspi
+    parameter HEX_PATH = `HEX_PATH
+);
 
     reg clk = 0;
     initial forever #41.667 clk<=~clk;
 
     wire [3:0] led;
-    wire uart_loopback;
+    wire uart_rxd, uart_txd;
     wire fault;
-    wire qspinor_sck;
-    wire qspinor_csb;
-    wire [3:0] qspinor_data;
-    // spinor qspinor(
-    //     .sck(qspinor_sck),
-    //     .csb(qspinor_csb),
-    //     .si(qspinor_data[0]),
-    //     .so(qspinor_data[1])
-    // );
 
-    qspinor qspinor(
-        .sck(qspinor_sck),
-        .csb(qspinor_csb),
-        .dio(qspinor_data)
-    );
+    wire nor_sck;
+    wire nor_csb;
+    wire [3:0] nor_sio;
+    generate
+        if(NOR_TYPE=="spi") begin
+            spinor norflash(
+                .sck(nor_sck),
+                .csb(nor_csb),
+                .si(nor_sio[0]),
+                .so(nor_sio[1])
+            );
+            initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
+        end else begin
+            qspinor norflash(
+                .sck(nor_sck),
+                .csb(nor_csb),
+                .dio(nor_sio)
+            );
+            initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
+        end
+    endgenerate
 
     sram sram();
-    
-    initial $readmemh("D:/femto/rtl/sim/sram-init.hex", sram.array);
+    initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
 
     top top(
         .sysclk     (clk             ),
         .sysrst     (1'b0            ),
         .fault      (fault           ),
         .gpio       (led             ),
-        .uart_tx    (uart_loopback   ),
-        .uart_rx    (uart_loopback   ),
+        .uart_tx    (uart_txd   ),
+        .uart_rx    (uart_rxd   ),
         .sram_ce_bar(sram.sram_ce_bar),
         .sram_oe_bar(sram.sram_oe_bar),
         .sram_we_bar(sram.sram_we_bar),
         .sram_data  (sram.sram_data  ),
         .sram_addr  (sram.sram_addr  ),
-        .qspi_sck   (qspinor_sck),
-        .qspi_csb   (qspinor_csb),
-        .qspi_data  (qspinor_data)
+        .qspi_sck   (nor_sck),
+        .qspi_csb   (nor_csb),
+        .qspi_data  (nor_sio)
+    );
+
+    uart_host uart_host(
+        .dut_uart_rxd(uart_rxd),
+        .dut_uart_txd(uart_txd)
     );
 endmodule
 
@@ -74,15 +89,14 @@ module sram(
 
 endmodule
 
-module spinor(
+module spinor( // supports 1-1-1 read operations only
     input wire  sck,
     input wire  csb,
     input wire  si,
     output reg  so
 );
 
-    wire [7:0] array[0:511];
-`include "qspinor.vh"
+    reg [7:0] array[0:511];
 
     reg [7:0] cmd;
     reg [23:0] addr;
@@ -91,10 +105,12 @@ module spinor(
             integer i;
             for(i=7; i>=0; i=i-1)
                 @(posedge sck) cmd[i]=si;
+            $display("CMD=%x", cmd);
     
             for(i=23; i>=0; i=i-1)
                 @(posedge sck) addr[i]=si;
-            
+            $display("ADDR=%x DATA=%x", addr, array[addr]);
+
             forever begin
                 for (i=7; i>=0; i=i-1)
                     @(negedge sck) so = array[addr][i];
@@ -110,14 +126,13 @@ join
 
 endmodule
 
-module qspinor(
+module qspinor( // supports 4-4-4 read operations only
     input wire       sck,
     input wire       csb,
     inout wire [3:0] dio
 );
 
-    wire [7:0] array[0:511];
-`include "qspinor.vh"
+    reg [7:0] array[0:511];
 
     reg [7:0]  cmd;
     reg [23:0] addr;
@@ -163,3 +178,30 @@ module qspinor(
 
 endmodule
 
+module uart_host(
+    input wire  dut_uart_txd,
+    output reg  dut_uart_rxd
+);
+
+    time bit_duration = 1000000000.0 / 57600;
+    initial begin
+        dut_uart_rxd = 1'b1;
+        #200000;
+        send(8'hc3);
+    end
+
+    task automatic send(input[7:0] octet);
+        integer i;
+        begin
+            dut_uart_rxd = 1'b0;
+            #bit_duration;
+            for (i=0; i<8; i=i+1) begin
+                dut_uart_rxd = octet[i];
+                #bit_duration;
+            end
+            dut_uart_rxd = 1'b1;
+            #bit_duration;
+        end
+    endtask
+
+endmodule

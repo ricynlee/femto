@@ -1,5 +1,5 @@
 `include "sim/timescale.vh"
-`include "femto.vh"
+// `include "femto.vh"
 
 module uart_controller(
     input wire  clk,

@@ -13,7 +13,9 @@ void main(){
     gpio->io =RED;
     
     do {
+#if 1 // set 0 for RTL test, 1 for FPGA test
         for (int i=0; i<100000 && uart->rxq_empty; i++);
+#endif
         if (uart->rxq_empty)
             gpio->io = RED^gpio->io;
     } while(uart->rxq_empty);

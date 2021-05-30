@@ -54,7 +54,7 @@ module top(
     assign fault = core_fault | bus_fault;
 
     wire [`XLEN-1:0]                bus_addr; // req from core
-    wire                            bus_wr_b;
+    wire                            bus_w_rb;
     wire [$clog2(`BUS_ACC_CNT)-1:0] bus_acc;
     wire [`BUS_WIDTH-1:0]           bus_rdata;
     wire [`BUS_WIDTH-1:0]           bus_wdata;
@@ -68,7 +68,7 @@ module top(
         .core_fault   (core_fault          ),
         .core_fault_pc(                    ),
         .bus_addr     (bus_addr            ),
-        .bus_wr_b     (bus_wr_b            ),
+        .bus_w_rb     (bus_w_rb            ),
         .bus_acc      (bus_acc             ),
         .bus_rdata    (bus_rdata           ),
         .bus_wdata    (bus_wdata           ),
@@ -136,7 +136,7 @@ module top(
         .bus_fault     (bus_fault          ),
         .bus_fault_addr(                   ),
         .bus_addr      (bus_addr           ), // req from core
-        .bus_wr_b      (bus_wr_b           ),
+        .bus_w_rb      (bus_w_rb           ),
         .bus_acc       (bus_acc            ),
         .bus_rdata     (bus_rdata          ),
         .bus_wdata     (bus_wdata          ),
@@ -303,7 +303,7 @@ module bus(
     output reg                              bus_fault,
     output reg [`XLEN-1:0]                  bus_fault_addr,
     input wire [`XLEN-1:0]                  bus_addr, // req from core
-    input wire                              bus_wr_b,
+    input wire                              bus_w_rb,
     input wire [$clog2(`BUS_ACC_CNT)-1:0]   bus_acc,
     output wire [`BUS_WIDTH-1:0]            bus_rdata,
     input wire [`BUS_WIDTH-1:0]             bus_wdata,
@@ -373,12 +373,12 @@ module bus(
     assign    gpio_addr = bus_addr[2];
     assign    uart_addr = bus_addr[1:0];
 
-    assign     rom_wr_b = bus_wr_b;
-    assign     tcm_wr_b = bus_wr_b;
-    assign    sram_wr_b = bus_wr_b;
-    assign qspinor_wr_b = bus_wr_b;
-    assign    gpio_wr_b = bus_wr_b;
-    assign    uart_wr_b = bus_wr_b;
+    assign     rom_wr_b = bus_w_rb;
+    assign     tcm_wr_b = bus_w_rb;
+    assign    sram_wr_b = bus_w_rb;
+    assign qspinor_wr_b = bus_w_rb;
+    assign    gpio_wr_b = bus_w_rb;
+    assign    uart_wr_b = bus_w_rb;
 
     assign     rom_acc = bus_acc;
     assign     tcm_acc = bus_acc;
