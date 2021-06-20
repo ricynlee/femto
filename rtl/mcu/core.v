@@ -19,7 +19,7 @@ module core (
     input wire                              bus_resp
 );
 
-    `include "operation.vh"
+    `include "core.vh"
 
     /**********************************************************************************************************************/
     // pipeline flow control
@@ -594,7 +594,7 @@ module alu(
     wire [`XLEN-1:0] sra_r = $signed(a)>>>b,
                      lt_r  = $signed(a)<$signed(b);
 
-    `include "operation.vh"
+    `include "core.vh"
 
     assign r =
         op==ALU_ADD ? (a+b)   :
@@ -766,7 +766,7 @@ module expander( // conpressed instruction expansion
     output wire             out_c
 );
 
-`include "operation.vh"
+`include "core.vh"
 
     assign out_c = in_instr[1:0]!=OPCODE_NC;
     // 16-32bit expansion

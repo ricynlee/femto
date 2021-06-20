@@ -2,207 +2,28 @@
 `include "femto.vh"
 
 module top(
-    input wire                  sysclk,
-    input wire                  sysrst,
-    output wire                 fault,
+    input wire  clk,
+    input wire  sysrst,
 
-    inout wire [`GPIO_DBW-1:0]  gpio,
+    inout wire[`GPIO_WIDTH-1:0] gpio,
 
-    input wire                  uart_rx,
-    output wire                 uart_tx,
+    input wire  uart_rx,
+    output wire uart_tx,
 
-    output wire                 sram_ce_bar,
-    output wire                 sram_oe_bar,
-    output wire                 sram_we_bar,
-    inout wire  [7:0]           sram_data  ,
-    output wire [18:0]          sram_addr  ,
+    output wire         sram_ce_bar,
+    output wire         sram_oe_bar,
+    output wire         sram_we_bar,
+    inout wire[7:0]     sram_data  ,
+    output wire[18:0]   sram_addr  ,
 
-    output wire                 qspi_sck,
-    output wire                 qspi_csb,
-    inout wire [3:0]            qspi_data
+    output wire     qspi_sck,
+    output wire     qspi_csb,
+    inout wire[3:0] qspi_sio
 );
-    // wire clk;
-    // clk_gen clk_gen
-    // (
-    //     .clk_out(clk),
-    //     .clk_in(sysclk)
-    // );
-    wire clk = sysclk;
-    
-    localparam RST_WIDTH         = 8,
-               RST_INDEX_CORE    = 0,
-               RST_INDEX_BUS     = 1,
-               RST_INDEX_ROM     = 2,
-               RST_INDEX_TCM     = 3,
-               RST_INDEX_SRAM    = 4,
-               RST_INDEX_QSPINOR = 5,
-               RST_INDEX_GPIO    = 6,
-               RST_INDEX_UART    = 7;
 
-    wire [RST_WIDTH-1:0] rstn;
-    syncrst_controller #(
-        .RST_WIDTH(RST_WIDTH),
-        .IN_POLAR (1),
-        .OUT_POLAR(0)
-    ) syncrst_controller (
-        .clk    (clk   ),
-        .rst_in (sysrst),
-        .rst_out(rstn  )
-    );
-
-    wire core_fault, bus_fault;
-    assign fault = core_fault | bus_fault;
-
-    wire [`XLEN-1:0]                bus_addr; // req from core
-    wire                            bus_w_rb;
-    wire [$clog2(`BUS_ACC_CNT)-1:0] bus_acc;
-    wire [`BUS_WIDTH-1:0]           bus_rdata;
-    wire [`BUS_WIDTH-1:0]           bus_wdata;
-    wire                            bus_req;
-    wire                            bus_resp_raw;
-    wire                            bus_resp = fault ? 1'b0 : bus_resp_raw;
-
-    core core (
-        .clk          (clk                 ),
-        .rstn         (rstn[RST_INDEX_CORE]),
-        .core_fault   (core_fault          ),
-        .core_fault_pc(                    ),
-        .bus_addr     (bus_addr            ),
-        .bus_w_rb     (bus_w_rb            ),
-        .bus_acc      (bus_acc             ),
-        .bus_rdata    (bus_rdata           ),
-        .bus_wdata    (bus_wdata           ),
-        .bus_req      (bus_req             ),
-        .bus_resp     (bus_resp            )
-    );
-
-    wire [`ROM_ABW-1:0]             bus_rom_addr ;
-    wire                            bus_rom_wr_b ;
-    wire [$clog2(`BUS_ACC_CNT)-1:0] bus_rom_acc  ;
-    wire [`BUS_WIDTH-1:0]           bus_rom_rdata;
-    wire [`BUS_WIDTH-1:0]           bus_rom_wdata;
-    wire                            bus_rom_req  ;
-    wire                            bus_rom_resp ; 
-    wire                            bus_rom_fault;
-
-    wire [`TCM_ABW-1:0]             bus_tcm_addr ;
-    wire                            bus_tcm_wr_b ;
-    wire [$clog2(`BUS_ACC_CNT)-1:0] bus_tcm_acc  ;
-    wire [`BUS_WIDTH-1:0]           bus_tcm_rdata;
-    wire [`BUS_WIDTH-1:0]           bus_tcm_wdata;
-    wire                            bus_tcm_req  ;
-    wire                            bus_tcm_resp ;
-    wire                            bus_tcm_fault;
-
-    wire [`SRAM_ABW-1:0]            bus_sram_addr ;
-    wire                            bus_sram_wr_b ;
-    wire [$clog2(`BUS_ACC_CNT)-1:0] bus_sram_acc  ;
-    wire [`BUS_WIDTH-1:0]           bus_sram_rdata;
-    wire [`BUS_WIDTH-1:0]           bus_sram_wdata;
-    wire                            bus_sram_req  ;
-    wire                            bus_sram_resp ;
-    wire                            bus_sram_fault;
-
-    wire [`QSPINOR_ABW:0]           bus_qspinor_addr ;
-    wire                            bus_qspinor_wr_b ;
-    wire [$clog2(`BUS_ACC_CNT)-1:0] bus_qspinor_acc  ;
-    wire [`BUS_WIDTH-1:0]           bus_qspinor_rdata;
-    wire [`BUS_WIDTH-1:0]           bus_qspinor_wdata;
-    wire                            bus_qspinor_req  ;
-    wire                            bus_qspinor_resp ;
-    wire                            bus_qspinor_fault;
-
-    wire [0:0]                      bus_gpio_addr ;
-    wire                            bus_gpio_wr_b ;
-    wire [$clog2(`BUS_ACC_CNT)-1:0] bus_gpio_acc  ;
-    wire [`BUS_WIDTH-1:0]           bus_gpio_rdata;
-    wire [`BUS_WIDTH-1:0]           bus_gpio_wdata;
-    wire                            bus_gpio_req  ;
-    wire                            bus_gpio_resp ;
-    wire                            bus_gpio_fault;
-
-    wire [1:0]                      bus_uart_addr ;
-    wire                            bus_uart_wr_b ;
-    wire [$clog2(`BUS_ACC_CNT)-1:0] bus_uart_acc  ;
-    wire [`BUS_WIDTH-1:0]           bus_uart_rdata;
-    wire [`BUS_WIDTH-1:0]           bus_uart_wdata;
-    wire                            bus_uart_req  ;
-    wire                            bus_uart_resp ;
-    wire                            bus_uart_fault;
-
-    bus bus (
-        .clk           (clk                ),
-        .rstn          (rstn[RST_INDEX_BUS]),
-        .bus_fault     (bus_fault          ),
-        .bus_fault_addr(                   ),
-        .bus_addr      (bus_addr           ), // req from core
-        .bus_w_rb      (bus_w_rb           ),
-        .bus_acc       (bus_acc            ),
-        .bus_rdata     (bus_rdata          ),
-        .bus_wdata     (bus_wdata          ),
-        .bus_req       (~fault & bus_req   ),
-        .bus_resp      (bus_resp_raw       ),
-
-        .rom_addr (bus_rom_addr ),
-        .rom_wr_b (bus_rom_wr_b ),
-        .rom_acc  (bus_rom_acc  ),
-        .rom_rdata(bus_rom_rdata),
-        .rom_wdata(bus_rom_wdata),
-        .rom_req  (bus_rom_req  ),
-        .rom_resp (bus_rom_resp ),
-        .rom_fault(bus_rom_fault),
-
-        .tcm_addr (bus_tcm_addr ), // internal tcm
-        .tcm_wr_b (bus_tcm_wr_b ),
-        .tcm_acc  (bus_tcm_acc  ),
-        .tcm_rdata(bus_tcm_rdata),
-        .tcm_wdata(bus_tcm_wdata),
-        .tcm_req  (bus_tcm_req  ),
-        .tcm_resp (bus_tcm_resp ),
-        .tcm_fault(bus_tcm_fault),
-
-        .sram_addr (bus_sram_addr ), // external sram
-        .sram_wr_b (bus_sram_wr_b ),
-        .sram_acc  (bus_sram_acc  ),
-        .sram_rdata(bus_sram_rdata),
-        .sram_wdata(bus_sram_wdata),
-        .sram_req  (bus_sram_req  ),
-        .sram_resp (bus_sram_resp ),
-        .sram_fault(bus_sram_fault),
-
-        .qspinor_addr (bus_qspinor_addr ), // external qspi nor
-        .qspinor_wr_b (bus_qspinor_wr_b ),
-        .qspinor_acc  (bus_qspinor_acc  ),
-        .qspinor_rdata(bus_qspinor_rdata),
-        .qspinor_wdata(bus_qspinor_wdata),
-        .qspinor_req  (bus_qspinor_req  ),
-        .qspinor_resp (bus_qspinor_resp ),
-        .qspinor_fault(bus_qspinor_fault),
-
-        .gpio_addr (bus_gpio_addr ),
-        .gpio_wr_b (bus_gpio_wr_b ),
-        .gpio_acc  (bus_gpio_acc  ),
-        .gpio_rdata(bus_gpio_rdata),
-        .gpio_wdata(bus_gpio_wdata),
-        .gpio_req  (bus_gpio_req  ),
-        .gpio_resp (bus_gpio_resp ),
-        .gpio_fault(bus_gpio_fault),
-
-        .uart_addr (bus_uart_addr ),
-        .uart_wr_b (bus_uart_wr_b ),
-        .uart_acc  (bus_uart_acc  ),
-        .uart_rdata(bus_uart_rdata),
-        .uart_wdata(bus_uart_wdata),
-        .uart_req  (bus_uart_req  ),
-        .uart_resp (bus_uart_resp ),
-        .uart_fault(bus_uart_fault)
-    );
-
-    rom_controller #(
-        .BYTE_ADDR_WIDTH(`ROM_ABW)
-    ) rom_controller (
+    rom_controller rom_controller (
         .clk  (clk                ),
-        .rstn (rstn[RST_INDEX_ROM]),
+        .rstn (),
         .addr (bus_rom_addr       ),
         .wr_b (bus_rom_wr_b       ),
         .acc  (bus_rom_acc        ),
@@ -262,7 +83,7 @@ module top(
 
         .qspi_sck (qspi_sck ),
         .qspi_csb (qspi_csb ),
-        .qspi_data(qspi_data)
+        .qspi_sio(qspi_sio)
     );
 
     gpio_controller gpio_controller(
@@ -296,6 +117,13 @@ module top(
         .tx(uart_tx)
     );
 endmodule
+
+    generate
+        for (genvar index=0; index<`GPIO_WIDTH; index=index+1) begin
+            assign io[index] = dir[index] ? o[index] : 1'bz;
+            assign i[index] = (dir[index]==1'b0) ? io[index] : o[index];
+        end
+    endgenerate
 
 module bus(
     input wire                              clk,
