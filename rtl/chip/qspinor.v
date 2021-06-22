@@ -60,14 +60,14 @@ module qspinor_io (
     wire[10:0] dout_extended = {4'd0, dout};
     assign spi_dout = dout_extended[(toggle_index[7:1]<<wid)+:4];
 
-    reg[0:10] din_extended;
+    reg[-3:7] din_extended; // synthesizable in vivado
     always @ (posedge clk) begin
         if (toggle_index && ~spi_sclk) begin
-            din_extended[(toggle_index[7:1]<<wid)+:4] <= spi_din;
+            din_extended[(toggle_index[7:1]<<wid)-:4] <= spi_din;
         end
     end
     generate
-        for(genvar i=0; i<8; i=i+1) begin assign din[i] = din_extended[i+3]; end
+        for(genvar i=0; i<8; i=i+1) begin assign din[i] = din_extended[i]; end
     endgenerate
 
 endmodule
