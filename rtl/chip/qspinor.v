@@ -46,16 +46,16 @@ module qspinor_io (
     // data interaction
     always @ (posedge clk) begin
         if (~rstn) begin
-            spi_sclk <= (`SERNOR_MODE) ? 1'b1 : 1'b0;
+            spi_sclk <= (`QSPINOR_MODE) ? 1'b1 : 1'b0;
         end else if (toggle_index==0) begin
-            if (trig | !(`SERNOR_MODE))
+            if (trig | !(`QSPINOR_MODE))
                 spi_sclk <= 1'b0;
         end else begin
             spi_sclk <= ~spi_sclk;
         end
     end
 
-    assign spi_dir = (toggle_index || done) ? (dir ? `IOR_DIR_OUT : `IOR_DIR_IN) : `SERNOR_IDLE_DIR;
+    assign spi_dir = (toggle_index || done) ? (dir ? `IOR_DIR_OUT : `IOR_DIR_IN) : `QSPINOR_IDLE_DIR;
 
     wire[10:0] dout_extended = {4'd0, dout};
     assign spi_dout = dout_extended[(toggle_index[7:1]<<wid)+:4];
