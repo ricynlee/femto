@@ -1,18 +1,18 @@
 // `include "timescale.vh"
 // `include "simpaths.vh"
-// 
+//
 // module simtop #(
 //     parameter NOR_TYPE = "spi", // spi, qspi
 //     parameter HEX_PATH = `HEX_PATH
 // );
-// 
+//
 //     reg clk = 0;
 //     initial forever #41.667 clk<=~clk;
-// 
+//
 //     wire [3:0] led;
 //     wire uart_rxd, uart_txd;
 //     wire fault;
-// 
+//
 //     wire nor_sck;
 //     wire nor_csb;
 //     wire [3:0] nor_sio;
@@ -34,10 +34,10 @@
 //             initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
 //         end
 //     endgenerate
-// 
+//
 //     sram sram();
 //     initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
-// 
+//
 //     top top(
 //         .sysclk     (clk             ),
 //         .sysrst     (1'b0            ),
@@ -54,13 +54,13 @@
 //         .qspi_csb   (nor_csb),
 //         .qspi_data  (nor_sio)
 //     );
-// 
+//
 //     uart_host uart_host(
 //         .dut_uart_rxd(uart_rxd),
 //         .dut_uart_txd(uart_txd)
 //     );
 // endmodule
-// 
+//
 // module sram(
 //     input wire         sram_ce_bar,
 //     input wire         sram_oe_bar,
@@ -69,13 +69,13 @@
 //     input wire [18:0]  sram_addr
 // );
 //     reg [7:0] array[0:(1<<19)-1];
-// 
+//
 //     reg [7:0] sram_data_out;
 //     wire [7:0] sram_data_in;
-// 
+//
 //     assign sram_data = (sram_oe_bar | ~sram_we_bar) ? 8'hzz : sram_data_out;
 //     assign sram_data_in = sram_we_bar ? 8'hxx : sram_data;
-// 
+//
 //     always @ (*) begin
 //         if (sram_ce_bar==0) begin
 //             #8;
@@ -86,18 +86,18 @@
 //             end
 //         end
 //     end
-// 
+//
 // endmodule
-// 
+//
 // module spinor( // supports 1-1-1 read operations only
 //     input wire  sck,
 //     input wire  csb,
 //     input wire  si,
 //     output reg  so
 // );
-// 
+//
 //     reg [7:0] array[0:511];
-// 
+//
 //     reg [7:0] cmd;
 //     reg [23:0] addr;
 //     always @ (negedge csb) fork
@@ -106,11 +106,11 @@
 //             for(i=7; i>=0; i=i-1)
 //                 @(posedge sck) cmd[i]=si;
 //             $display("CMD=%x", cmd);
-//     
+//
 //             for(i=23; i>=0; i=i-1)
 //                 @(posedge sck) addr[i]=si;
 //             $display("ADDR=%x DATA=%x", addr, array[addr]);
-// 
+//
 //             forever begin
 //                 for (i=7; i>=0; i=i-1)
 //                     @(negedge sck) so = array[addr][i];
@@ -123,45 +123,45 @@
 //             disable spi_comm;
 //         end
 // join
-// 
+//
 // endmodule
-// 
+//
 // module qspinor( // supports 4-4-4 read operations only
 //     input wire       sck,
 //     input wire       csb,
 //     inout wire [3:0] dio
 // );
-// 
+//
 //     reg [7:0] array[0:511];
-// 
+//
 //     reg [7:0]  cmd;
 //     reg [23:0] addr;
 //     reg [3:0]  dir = 0;
 //     reg [3:0]  dout;
 //     wire [3:0] din;
-//     
+//
 //     generate
 //         for (genvar i=0; i<4; i=i+1) begin
 //             assign dio[i] = dir[i] ? dout[i] : 1'bz;
 //             assign din[i] = dir[i] ? 1'bx : dio[i];
 //         end
-//     endgenerate 
-//     
+//     endgenerate
+//
 //     always @ (negedge csb) fork
 //         begin:spi_comm
 //             integer i;
 //             dir = 4'h0;
 //             for(i=4; i>=0; i=i-4)
 //                 @(posedge sck) cmd[i+:4]=din;
-//     
+//
 //             dir = 4'h0;
 //             for(i=20; i>=0; i=i-4)
 //                 @(posedge sck) addr[i+:4]=din;
-//             
+//
 //             dir = 4'h0;
 //             for(i=9; i>=0; i=i-1)
 //                 @(posedge sck);
-//             
+//
 //             #40 dir = 4'hf;
 //             forever begin
 //                 for (i=4; i>=0; i=i-4)
@@ -175,21 +175,21 @@
 //             disable spi_comm;
 //         end
 //     join
-// 
+//
 // endmodule
-// 
+//
 // module uart_host(
 //     input wire  dut_uart_txd,
 //     output reg  dut_uart_rxd
 // );
-// 
+//
 //     time bit_duration = 1000000000.0 / 57600;
 //     initial begin
 //         dut_uart_rxd = 1'b1;
 //         #200000;
 //         send(8'hc3);
 //     end
-// 
+//
 //     task automatic send(input[7:0] octet);
 //         integer i;
 //         begin
@@ -203,40 +203,111 @@
 //             #bit_duration;
 //         end
 //     endtask
-// 
+//
 // endmodule
 
 `timescale 1ns/1ps
 
-// 16 12 5 1
-
 module simtop;
 
-wire[0:8+16-1] din = 24'ha3_0000;
+    reg clk = 0;
+    initial forever #41.667 clk<=~clk;
 
-reg[16:1] sr = 0;
+    reg rstn = 0;
+    initial #100 rstn=1;
 
-event e;
-integer i;
-initial begin
-for(i=0; i<8+16; i=i+1) begin
-    #1;
-    ->e;
-    #1;
-end
-$display("%02x", sr);
-$finish();
-end
+    logic[1:0]  width = 0;
+    logic       tx_req = 0;
+    logic       tx_resp;
+    logic       rx_req = 0;
+    logic       rx_resp;
+    logic       dmy_req = 0;
+    logic       dmy_dir = 0;
+    logic       dmy_resp;
 
-always @ (e) begin
-    sr<={
-        sr[15:13],
-        sr[12]^sr[16],
-        sr[11:6],
-        sr[5]^sr[16],
-        sr[4:1],
-        din[i]^sr[16]
-    };
-end
+    initial begin
+        #200;
+        width=0;
+        @(posedge clk) tx_req<=1;
+        @(posedge clk) tx_req<=0;
+        @(negedge tx_resp);
+        width=1;
+        @(posedge clk) tx_req<=1;
+        @(posedge clk) tx_req<=0;
+        @(negedge tx_resp);
+        width=2;
+        @(posedge clk) tx_req<=1;
+        @(posedge clk) tx_req<=0;
+        @(negedge tx_resp);
+        width=0;
+        @(posedge clk) rx_req<=1;
+        @(posedge clk) rx_req<=0;
+        @(negedge rx_resp);
+        width=1;
+        @(posedge clk) rx_req<=1;
+        @(posedge clk) rx_req<=0;
+        @(negedge rx_resp);
+        width=2;
+        @(posedge clk) rx_req<=1;
+        @(posedge clk) rx_req<=0;
+        @(negedge rx_resp);
 
+        #200;
+
+        width=0; dmy_dir=0;
+        @(posedge clk) dmy_req<=1;
+        @(posedge clk) dmy_req<=0;
+        @(negedge dmy_resp);
+        width=1; dmy_dir=0;
+        @(posedge clk) dmy_req<=1;
+        @(posedge clk) dmy_req<=0;
+        @(negedge dmy_resp);
+        width=2; dmy_dir=0;
+        @(posedge clk) dmy_req<=1;
+        @(posedge clk) dmy_req<=0;
+        @(negedge dmy_resp);
+        width=0; dmy_dir=1;
+        @(posedge clk) dmy_req<=1;
+        @(posedge clk) dmy_req<=0;
+        @(negedge dmy_resp);
+        width=1; dmy_dir=1;
+        @(posedge clk) dmy_req<=1;
+        @(posedge clk) dmy_req<=0;
+        @(negedge dmy_resp);
+        width=2; dmy_dir=1;
+        @(posedge clk) dmy_req<=1;
+        @(posedge clk) dmy_req<=0;
+        @(negedge dmy_resp);
+    end
+
+    logic[3:0] miso;
+    always @ (negedge inst.qspi_sclk)
+        miso <= $random;
+
+    qspinor_io inst(
+        .clk(clk),
+        .rstn(rstn),
+
+        .width(width),
+
+        .tx_req(tx_req),
+        .txq_rdy(1'b1),
+        .txq_d(8'h5a),
+        .tx_resp(tx_resp), // also queue req
+
+        .rx_req(rx_req),
+        .rxq_rdy(1'b1),
+        .rxq_d(),
+        .rx_resp(rx_resp), // also queue req
+
+        .dmy_req(dmy_req),
+        .dmy_dir(dmy_dir),
+        .dmy_pattern_out(4'hc),
+        .dmy_resp(dmy_resp),
+
+        .qspi_sclk(),
+        .qspi_dir(),
+        .qspi_mosi(),
+        .qspi_miso(miso)
+    );
 endmodule

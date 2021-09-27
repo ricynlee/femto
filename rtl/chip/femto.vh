@@ -43,7 +43,7 @@
 `define SRAM_CS_MASK        (~`SRAM_VA_MASK)
 
 `define NOR_ADDR            (32'h3000_0000) // Serial NOR read - direct bus access
-`define NOR_SIZE            (16*1024*1024)  // 16MB
+`define NOR_SIZE            (16*1024*1024)  // 16MB - max range of 3-byte mode
 `define NOR_VA_MASK         ({{(32-$clog2(`NOR_SIZE)){1'b0}},{$clog2(`NOR_SIZE){1'b1}}})
 `define NOR_VA_WIDTH        ($clog2(`NOR_SIZE))
 `define NOR_CS_MASK         (~`NOR_VA_MASK)
@@ -59,7 +59,7 @@
 `define UART_CS_MASK        (~`UART_VA_MASK)
 
 `define QSPINOR_ADDR        (32'h6000_0000) // Serial NOR access - ip commands
-`define QSPINOR_VA_MASK     (32'h0000_0003) // 4B valid address range
+`define QSPINOR_VA_MASK     (32'h0000_0007) // 8B valid address range
 `define QSPINOR_VA_WIDTH    ($clog2(`QSPI_VA_MASK+1))
 `define QSPINOR_CS_MASK     (~`QSPI_VA_MASK)
 
@@ -76,12 +76,14 @@
 /* gpio */
 `define GPIO_WIDTH          (4) // required <=32
 
+/* nor/qspinor */
+`define QSPINOR_MODE        (3) // 0 or 3
+`define QSPINOR_X1          (2'd0)
+`define QSPINOR_X2          (2'd1)
+`define QSPINOR_X4          (2'd2)
+
 /* uart */
 `define UART_BAUD           (57600)
-
-/* sernor */
-`define QSPINOR_MODE        (3) // 0 or 3
-`define QSPINOR_IDLE_DIR    (`IOR_DIR_IN) // IOR_DIR_IN: hiz, IOR_DIR_OUT: keep
 
 /* rst */
 `define RST_CORE            ( 0)
