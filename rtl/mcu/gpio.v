@@ -1,4 +1,4 @@
-`include "sim/timescale.vh"
+`include "timescale.vh"
 
 module gpio_controller(
     input wire  clk,

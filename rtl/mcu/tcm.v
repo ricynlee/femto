@@ -1,5 +1,5 @@
 `include "femto.vh"
-`include "sim/timescale.vh"
+`include "timescale.vh"
 
 module tcm_controller(
     input wire clk,
@@ -8,7 +8,7 @@ module tcm_controller(
     input wire[`TCM_VA_WIDTH-1:0]   addr,
     input wire                      w_rb,
     input wire[`BUS_ACC_WIDTH-1:0]  acc,
-    output wire[`BUS_WIDTH-1:0]     rdata,
+    output reg[`BUS_WIDTH-1:0]      rdata,
     input wire[`BUS_WIDTH-1:0]      wdata,
     input wire                      req,
     output reg                      resp,
@@ -43,7 +43,7 @@ module tcm_controller(
 
     always @ (posedge clk) begin
         if (req) begin
-            if (~wr_b) begin // read
+            if (~w_rb) begin // read
                 rdata[7:0]   <= array[cell_addr][{byte_sel[acc] | 0, 3'd0}+:8];
                 rdata[15:8]  <= array[cell_addr][{byte_sel[acc] | 1, 3'd0}+:8];
                 rdata[23:16] <= array[cell_addr][{byte_sel[acc] | 2, 3'd0}+:8];

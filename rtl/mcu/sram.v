@@ -1,4 +1,4 @@
-`include "sim/timescale.vh"
+`include "timescale.vh"
 
 module sram_controller(
     input wire  clk,  // <100MHz
@@ -61,12 +61,12 @@ module sram_controller(
     // counter
     wire [1:0]   offset;
     dff #(
-        .WIDTH(2      )
+        .WIDTH(2      ),
         .VALID("sync" ),
         .CLEAR("async")
     ) offset_dff (
         .clk(clk         ),
-        .clr(req & ~invld)
+        .clr(req & ~invld),
         .vld(busy        ),
         .in (offset+2'd1 ),
         .out(offset      )

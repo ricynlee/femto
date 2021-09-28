@@ -1,5 +1,5 @@
 `include "femto.vh"
-`include "sim/timescale.vh"
+`include "timescale.vh"
 
 module rom_controller(
     input wire clk,
@@ -8,7 +8,7 @@ module rom_controller(
     input wire[`ROM_VA_WIDTH-1:0]   addr,
     input wire                      w_rb,
     input wire[`BUS_ACC_WIDTH-1:0]  acc,
-    output wire[`BUS_WIDTH-1:0]     rdata,
+    output reg[`BUS_WIDTH-1:0]      rdata,
     input wire[`BUS_WIDTH-1:0]      wdata,
     input wire                      req,
     output reg                      resp,

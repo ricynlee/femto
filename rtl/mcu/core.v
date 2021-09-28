@@ -1,4 +1,4 @@
-`include "sim/timescale.vh"
+`include "timescale.vh"
 `include "femto.vh"
 
 module core (

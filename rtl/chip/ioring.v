@@ -1,3 +1,0 @@
-module ioring();
-
-endmodule

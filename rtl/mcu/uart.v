@@ -1,5 +1,5 @@
 `include "femto.vh"
-`include "sim/timescale.vh"
+`include "timescale.vh"
 
 module uart_controller(
     input wire  clk,
@@ -12,7 +12,7 @@ module uart_controller(
     input wire[`UART_VA_WIDTH-1:0]  addr,
     input wire                      w_rb,
     input wire[`BUS_ACC_WIDTH-1:0]  acc,
-    output wire[`BUS_WIDTH-1:0]     rdata,
+    output reg[`BUS_WIDTH-1:0]      rdata,
     input wire[`BUS_WIDTH-1:0]      wdata,
     input wire                      req,
     output reg                      resp,
@@ -64,11 +64,11 @@ module uart_controller(
         .send_data(uart_tx_data  )
     );
 
-    assign uart_tx_req=(req & ~invld) && (addr==0) && wr_b;
-    assign uart_rx_req=(req & ~invld) && (addr==0) && ~wr_b;
+    assign uart_tx_req=(req & ~invld) && (addr==0) && w_rb;
+    assign uart_rx_req=(req & ~invld) && (addr==0) && ~w_rb;
 
     always @ (posedge clk) begin
-        if (req & ~invld & ~wr_b) begin
+        if (req & ~invld & ~w_rb) begin
             if (addr==0) begin
                 rdata[7:0] <= uart_rx_data;
             end else if (addr==2) begin
@@ -222,7 +222,7 @@ module uart_rx #(
                     if(rx==1'b1) rx_bsy<=1'b0;
                 end
 
-                if(rx_cnt==PBITAT)begin
+                if(rx_cnt==BIT_FIN_CNT)begin
                     rx_bsy<=1'b0;
                     if(rx==1'b1) fetch_trig<=1'b1;
                 end

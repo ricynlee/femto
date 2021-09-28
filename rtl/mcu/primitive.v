@@ -1,4 +1,4 @@
-`include "sim/timescale.vh"
+`include "timescale.vh"
 
 module dff #( // D-type flip-flop
     parameter   WIDTH       = 1,

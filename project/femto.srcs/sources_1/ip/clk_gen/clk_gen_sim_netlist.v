@@ -1,10 +1,10 @@
 // Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2018.2 (win64) Build 2258646 Thu Jun 14 20:03:12 MDT 2018
-// Date        : Sun Aug 16 09:54:11 2020
+// Date        : Tue Sep 28 20:50:18 2021
 // Host        : DESKTOP-95QVU9S running 64-bit major release  (build 9200)
-// Command     : write_verilog -force -mode funcsim -rename_top clk_gen -prefix
-//               clk_gen_ clk_gen_sim_netlist.v
+// Command     : write_verilog -force -mode funcsim
+//               D:/Projects/femto/project/femto.srcs/sources_1/ip/clk_gen/clk_gen_sim_netlist.v
 // Design      : clk_gen
 // Purpose     : This verilog netlist is a functional simulation representation of the design and should not be modified
 //               or synthesized. This netlist cannot be used for SDF annotated simulation.
@@ -27,6 +27,7 @@ module clk_gen
         .clk_out(clk_out));
 endmodule
 
+(* ORIG_REF_NAME = "clk_gen_clk_wiz" *) 
 module clk_gen_clk_gen_clk_wiz
    (clk_out,
     clk_in);
@@ -77,12 +78,12 @@ module clk_gen_clk_gen_clk_wiz
   (* BOX_TYPE = "PRIMITIVE" *) 
   MMCME2_ADV #(
     .BANDWIDTH("OPTIMIZED"),
-    .CLKFBOUT_MULT_F(62.500000),
+    .CLKFBOUT_MULT_F(64.000000),
     .CLKFBOUT_PHASE(0.000000),
     .CLKFBOUT_USE_FINE_PS("FALSE"),
     .CLKIN1_PERIOD(83.333000),
     .CLKIN2_PERIOD(0.000000),
-    .CLKOUT0_DIVIDE_F(62.500000),
+    .CLKOUT0_DIVIDE_F(32.000000),
     .CLKOUT0_DUTY_CYCLE(0.500000),
     .CLKOUT0_PHASE(0.000000),
     .CLKOUT0_USE_FINE_PS("FALSE"),
