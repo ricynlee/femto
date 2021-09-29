@@ -1,6 +1,7 @@
 `include "femto.vh"
 `include "timescale.vh"
 
+(* keep_hierarchy = "yes" *)
 module timer_controller (
     input wire  clk,
     input wire  rstn, // sync

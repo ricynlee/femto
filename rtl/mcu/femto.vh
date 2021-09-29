@@ -2,7 +2,7 @@
 `define FEMTO_HEADER
 
 /* sys clk speed */
-`define SYSCLK_FREQ         (12000000) // 12MHz
+`define SYSCLK_FREQ         (24000000) // 24MHz
 
 /* core */
 `define ILEN                (32) // max instruction len

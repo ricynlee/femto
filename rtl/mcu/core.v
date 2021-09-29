@@ -1,6 +1,7 @@
 `include "timescale.vh"
 `include "femto.vh"
 
+(* keep_hierarchy = "yes" *)
 module core (
     input wire  clk,
     input wire  rstn,
@@ -230,55 +231,9 @@ module core (
                    PLC_DATA_I = 4, // data req initiating
                    PLC_DATA_E = 5, // data req executing
                    PLC_BUTT   = 6;
+
         wire[7:0] state; // pipeline control FSM
         reg[7:0] next_state;
-        always@(*) begin
-            if(~rstn)begin
-                next_state = PLC_NORMAL;
-            end else case(state)
-                PLC_NORMAL:
-                    if (s1_vld & s1_jump)
-                        next_state = PLC_JUMP_P;
-                    else if (s1_vld & s1_d_req)
-                        next_state = PLC_DATA_I;
-                    else // do not infer latch
-                        next_state = PLC_NORMAL;
-                PLC_JUMP_P:
-                    next_state = PLC_JUMP_I;
-                PLC_JUMP_I:
-                    if (pf_req_launched)
-                        next_state = PLC_JUMP_E;
-                    else
-                        next_state = PLC_JUMP_I;
-                PLC_JUMP_E:
-                    if (pf_resp_latched) begin
-                        if (s1_vld & s1_jump)
-                            next_state = PLC_JUMP_P;
-                        else if (s1_vld & s1_d_req)
-                            next_state = PLC_DATA_I;
-                        else // do not infer latch
-                            next_state = PLC_NORMAL;
-                    end else
-                        next_state = PLC_JUMP_E;
-                PLC_DATA_I:
-                    if (d_req_launched)
-                        next_state = PLC_DATA_E;
-                    else
-                        next_state = PLC_DATA_I;
-                PLC_DATA_E:
-                    if (d_resp_latched) begin
-                        if (s1_vld & s1_jump)
-                            next_state = PLC_JUMP_P;
-                        else if (s1_vld & s1_d_req)
-                            next_state = PLC_DATA_I;
-                        else // do not infer latch
-                            next_state = PLC_NORMAL;
-                    end else
-                        next_state = PLC_DATA_E;
-                default:
-                    next_state = PLC_NORMAL;
-            endcase
-        end
 
         dff #(
             .RESET      ("sync"    ),
@@ -290,6 +245,50 @@ module core (
             .in  (next_state),
             .out (state     )
         );
+
+        always @ (*) case(state)
+            PLC_NORMAL:
+                if (s1_vld & s1_jump)
+                    next_state = PLC_JUMP_P;
+                else if (s1_vld & s1_d_req)
+                    next_state = PLC_DATA_I;
+                else // do not infer latch
+                    next_state = PLC_NORMAL;
+            PLC_JUMP_P:
+                next_state = PLC_JUMP_I;
+            PLC_JUMP_I:
+                if (pf_req_launched)
+                    next_state = PLC_JUMP_E;
+                else
+                    next_state = PLC_JUMP_I;
+            PLC_JUMP_E:
+                if (pf_resp_latched) begin
+                    if (s1_vld & s1_jump)
+                        next_state = PLC_JUMP_P;
+                    else if (s1_vld & s1_d_req)
+                        next_state = PLC_DATA_I;
+                    else // do not infer latch
+                        next_state = PLC_NORMAL;
+                end else
+                    next_state = PLC_JUMP_E;
+            PLC_DATA_I:
+                if (d_req_launched)
+                    next_state = PLC_DATA_E;
+                else
+                    next_state = PLC_DATA_I;
+            PLC_DATA_E:
+                if (d_resp_latched) begin
+                    if (s1_vld & s1_jump)
+                        next_state = PLC_JUMP_P;
+                    else if (s1_vld & s1_d_req)
+                        next_state = PLC_DATA_I;
+                    else // do not infer latch
+                        next_state = PLC_NORMAL;
+                end else
+                    next_state = PLC_DATA_E;
+            default:
+                next_state = PLC_NORMAL;
+        endcase
 
         assign jump_triggered = state==PLC_JUMP_E;
         assign jmp = state==PLC_JUMP_P;

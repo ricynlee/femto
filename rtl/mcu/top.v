@@ -1,6 +1,7 @@
 `include "timescale.vh"
 `include "femto.vh"
 
+(* keep_hierarchy = "yes" *)
 module top(
     input wire  clk ,
     input wire  rstn,
@@ -32,7 +33,8 @@ module top(
             qspinor_fault,
             tmr_fault,
             rst_fault;
-    wire    fault = |{core_fault, rom_fault, tcm_fault, sram_fault, nor_fault, gpio_fault, uart_fault, qspinor_fault, tmr_fault, rst_fault};
+
+    wire    fault;
 
     // reset signals
     wire[`RST_WIDTH-1:0]    rstn_v; // rstn vector
@@ -66,6 +68,16 @@ module top(
         .bus_wdata(bus_wdata),
         .bus_req  (bus_req  ),
         .bus_resp (bus_resp )
+    );
+
+    // fault latch
+    dff #(
+        .VALID("sync")
+    ) req_acc_dff (
+        .clk(clk    ),
+        .vld(bus_req),
+        .in (|{core_fault, rom_fault, tcm_fault, sram_fault, nor_fault, gpio_fault, uart_fault, qspinor_fault, tmr_fault, rst_fault}),
+        .out(fault  )
     );
 
     // module selection

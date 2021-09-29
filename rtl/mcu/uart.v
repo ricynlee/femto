@@ -1,6 +1,7 @@
 `include "femto.vh"
 `include "timescale.vh"
 
+(* keep_hierarchy = "yes" *)
 module uart_controller(
     input wire  clk,
     input wire  rstn, // sync

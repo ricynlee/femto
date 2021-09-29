@@ -1,5 +1,6 @@
 `include "timescale.vh"
 
+(* keep_hierarchy = "yes" *)
 module gpio_controller(
     input wire  clk,
     input wire  rstn,
