@@ -2,7 +2,6 @@
 #include "ut.h"
 
 int main(){
-    UT = UT_PASS;
-    while(1);
+    trigger_pass();
     return 0;
 }
