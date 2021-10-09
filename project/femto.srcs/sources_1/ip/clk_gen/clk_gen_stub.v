@@ -1,10 +1,9 @@
 // Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2018.2 (win64) Build 2258646 Thu Jun 14 20:03:12 MDT 2018
-// Date        : Tue Sep 28 20:50:18 2021
-// Host        : DESKTOP-95QVU9S running 64-bit major release  (build 9200)
-// Command     : write_verilog -force -mode synth_stub
-//               D:/Projects/femto/project/femto.srcs/sources_1/ip/clk_gen/clk_gen_stub.v
+// Date        : Sat Oct  9 16:08:51 2021
+// Host        : NXL53319 running 64-bit major release  (build 9200)
+// Command     : write_verilog -force -mode synth_stub D:/femto/project/femto.srcs/sources_1/ip/clk_gen/clk_gen_stub.v
 // Design      : clk_gen
 // Purpose     : Stub declaration of top-level module interface
 // Device      : xc7a35tcpg236-1

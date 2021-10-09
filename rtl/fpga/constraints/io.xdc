@@ -19,13 +19,13 @@ set_property -dict { PACKAGE_PIN G17   IOSTANDARD LVCMOS33 } [get_ports {qspi_da
 set_property -dict { PACKAGE_PIN G19   IOSTANDARD LVCMOS33 } [get_ports {qspi_data[3]}]; # place holder
 
 ## LEDs
-set_property -dict {PACKAGE_PIN B17 IOSTANDARD LVCMOS33} [get_ports {gpio[3]}]
-set_property -dict {PACKAGE_PIN B16 IOSTANDARD LVCMOS33} [get_ports {gpio[2]}]
-set_property -dict {PACKAGE_PIN C17 IOSTANDARD LVCMOS33} [get_ports {gpio[1]}]
-set_property -dict {PACKAGE_PIN C16 IOSTANDARD LVCMOS33} [get_ports fault]
+set_property -dict {PACKAGE_PIN B17 IOSTANDARD LVCMOS33} [get_ports {led_b}]
+set_property -dict {PACKAGE_PIN B16 IOSTANDARD LVCMOS33} [get_ports {led_g}]
+set_property -dict {PACKAGE_PIN C17 IOSTANDARD LVCMOS33} [get_ports {led_r}]
+# set_property -dict {PACKAGE_PIN C16 IOSTANDARD LVCMOS33} [get_ports fault]
 
 ## Buttons
-set_property -dict {PACKAGE_PIN A18 IOSTANDARD LVCMOS33} [get_ports {gpio[0]}]
+set_property -dict {PACKAGE_PIN A18 IOSTANDARD LVCMOS33} [get_ports {button}]
 set_property -dict {PACKAGE_PIN B18 IOSTANDARD LVCMOS33} [get_ports sysrst]
 
 ## UART

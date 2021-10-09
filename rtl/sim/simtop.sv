@@ -9,9 +9,11 @@ module simtop #(
     reg clk = 0;
     initial forever #41.667 clk<=~clk;
 
+    reg rst = 1;
+    initial #8us @(negedge clk) rst = 0;
+
     wire [3:0] led;
     wire uart_rxd, uart_txd;
-    wire fault;
 
     wire nor_sck;
     wire nor_csb;
@@ -38,11 +40,13 @@ module simtop #(
     sram sram();
     initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
 
-    top top(
+    wrapper fpga(
         .sysclk     (clk             ),
-        .sysrst     (1'b0            ),
-        .fault      (fault           ),
-        .gpio       (led             ),
+        .sysrst     (rst             ),
+        .led_r      (led[3]          ),
+        .led_g      (led[2]          ),
+        .led_b      (led[1]          ),
+        .button     (led[0]          ),
         .uart_tx    (uart_txd   ),
         .uart_rx    (uart_rxd   ),
         .sram_ce_bar(sram.sram_ce_bar),
@@ -52,7 +56,7 @@ module simtop #(
         .sram_addr  (sram.sram_addr  ),
         .qspi_sck   (nor_sck),
         .qspi_csb   (nor_csb),
-        .qspi_data  (nor_sio)
+        .qspi_sio   (nor_sio)
     );
 
     uart_host uart_host(
