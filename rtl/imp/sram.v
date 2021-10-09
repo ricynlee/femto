@@ -60,18 +60,15 @@ module sram_controller(
     );
 
     // counter
-    wire [1:0]   offset;
-    dff #(
-        .WIDTH(2      ),
-        .VALID("sync" ),
-        .CLEAR("async")
-    ) offset_dff (
-        .clk(clk         ),
-        .clr(req & ~invld),
-        .vld(busy        ),
-        .in (offset+2'd1 ),
-        .out(offset      )
-    );
+    wire [1:0]  offset;
+    reg  [1:0]  offset_r;
+    always @ (posedge clk) begin
+        if (req & ~invld)
+            offset_r <= 1;
+        else if (offset_r)
+            offset_r <= offset_r+1;
+    end
+    assign  offset = (req & ~invld) ? 2'd0 : offset_r;
 
     // resp generation
     always @(posedge clk) begin
@@ -94,9 +91,9 @@ module sram_controller(
     assign sram_addr = req_addr | offset;
 
     assign sram_data_dir = (busy & req_w_rb) ? `IOR_DIR_OUT : `IOR_DIR_IN;
-    assign sram_data_out = req_wdata[offset];
+    assign sram_data_out = req_wdata[{offset, 3'd0}+:8];
 
-    always @ (posedge clk) if (busy) rdata[offset] <= sram_data_in;
+    always @ (posedge clk) if (busy) rdata[{offset, 3'd0}+:8] <= sram_data_in;
 
     assign sram_we_bar = busy ? ~req_w_rb : 1;
 
