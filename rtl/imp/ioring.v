@@ -47,7 +47,7 @@ module ioring(
     // generate for (genvar i=0; i<`GPIO_WIDTH; i=i+1)
     //     assign  pad_gpio[i] = gpio_dir[i]==`IOR_DIR_OUT ? gpio_o[i] : 1'bz;
     // endgenerate
-    //// ... or board spec
+    //// ... or board spec, for protection purposes
     assign  pad_gpio = {gpio_o[3:1], 1'bz};
 
     assign  pad_uart_tx = uart_tx;

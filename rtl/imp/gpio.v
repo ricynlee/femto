@@ -50,7 +50,6 @@ module gpio_controller(
     always @ (posedge clk) begin
         if (rstn==0) begin
             dir <= {`GPIO_WIDTH{`IOR_DIR_IN}};
-            o <= 0;
         end else if (req) begin
             if (addr==0) begin
                 if (~w_rb) begin // read io
