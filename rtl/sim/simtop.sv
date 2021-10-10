@@ -41,14 +41,14 @@ module simtop #(
     initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
 
     wrapper fpga(
-        .sysclk     (clk             ),
-        .sysrst     (rst             ),
-        .led_r      (led[3]          ),
-        .led_g      (led[2]          ),
-        .led_b      (led[1]          ),
-        .button     (led[0]          ),
-        .uart_tx    (uart_txd   ),
-        .uart_rx    (uart_rxd   ),
+        .sysclk     (clk),
+        .sysrst     (rst),
+        .led_r      (led[3]),
+        .led_g      (led[2]),
+        .led_b      (led[1]),
+        .button     (led[0]),
+        .uart_tx    (uart_txd), // loopback
+        .uart_rx    (uart_txd),
         .sram_ce_bar(sram.sram_ce_bar),
         .sram_oe_bar(sram.sram_oe_bar),
         .sram_we_bar(sram.sram_we_bar),
@@ -57,11 +57,6 @@ module simtop #(
         .qspi_sck   (nor_sck),
         .qspi_csb   (nor_csb),
         .qspi_sio   (nor_sio)
-    );
-
-    uart_host uart_host(
-        .dut_uart_rxd(uart_rxd),
-        .dut_uart_txd(uart_txd)
     );
 
     // endsim

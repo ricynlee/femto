@@ -23,9 +23,9 @@
     typedef struct {
         volatile unsigned char       txd;
         const volatile unsigned char rxd;
-        const volatile unsigned char txq_full:1;
+        const volatile unsigned char txq_rdy:1;
                        unsigned char :7;
-        const volatile unsigned char rxq_empty;
+        const volatile unsigned char rxq_rdy:1;
                        unsigned char :7;
     } uart_t;
 

@@ -23,15 +23,15 @@ module uart_controller(
      * Register map
      *  Name    | Address | Size | Access | Note
      *  TXD     | 0       | 1    | W      | -
-     *  RXD     | 0       | 1    | R      | -
+     *  RXD     | 1       | 1    | R      | -
      *  TXQ_RDY | 2       | 1    | R      | TXQ not full
      *  RXQ_RDY | 3       | 1    | R      | RXQ not empty
      */
 
     // fault generation
-    wire invld_addr = (addr!=0 && addr!=2 && addr!=3);
+    wire invld_addr = 0;
     wire invld_acc  = (acc != `BUS_ACC_1B);
-    wire invld_wr   = (addr!=0 & w_rb);
+    wire invld_wr   = (addr ? w_rb : ~w_rb);
     wire invld_d    = 0;
 
     wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
@@ -66,11 +66,11 @@ module uart_controller(
     );
 
     assign uart_tx_req=(req & ~invld) && (addr==0) && w_rb;
-    assign uart_rx_req=(req & ~invld) && (addr==0) && ~w_rb;
+    assign uart_rx_req=(req & ~invld) && (addr==1) && ~w_rb;
 
     always @ (posedge clk) begin
         if (req & ~invld & ~w_rb) begin
-            if (addr==0) begin
+            if (addr==1) begin
                 rdata[7:0] <= uart_rx_data;
             end else if (addr==2) begin
                 rdata[7:0] <= {7'd0, ~uart_txq_full};
@@ -180,16 +180,16 @@ module uart_rx #(
                 NEDET_PATTERN={{NEDET_DELAY{1'b1}}, {(NEDET_ORDER-NEDET_DELAY+1){1'b0}}}; // Nedge Detector pattern
 
     localparam  CLKPERFRM   = (SYSCLOCK*10+BAUDRATE-1)/BAUDRATE,
-                BIT_INI_CNT = ((SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
-                BIT_0_CNT   = BIT_INI_CNT+BAUDRATE*1,
-                BIT_1_CNT   = BIT_INI_CNT+BAUDRATE*2,
-                BIT_2_CNT   = BIT_INI_CNT+BAUDRATE*3,
-                BIT_3_CNT   = BIT_INI_CNT+BAUDRATE*4,
-                BIT_4_CNT   = BIT_INI_CNT+BAUDRATE*5,
-                BIT_5_CNT   = BIT_INI_CNT+BAUDRATE*6,
-                BIT_6_CNT   = BIT_INI_CNT+BAUDRATE*7,
-                BIT_7_CNT   = BIT_INI_CNT+BAUDRATE*8,
-                BIT_FIN_CNT = BIT_INI_CNT+BAUDRATE*9;
+                BIT_INI_CNT = (( 1*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_0_CNT   = (( 3*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_1_CNT   = (( 5*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_2_CNT   = (( 7*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_3_CNT   = (( 9*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_4_CNT   = ((11*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_5_CNT   = ((13*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_6_CNT   = ((15*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_7_CNT   = ((17*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY,
+                BIT_FIN_CNT = ((19*SYSCLOCK+BAUDRATE*2-1)/(BAUDRATE*2))-NEDET_DELAY;
 
     // reception start detect
     reg[NEDET_ORDER:1]  prev_rx;
