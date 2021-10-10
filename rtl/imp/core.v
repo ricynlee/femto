@@ -825,9 +825,9 @@ module expander( // conpressed instruction expansion
                     in_instr[11:10]==2'b10 ? {{{7{in_instr[12]}},in_instr[6:2]},{2'b01,rd_q_rs1_q},3'b111,{2'b01,rd_q_rs1_q},OPCODE_IMMCAL} : //c.andi
                     /*in_instr[11:10]==2'b11*/ (
                         in_instr[6:5]==2'b00 ? {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b000,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.sub
-                        in_instr[6:5]==2'b01 ? {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b100,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.xor
-                        in_instr[6:5]==2'b10 ? {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b110,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.or
-                        /*in_instr[6:5]==2'b11*/ {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b111,{2'b01,rd_q_rs1_q},OPCODE_CAL} //c.and
+                        in_instr[6:5]==2'b01 ? {7'b0000000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b100,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.xor
+                        in_instr[6:5]==2'b10 ? {7'b0000000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b110,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.or
+                                     /*2'b11*/ {7'b0000000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b111,{2'b01,rd_q_rs1_q},OPCODE_CAL}   //c.and
                     )
                 ) :
                 funct3==3'b101 ? {{in_instr[12],in_instr[8],in_instr[10:9],in_instr[6],in_instr[7],in_instr[2],in_instr[11],in_instr[5:3],{9{in_instr[12]}}},5'd0/*x0*/,OPCODE_JAL} : //c.j

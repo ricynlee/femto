@@ -138,7 +138,7 @@ module qspinor_controller(
         .qspi_csb(qspinor_qspi_csb)
     );
 
-    wire        io_width;
+    wire[1:0]   io_width;
     wire        io_tx_req, io_rx_req, io_dmy_req;
     wire        io_txq_rdy, io_rxq_rdy;
     wire[7:0]   io_txq_d, io_rxq_d;
@@ -155,6 +155,7 @@ module qspinor_controller(
     assign nor_rxq_d = io_rxq_d;
     assign qspinor_rxq_d = io_rxq_d;
 
+    assign io_width           = nor_qspi_csb ? qspinor_width           : nor_width          ;
     assign io_tx_req          = nor_qspi_csb ? qspinor_tx_req          : nor_tx_req         ;
     assign io_txq_rdy         = nor_qspi_csb ? qspinor_txq_rdy         : nor_txq_rdy        ;
     assign io_txq_d           = nor_qspi_csb ? qspinor_txq_d           : nor_txq_d          ;
@@ -244,7 +245,7 @@ module qspinor_io # (
             state <= next_state;
 
     always @ (*) case (state)
-        IDLE:
+        IDLE, TX0_1, RX0_1, DMYO_1, DMYI_1:
             if (tx_req) begin
                 if (txq_rdy)
                     next_state = (width==X1) ? TX7_0 : (width==X2) ? TX3_0 : /* X4 */ TX1_0;
@@ -260,7 +261,8 @@ module qspinor_io # (
                     next_state = DMYO_0;
                 else
                     next_state = DMYI_0;
-            end
+            end else
+                next_state = IDLE;
         WAIT_TXQ:
             if (txq_rdy)
                 next_state = (width==X1) ? TX7_0 : (width==X2) ? TX3_0 : /* X4 */ TX1_0;
@@ -303,7 +305,7 @@ module qspinor_io # (
         RX0_0: next_state = RX0_1;
         DMYO_0: next_state = DMYO_1;
         DMYI_0: next_state = DMYI_1;
-        default: // TX0_1, RX0_1, DMYO_1, DMYI_1, erroneous
+        default: // erroneous
             next_state = IDLE;
     endcase
 
@@ -478,8 +480,8 @@ module qspinor_bus_read_controller (
                 PREAM = 1 ,
                 CMD   = 2 ,
                 ADDR2 = 3 ,  ADDR1 = 4 ,  ADDR0 = 5 ,
-                DMY15 = 6 ,  DMY14 = 7 ,  DMY13 = 8 ,  DMY12 = 9 ,  DMY11 = 10,  DMY10 = 11,  DMY9  = 12,  DMY8  = 13,  DMY7  = 14,  DMY6  = 15,  DMY5  = 16,  DMY4  = 17,  DMY3  = 18,  DMY2  = 19,  DMY1  = 20,  DATA3 = 21,
-                DATA2 = 22,  DATA1 = 23,  DATA0 = 24;
+                DMY15 = 6 ,  DMY14 = 7 ,  DMY13 = 8 ,  DMY12 = 9 ,  DMY11 = 10,  DMY10 = 11,  DMY9  = 12,  DMY8  = 13,  DMY7  = 14,  DMY6  = 15,  DMY5  = 16,  DMY4  = 17,  DMY3  = 18,  DMY2  = 19,  DMY1  = 20,
+                DATA3 = 21,  DATA2 = 22,  DATA1 = 23,  DATA0 = 24;
 
     reg[7:0]    state, next_state;
     always @ (posedge clk)
@@ -533,67 +535,66 @@ module qspinor_bus_read_controller (
     always @ (*) case (next_state) // better use assign to propagate x
         CMD: begin
             width = cfg_cmd_width;
-            tx_req = req;
+            tx_req = (state==PREAM);
             rx_req = 0;
             dmy_req = 0;
-            txq_d = cfg_cmd_octet;
         end
         ADDR2: begin
             width = cfg_addr_width;
             tx_req = tx_resp;
             rx_req = 0;
             dmy_req = 0;
-            txq_d = req_addr[23:16];
         end
         ADDR1: begin
             width = cfg_addr_width;
             tx_req = tx_resp;
             rx_req = 0;
             dmy_req = 0;
-            txq_d = req_addr[15:8];
         end
         ADDR0: begin
             width = cfg_addr_width;
             tx_req = tx_resp;
             rx_req = 0;
             dmy_req = 0;
-            txq_d = req_addr[7:0];
         end
         DMY15: begin
             width = cfg_dmy_width;
             tx_req = 0;
             rx_req = 0;
             dmy_req = tx_resp;
-            txq_d = 8'dx;
         end
         DMY14, DMY13, DMY12, DMY11, DMY10, DMY9, DMY8, DMY7, DMY6, DMY5, DMY4, DMY3, DMY2, DMY1: begin
             width = cfg_dmy_width;
             tx_req = 0;
             rx_req = 0;
             dmy_req = dmy_resp;
-            txq_d = 8'dx;
         end
         DATA3: begin
             width = cfg_data_width;
             tx_req = 0;
-            rx_req = dmy_resp;
+            rx_req = dmy_resp | tx_resp;
             dmy_req = 0;
-            txq_d = 8'dx;
         end
         DATA2, DATA1, DATA0: begin
             width = cfg_data_width;
             tx_req = 0;
             rx_req = rx_resp;
             dmy_req = 0;
-            txq_d = 8'dx;
         end
         default: begin
             width = 2'dx;
             tx_req = 0;
             rx_req = 0;
             dmy_req = 0;
-            txq_d = 8'dx;
         end
+    endcase
+
+    always @ (posedge clk) case (next_state)
+        CMD:     txq_d <= cfg_cmd_octet;
+        ADDR2:   txq_d <= req_addr[23:16];
+        ADDR1:   txq_d <= req_addr[15:8];
+        ADDR0:   txq_d <= req_addr[7:0];
+        default: txq_d <= 8'dx;
     endcase
 
     assign txq_rdy = 1;
@@ -633,7 +634,6 @@ module qspinor_bus_read_controller (
                     rdata[7:0] <= rxq_d;
         endcase
     end
-
 endmodule
 
 module qspinor_ip_access_controller(
@@ -733,7 +733,7 @@ module qspinor_ip_access_controller(
     wire      mosiq_clr = req & ~invld & (addr==4) & w_rb & (wdata[1]);
 
     wire      txq_r;
-    wire[7:0] txq_rd;
+    wire[7:0] txq_rd_raw, txq_rd;
     fifo # (
         .WIDTH(8),
         .DEPTH(16),
@@ -745,9 +745,19 @@ module qspinor_ip_access_controller(
         .w    (mosiq_w   ),
         .full (mosiq_full),
         .clr  (mosiq_clr ),
-        .dout (txq_rd   ),
+        .dout (txq_rd_raw),
         .r    (txq_r    ),
         .empty(txq_empty)
+    );
+
+    dff # (
+        .WIDTH(8),
+        .VALID("async")
+    ) txq_rd_dff (
+        .clk(clk       ),
+        .vld(txq_r     ),
+        .in (txq_rd_raw),
+        .out(txq_rd    )
     );
 
     wire      misoq_r = req & ~invld & (addr==3);
@@ -1007,7 +1017,7 @@ module qspinor_ip_access_controller(
 
     assign  txq_rdy = ~txq_empty;
     assign  txq_d = txq_rd;
-    assign  txq_r = tx_resp;
+    assign  txq_r = tx_req;
 
     assign  rxq_rdy = ~rxq_full;
     assign  rxq_wd = rxq_d;
@@ -1019,21 +1029,21 @@ module qspinor_ip_access_controller(
     always @ (*) case (next_state) // better use assign to propagate x
         TCNTMAX, TCNT15, TCNT14, TCNT13, TCNT12, TCNT11, TCNT10, TCNT9, TCNT8, TCNT7, TCNT6, TCNT5, TCNT4, TCNT3, TCNT2, TCNT1:
             begin
-                tx_req = req | tx_resp;
+                tx_req = req | (state==PREAM_TCNTMAX || state==PREAM_TCNT15 || state==PREAM_TCNT14 || state==PREAM_TCNT13 || state==PREAM_TCNT12 || state==PREAM_TCNT11 || state==PREAM_TCNT10 || state==PREAM_TCNT9 || state==PREAM_TCNT8 || state==PREAM_TCNT7 || state==PREAM_TCNT6 || state==PREAM_TCNT5 || state==PREAM_TCNT4 || state==PREAM_TCNT3 || state==PREAM_TCNT2 || state==PREAM_TCNT1) | tx_resp;
                 rx_req = 0;
                 dmy_req = 0;
             end
         RCNTMAX, RCNT15, RCNT14, RCNT13, RCNT12, RCNT11, RCNT10, RCNT9, RCNT8, RCNT7, RCNT6, RCNT5, RCNT4, RCNT3, RCNT2, RCNT1:
             begin
                 tx_req = 0;
-                rx_req = req | rx_resp;
+                rx_req = req | (state==PREAM_RCNTMAX || state==PREAM_RCNT15 || state==PREAM_RCNT14 || state==PREAM_RCNT13 || state==PREAM_RCNT12 || state==PREAM_RCNT11 || state==PREAM_RCNT10 || state==PREAM_RCNT9 || state==PREAM_RCNT8 || state==PREAM_RCNT7 || state==PREAM_RCNT6 || state==PREAM_RCNT5 || state==PREAM_RCNT4 || state==PREAM_RCNT3 || state==PREAM_RCNT2 || state==PREAM_RCNT1) | rx_resp;
                 dmy_req = 0;
             end
         DCNT15, DCNT14, DCNT13, DCNT12, DCNT11, DCNT10, DCNT9, DCNT8, DCNT7, DCNT6, DCNT5, DCNT4, DCNT3, DCNT2, DCNT1:
             begin
                 tx_req = 0;
                 rx_req = 0;
-                dmy_req = req | dmy_resp;
+                dmy_req = req | (state==PREAM_DCNT15 || state==PREAM_DCNT14 || state==PREAM_DCNT13 || state==PREAM_DCNT12 || state==PREAM_DCNT11 || state==PREAM_DCNT10 || state==PREAM_DCNT9 || state==PREAM_DCNT8 || state==PREAM_DCNT7 || state==PREAM_DCNT6 || state==PREAM_DCNT5 || state==PREAM_DCNT4 || state==PREAM_DCNT3 || state==PREAM_DCNT2 || state==PREAM_DCNT1) | dmy_resp;
             end
         default:
             begin

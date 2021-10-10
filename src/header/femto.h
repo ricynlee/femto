@@ -3,6 +3,12 @@
 
     #define MASK_WIDTH(n) (((1u << ((n)-1))<<1u)-1u) /* 1<=n<=32 */
 
+// Mem
+    #define ROM     0x00000000u
+    #define TCM     0x10000000u
+    #define SRAM    0x20000000u
+    #define NOR     0x30000000u
+
 // GPIO
     typedef struct {
         volatile unsigned io;
@@ -48,11 +54,13 @@
 
     #define QSPINOR_REQ_WID_SHIFT       (4u)
     #define QSPINOR_REQ_WID_MASK        (MASK_WIDTH(2u)<<QSPINOR_REQ_WID_SHIFT)
+    #define QSPINOR_REQ_WID(v)          (((v) << QSPINOR_REQ_WID_SHIFT) & QSPINOR_REQ_WID_MASK)
 
-    #define QSPINOR_REQ_CNT_SHIFT       (4u)
+    #define QSPINOR_REQ_CNT_SHIFT       (8u)
     #define QSPINOR_REQ_CNT_MASK        (MASK_WIDTH(4u)<<QSPINOR_REQ_CNT_SHIFT)
+    #define QSPINOR_REQ_CNT(v)          (((v) << QSPINOR_REQ_CNT_SHIFT) & QSPINOR_REQ_CNT_MASK)
 
-    #define QSPINOR_REQ_DOP_SHIFT       (4u) // dummy out pattern
+    #define QSPINOR_REQ_DOP_SHIFT       (12u) // dummy out pattern
     #define QSPINOR_REQ_DOP_MASK        (MASK_WIDTH(4u)<<QSPINOR_REQ_DOP_SHIFT)
 
     #define QSPINOR_TXQCSR_RDY_SHIFT    (0u)
@@ -69,15 +77,27 @@
 
     #define QSPINOR_NORCSR_MODE_SHIFT   (0u)
     #define QSPINOR_NORCSR_MODE_MASK    (MASK_WIDTH(3u)<<QSPINOR_NORCSR_MODE_SHIFT)
+    #define QSPINOR_NORCSR_MODE(v)      (((v) << QSPINOR_NORCSR_MODE_SHIFT) & QSPINOR_NORCSR_MODE_MASK)
 
-    #define QSPINOR_NORCSR_DMYDIR_SHIFT (0u)
-    #define QSPINOR_NORCSR_DMYDIR_MASK  (MASK_WIDTH(3u)<<QSPINOR_NORCSR_DMYDIR_SHIFT)
+    #define QSPINOR_NORCSR_DMYDIR_SHIFT (3u)
+    #define QSPINOR_NORCSR_DMYDIR_MASK  (MASK_WIDTH(1u)<<QSPINOR_NORCSR_DMYDIR_SHIFT)
 
-    #define QSPINOR_NORCSR_DMYCNT_SHIFT (0u)
-    #define QSPINOR_NORCSR_DMYCNT_MASK  (MASK_WIDTH(3u)<<QSPINOR_NORCSR_DMYCNT_SHIFT)
+    #define QSPINOR_NORCSR_DMYCNT_SHIFT (4u)
+    #define QSPINOR_NORCSR_DMYCNT_MASK  (MASK_WIDTH(4u)<<QSPINOR_NORCSR_DMYCNT_SHIFT)
 
-    #define QSPINOR_NORCSR_CMD_SHIFT    (0u)
-    #define QSPINOR_NORCSR_CMD_MASK     (MASK_WIDTH(3u)<<QSPINOR_NORCSR_CMD_SHIFT)
+    #define QSPINOR_NORCSR_CMD_SHIFT    (8u)
+    #define QSPINOR_NORCSR_CMD_MASK     (MASK_WIDTH(8u)<<QSPINOR_NORCSR_CMD_SHIFT)
+    #define QSPINOR_NORCSR_CMD(v)       (((v) << QSPINOR_NORCSR_CMD_SHIFT) & QSPINOR_NORCSR_CMD_MASK)
+
+    enum nor_mode {
+        NOR_MODE_111,
+        NOR_MODE_112,
+        NOR_MODE_114,
+        NOR_MODE_122,
+        NOR_MODE_144,
+        NOR_MODE_222,
+        NOR_MODE_444,
+    };
 
 // TIMER
     typedef struct {
@@ -93,7 +113,7 @@
 
     #define RESET ((reset_t*)0xf0000000)
 
-    enum {
+    enum reset_target {
         RESET_ALL    ,
         RESET_CORE   ,
         RESET_ROM    ,
