@@ -63,6 +63,18 @@ module simtop #(
         .dut_uart_rxd(uart_rxd),
         .dut_uart_txd(uart_txd)
     );
+
+    // endsim
+    always @ (posedge fpga.clk) begin
+        if (fpga.top.tmr_req && fpga.top.bus_wdata=='h50415353) begin
+            $display("PASS");
+            $finish(0);
+        end else if (fpga.top.tmr_req && fpga.top.bus_wdata=='h4641494c) begin
+            $display("FAIL");
+            $finish(0);
+        end
+    end
+
 endmodule
 
 module sram(

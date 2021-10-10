@@ -24,9 +24,6 @@ int main(){
     val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
     QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
 
-    TIMER->tr = val_from_bus;
-    TIMER->tr = val_from_ip;
-
     if (val_from_bus==val_from_ip)
         trigger_pass();
     else

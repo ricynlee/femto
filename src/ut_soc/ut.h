@@ -2,11 +2,11 @@
 #define _FEMTO_UT_H
 
 // RESET
-    #define UT (*(volatile char*)0xf0000000)
+    #define UT (*(volatile unsigned*)0x70000000)
 
     enum {
-        UT_PASS,
-        UT_FAIL,
+        UT_PASS = 0x50415353u, // "PASS"
+        UT_FAIL = 0x4641494cu, // "FAIL"
     };
 
 // Prototypes
