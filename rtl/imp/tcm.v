@@ -51,9 +51,9 @@ module tcm_controller(
                 rdata[31:24] <= array[cell_addr][{byte_sel[acc] | 3, 3'd0}+:8];
             end else begin
                 if (acc==`BUS_ACC_1B) begin // write 1B
-                    array[cell_addr][byte_sel[`BUS_ACC_1B]+:8] <= wdata[7:0];
+                    array[cell_addr][{byte_sel[`BUS_ACC_1B], 3'd0}+:8] <= wdata[7:0];
                 end else if (acc==`BUS_ACC_2B) begin // write 2B
-                    array[cell_addr][byte_sel[`BUS_ACC_2B]+:16] <= wdata[15:0];
+                    array[cell_addr][{byte_sel[`BUS_ACC_2B], 3'd0}+:16] <= wdata[15:0];
                 end else if (acc==`BUS_ACC_4B) begin // write 4B
                     array[cell_addr] <= wdata;
                 end

@@ -497,9 +497,28 @@ module qspinor_bus_read_controller (
         ADDR2: next_state = tx_resp ? ADDR1 : ADDR2;
         ADDR1: next_state = tx_resp ? ADDR0 : ADDR1;
         ADDR0:
-            if (tx_resp)
-                next_state = 15+DMY15-cfg_dmy_cnt; // bad practice
-            else
+            if (tx_resp) case (cfg_dmy_cnt)
+                0: case (req_acc)
+                    `BUS_ACC_4B: next_state = DATA3;
+                    `BUS_ACC_2B: next_state = DATA1;
+                    default:     next_state = DATA0; // BUS_ACC_1B
+                endcase
+                1 : next_state = DMY1 ;
+                2 : next_state = DMY2 ;
+                3 : next_state = DMY3 ;
+                4 : next_state = DMY4 ;
+                5 : next_state = DMY5 ;
+                6 : next_state = DMY6 ;
+                7 : next_state = DMY7 ;
+                8 : next_state = DMY8 ;
+                9 : next_state = DMY9 ;
+                10: next_state = DMY10;
+                11: next_state = DMY11;
+                12: next_state = DMY12;
+                13: next_state = DMY13;
+                14: next_state = DMY14;
+                15: next_state = DMY15;
+            endcase else
                 next_state = ADDR0;
         DMY15: next_state = dmy_resp ? DMY14 : DMY15;
         DMY14: next_state = dmy_resp ? DMY13 : DMY14;
@@ -575,10 +594,16 @@ module qspinor_bus_read_controller (
             rx_req = dmy_resp | tx_resp;
             dmy_req = 0;
         end
-        DATA2, DATA1, DATA0: begin
+        DATA2: begin
             width = cfg_data_width;
             tx_req = 0;
             rx_req = rx_resp;
+            dmy_req = 0;
+        end
+        DATA1, DATA0: begin
+            width = cfg_data_width;
+            tx_req = 0;
+            rx_req = dmy_resp | tx_resp | rx_resp;
             dmy_req = 0;
         end
         default: begin
