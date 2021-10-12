@@ -122,6 +122,9 @@ module spinor( // supports 1-1-1 read operations only
                 @(posedge sck) addr[i]=si;
             $display("ADDR=%x DATA=%x", addr, array[addr]);
 
+            for(i=14; i>=0; i=i-1) // 15 dummies
+                @(posedge sck);
+
             forever begin
                 for (i=7; i>=0; i=i-1)
                     @(negedge sck) so = array[addr][i];
