@@ -33,7 +33,7 @@
 
 // QSPI NOR
     typedef struct {
-        volatile unsigned short      req;
+        volatile unsigned short      ipcsr;
         volatile unsigned char       txd;
         const volatile unsigned char rxd;
         volatile unsigned char       txqcsr;
@@ -43,25 +43,28 @@
 
     #define QSPINOR ((qspinor_t*)0x60000000)
 
-    #define QSPINOR_REQ_SEL_SHIFT       (0u)
-    #define QSPINOR_REQ_SEL_MASK        (MASK_WIDTH(1u)<<QSPINOR_REQ_SEL_SHIFT)
+    #define QSPINOR_IPCSR_SEL_SHIFT       (0u)
+    #define QSPINOR_IPCSR_SEL_MASK        (MASK_WIDTH(1u)<<QSPINOR_IPCSR_SEL_SHIFT)
 
-    #define QSPINOR_REQ_DIR_SHIFT       (2u)
-    #define QSPINOR_REQ_DIR_MASK        (MASK_WIDTH(1u)<<QSPINOR_REQ_DIR_SHIFT)
+    #define QSPINOR_IPCSR_BSY_SHIFT       (1u)
+    #define QSPINOR_IPCSR_BSY_MASK        (MASK_WIDTH(1u)<<QSPINOR_IPCSR_BSY_SHIFT)
 
-    #define QSPINOR_REQ_DMY_SHIFT       (3u)
-    #define QSPINOR_REQ_DMY_MASK        (MASK_WIDTH(1u)<<QSPINOR_REQ_DMY_SHIFT)
+    #define QSPINOR_IPCSR_DIR_SHIFT       (2u)
+    #define QSPINOR_IPCSR_DIR_MASK        (MASK_WIDTH(1u)<<QSPINOR_IPCSR_DIR_SHIFT)
 
-    #define QSPINOR_REQ_WID_SHIFT       (4u)
-    #define QSPINOR_REQ_WID_MASK        (MASK_WIDTH(2u)<<QSPINOR_REQ_WID_SHIFT)
-    #define QSPINOR_REQ_WID(v)          (((v) << QSPINOR_REQ_WID_SHIFT) & QSPINOR_REQ_WID_MASK)
+    #define QSPINOR_IPCSR_DMY_SHIFT       (3u)
+    #define QSPINOR_IPCSR_DMY_MASK        (MASK_WIDTH(1u)<<QSPINOR_IPCSR_DMY_SHIFT)
 
-    #define QSPINOR_REQ_CNT_SHIFT       (8u)
-    #define QSPINOR_REQ_CNT_MASK        (MASK_WIDTH(4u)<<QSPINOR_REQ_CNT_SHIFT)
-    #define QSPINOR_REQ_CNT(v)          (((v) << QSPINOR_REQ_CNT_SHIFT) & QSPINOR_REQ_CNT_MASK)
+    #define QSPINOR_IPCSR_WID_SHIFT       (4u)
+    #define QSPINOR_IPCSR_WID_MASK        (MASK_WIDTH(2u)<<QSPINOR_IPCSR_WID_SHIFT)
+    #define QSPINOR_IPCSR_WID(v)          (((v) << QSPINOR_IPCSR_WID_SHIFT) & QSPINOR_IPCSR_WID_MASK)
 
-    #define QSPINOR_REQ_DOP_SHIFT       (12u) // dummy out pattern
-    #define QSPINOR_REQ_DOP_MASK        (MASK_WIDTH(4u)<<QSPINOR_REQ_DOP_SHIFT)
+    #define QSPINOR_IPCSR_CNT_SHIFT       (8u)
+    #define QSPINOR_IPCSR_CNT_MASK        (MASK_WIDTH(4u)<<QSPINOR_IPCSR_CNT_SHIFT)
+    #define QSPINOR_IPCSR_CNT(v)          (((v) << QSPINOR_IPCSR_CNT_SHIFT) & QSPINOR_IPCSR_CNT_MASK)
+
+    #define QSPINOR_IPCSR_DOP_SHIFT       (12u) // dummy out pattern
+    #define QSPINOR_IPCSR_DOP_MASK        (MASK_WIDTH(4u)<<QSPINOR_IPCSR_DOP_SHIFT)
 
     #define QSPINOR_TXQCSR_RDY_SHIFT    (0u)
     #define QSPINOR_TXQCSR_RDY_MASK     (MASK_WIDTH(1u)<<QSPINOR_TXQCSR_RDY_SHIFT)
