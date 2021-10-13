@@ -737,19 +737,6 @@ module qspinor_ip_access_controller(
     wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
     assign fault    = req & invld;
 
-    // latch request
-    wire[`QSPINOR_VA_WIDTH-1:0] req_addr;
-    wire[`BUS_WIDTH-1:0]        req_wdata;
-    dff # (
-        .WIDTH(`QSPINOR_VA_WIDTH+`BUS_WIDTH),
-        .VALID("async")
-    ) req_acc_dff (
-        .clk(clk         ),
-        .vld(req & ~invld),
-        .in ({addr, wdata}        ),
-        .out({req_addr, req_wdata})
-    );
-
     // data queues
     wire      mosiq_w = req & ~invld & (addr==2);
     wire[7:0] mosiq_wd = wdata[7:0];
@@ -808,7 +795,7 @@ module qspinor_ip_access_controller(
         .full (rxq_full)
     );
 
-    // cfg out
+    // cfg out for bus read module
     // Modes: 0-111 1-112 2-114 3-122 4-144 5-222 6-444
     assign cfg_cmd_width = (norcsr_mode==6) ? `QSPINOR_X4 :
                            (norcsr_mode==5) ? `QSPINOR_X2 :
@@ -831,6 +818,7 @@ module qspinor_ip_access_controller(
     assign  cfg_dmy_dir = norcsr_dmy_dir;
     assign  cfg_dmy_out_pattern = 4'd0;
 
+    // // // // BEGIN: data interaction with NOR flash
     // state
     localparam  IDLE          = 0 ,
                 PREAM_TCNTMAX = 1 ,
@@ -855,9 +843,9 @@ module qspinor_ip_access_controller(
         IDLE:
             if (!req || invld) // no req
                 next_state = IDLE;
-            else if (req_addr || ~req_wdata[0]) // not selected
+            else if (addr || ~wdata[0]) // not selected
                 next_state = IDLE;
-            else if (req_wdata[3]) case (req_wdata[11:8]) // dummy
+            else if (wdata[3]) case (wdata[11:8]) // dummy
                 1 : next_state = qspi_csb ? PREAM_DCNT1  : DCNT1 ;
                 2 : next_state = qspi_csb ? PREAM_DCNT2  : DCNT2 ;
                 3 : next_state = qspi_csb ? PREAM_DCNT3  : DCNT3 ;
@@ -874,7 +862,7 @@ module qspinor_ip_access_controller(
                 14: next_state = qspi_csb ? PREAM_DCNT14 : DCNT14;
                 15: next_state = qspi_csb ? PREAM_DCNT15 : DCNT15;
                 default: next_state = IDLE;
-            endcase else if (req_wdata[2]) case (req_wdata[11:8]) // tx
+            endcase else if (wdata[2]) case (wdata[11:8]) // tx
                 default: next_state = qspi_csb ? PREAM_TCNTMAX : ~txq_empty ? TCNTMAX : IDLE ;
                 1 : next_state = qspi_csb ? PREAM_TCNT1  : TCNT1  ;
                 2 : next_state = qspi_csb ? PREAM_TCNT2  : TCNT2  ;
@@ -891,7 +879,7 @@ module qspinor_ip_access_controller(
                 13: next_state = qspi_csb ? PREAM_TCNT13 : TCNT13 ;
                 14: next_state = qspi_csb ? PREAM_TCNT14 : TCNT14 ;
                 15: next_state = qspi_csb ? PREAM_TCNT15 : TCNT15 ;
-            endcase else case (req_wdata[11:8]) // rx
+            endcase else case (wdata[11:8]) // rx
                 default: next_state = qspi_csb ? PREAM_RCNTMAX : ~rxq_full ? RCNTMAX : IDLE ;
                 1 : next_state = qspi_csb ? PREAM_RCNT1  : RCNT1  ;
                 2 : next_state = qspi_csb ? PREAM_RCNT2  : RCNT2  ;
@@ -1006,8 +994,20 @@ module qspinor_ip_access_controller(
         default: next_state = IDLE;
     endcase
 
+    // latch request for data interaction
+    wire[`BUS_WIDTH-1:0]    ipcsr_wdata;
+    dff # (
+        .WIDTH(`BUS_WIDTH),
+        .VALID("async")
+    ) ipcsr_wdata_dff (
+        .clk(clk                         ),
+        .vld(req && ~invld && state==IDLE),
+        .in (wdata                       ),
+        .out(ipcsr_wdata                 )
+    );
+
     // control
-    assign  width = req_wdata[5:4];
+    assign  width = ipcsr_wdata[5:4];
 
     assign  txq_rdy = ~txq_empty;
     assign  txq_d = txq_rd;
@@ -1017,69 +1017,60 @@ module qspinor_ip_access_controller(
     assign  rxq_wd = rxq_d;
     assign  rxq_w = rx_resp;
 
-    assign  dmy_dir = req_wdata[2];
-    assign  dmy_out_pattern = req_wdata[15:12];
+    assign  dmy_dir = ipcsr_wdata[2];
+    assign  dmy_out_pattern = ipcsr_wdata[15:12];
 
     always @ (*) case (next_state) // better use assign to propagate x
-        TCNTMAX: begin tx_req = req || state==PREAM_TCNTMAX || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT15:  begin tx_req = req || state==PREAM_TCNT15  ; rx_req = 0; dmy_req = 0; end
-        TCNT14:  begin tx_req = req || state==PREAM_TCNT14 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT13:  begin tx_req = req || state==PREAM_TCNT13 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT12:  begin tx_req = req || state==PREAM_TCNT12 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT11:  begin tx_req = req || state==PREAM_TCNT11 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT10:  begin tx_req = req || state==PREAM_TCNT10 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT9 :  begin tx_req = req || state==PREAM_TCNT9  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT8 :  begin tx_req = req || state==PREAM_TCNT8  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT7 :  begin tx_req = req || state==PREAM_TCNT7  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT6 :  begin tx_req = req || state==PREAM_TCNT6  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT5 :  begin tx_req = req || state==PREAM_TCNT5  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT4 :  begin tx_req = req || state==PREAM_TCNT4  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT3 :  begin tx_req = req || state==PREAM_TCNT3  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT2 :  begin tx_req = req || state==PREAM_TCNT2  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT1 :  begin tx_req = req || state==PREAM_TCNT1  || tx_resp; rx_req = 0; dmy_req = 0; end
-        RCNTMAX: begin rx_req = req || state==PREAM_RCNTMAX || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT15:  begin rx_req = req || state==PREAM_RCNT15; tx_req = 0; dmy_req = 0; end
-        RCNT14:  begin rx_req = req || state==PREAM_RCNT14 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT13:  begin rx_req = req || state==PREAM_RCNT13 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT12:  begin rx_req = req || state==PREAM_RCNT12 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT11:  begin rx_req = req || state==PREAM_RCNT11 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT10:  begin rx_req = req || state==PREAM_RCNT10 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT9 :  begin rx_req = req || state==PREAM_RCNT9  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT8 :  begin rx_req = req || state==PREAM_RCNT8  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT7 :  begin rx_req = req || state==PREAM_RCNT7  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT6 :  begin rx_req = req || state==PREAM_RCNT6  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT5 :  begin rx_req = req || state==PREAM_RCNT5  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT4 :  begin rx_req = req || state==PREAM_RCNT4  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT3 :  begin rx_req = req || state==PREAM_RCNT3  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT2 :  begin rx_req = req || state==PREAM_RCNT2  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT1 :  begin rx_req = req || state==PREAM_RCNT1  || rx_resp; tx_req = 0; dmy_req = 0; end
-        DCNT15:  begin dmy_req = req || state==PREAM_DCNT15; tx_req = 0; rx_req = 0; end
-        DCNT14:  begin dmy_req = req || state==PREAM_DCNT14 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT13:  begin dmy_req = req || state==PREAM_DCNT13 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT12:  begin dmy_req = req || state==PREAM_DCNT12 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT11:  begin dmy_req = req || state==PREAM_DCNT11 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT10:  begin dmy_req = req || state==PREAM_DCNT10 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT9 :  begin dmy_req = req || state==PREAM_DCNT9  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT8 :  begin dmy_req = req || state==PREAM_DCNT8  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT7 :  begin dmy_req = req || state==PREAM_DCNT7  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT6 :  begin dmy_req = req || state==PREAM_DCNT6  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT5 :  begin dmy_req = req || state==PREAM_DCNT5  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT4 :  begin dmy_req = req || state==PREAM_DCNT4  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT3 :  begin dmy_req = req || state==PREAM_DCNT3  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT2 :  begin dmy_req = req || state==PREAM_DCNT2  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT1 :  begin dmy_req = req || state==PREAM_DCNT1  || dmy_resp; tx_req = 0; rx_req = 0; end
+        TCNTMAX: begin tx_req = (req && state==IDLE) || state==PREAM_TCNTMAX || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT15:  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT15; rx_req = 0; dmy_req = 0; end
+        TCNT14:  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT14 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT13:  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT13 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT12:  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT12 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT11:  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT11 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT10:  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT10 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT9 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT9  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT8 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT8  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT7 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT7  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT6 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT6  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT5 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT5  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT4 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT4  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT3 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT3  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT2 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT2  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT1 :  begin tx_req = (req && state==IDLE) || state==PREAM_TCNT1  || tx_resp; rx_req = 0; dmy_req = 0; end
+        RCNTMAX: begin rx_req = (req && state==IDLE) || state==PREAM_RCNTMAX || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT15:  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT15; tx_req = 0; dmy_req = 0; end
+        RCNT14:  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT14 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT13:  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT13 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT12:  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT12 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT11:  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT11 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT10:  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT10 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT9 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT9  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT8 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT8  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT7 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT7  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT6 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT6  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT5 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT5  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT4 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT4  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT3 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT3  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT2 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT2  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT1 :  begin rx_req = (req && state==IDLE) || state==PREAM_RCNT1  || rx_resp; tx_req = 0; dmy_req = 0; end
+        DCNT15:  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT15; tx_req = 0; rx_req = 0; end
+        DCNT14:  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT14 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT13:  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT13 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT12:  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT12 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT11:  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT11 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT10:  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT10 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT9 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT9  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT8 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT8  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT7 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT7  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT6 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT6  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT5 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT5  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT4 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT4  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT3 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT3  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT2 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT2  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT1 :  begin dmy_req = (req && state==IDLE) || state==PREAM_DCNT1  || dmy_resp; tx_req = 0; rx_req = 0; end
         default: begin tx_req = 0; rx_req = 0; dmy_req = 0; end
     endcase
-
-    //// resp generation - busy held during qspi operation - not good
-    // always @ (posedge clk) begin
-    //     if (~rstn)
-    //         resp <= 0;
-    //     else if (next_state==IDLE)
-    //         resp <= (state!=IDLE) || (req & ~invld);
-    //     else
-    //         resp <= 0;
-    // end
+    // // // // END: data interaction with NOR flash
 
     // resp generation
     always @ (posedge clk) begin
@@ -1103,9 +1094,9 @@ module qspinor_ip_access_controller(
         end else if (req & ~invld) case (addr)
             0:
                 if (w_rb)
-                    qspi_csb <= wdata[0] ? 1'b0 : 1'b1;
+                    qspi_csb <= ~wdata[0] && (state==IDLE);
                 else
-                    rdata <= {30'd0, (state!=IDLE), 1'd0};
+                    rdata <= {30'd0, (state!=IDLE), ~qspi_csb};
             3:
                 rdata <= {24'd0, misoq_rd};
             4:
