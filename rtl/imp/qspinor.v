@@ -719,7 +719,7 @@ module qspinor_ip_access_controller(
      *  NORCSR | 6       | 2    | R/W    | -
      *
      * IPCSR
-     *  DUMMY_OUT_PATTERN(15:12) | COUNT(11:8) | (7:6) | WIDTH(5:4) | DUMMY(3) | DIR(2) | BUSY(1) | SEL(0)
+     *  DUMMY_OUT_PATTERN(15:12) | COUNT(11:8) | WIDTH(7:6) | DUMMY(5) | DIR(4) | (3) | INVLD(2) | BUSY(1) | SEL(0)
      * TXQCSR
      *  (7:2) | CLR(1) | RDY(0)
      * RXQCSR
@@ -845,7 +845,7 @@ module qspinor_ip_access_controller(
                 next_state = IDLE;
             else if (addr || ~wdata[0]) // not selected
                 next_state = IDLE;
-            else if (wdata[3]) case (wdata[11:8]) // dummy
+            else if (wdata[5]) case (wdata[11:8]) // dummy
                 1 : next_state = qspi_csb ? PREAM_DCNT1  : DCNT1 ;
                 2 : next_state = qspi_csb ? PREAM_DCNT2  : DCNT2 ;
                 3 : next_state = qspi_csb ? PREAM_DCNT3  : DCNT3 ;
@@ -862,7 +862,7 @@ module qspinor_ip_access_controller(
                 14: next_state = qspi_csb ? PREAM_DCNT14 : DCNT14;
                 15: next_state = qspi_csb ? PREAM_DCNT15 : DCNT15;
                 default: next_state = IDLE;
-            endcase else if (wdata[2]) case (wdata[11:8]) // tx
+            endcase else if (wdata[4]) case (wdata[11:8]) // tx
                 default: next_state = qspi_csb ? PREAM_TCNTMAX : ~txq_empty ? TCNTMAX : IDLE ;
                 1 : next_state = qspi_csb ? PREAM_TCNT1  : TCNT1  ;
                 2 : next_state = qspi_csb ? PREAM_TCNT2  : TCNT2  ;
@@ -1007,7 +1007,7 @@ module qspinor_ip_access_controller(
     );
 
     // control
-    assign  width = ipcsr_wdata[5:4];
+    assign  width = ipcsr_wdata[7:6];
 
     assign  txq_rdy = ~txq_empty;
     assign  txq_d = txq_rd;
@@ -1017,7 +1017,7 @@ module qspinor_ip_access_controller(
     assign  rxq_wd = rxq_d;
     assign  rxq_w = rx_resp;
 
-    assign  dmy_dir = ipcsr_wdata[2];
+    assign  dmy_dir = ipcsr_wdata[4];
     assign  dmy_out_pattern = ipcsr_wdata[15:12];
 
     always @ (*) case (next_state) // better use assign to propagate x
@@ -1080,6 +1080,14 @@ module qspinor_ip_access_controller(
             resp <= req & ~invld;
     end
 
+    // valid req or ignored
+    reg         prev_req_invld;
+    always @ (posedge clk)
+        if (~rstn)
+            prev_req_invld <= 0;
+        else if (req && ~invld && addr==0)
+            prev_req_invld <= w_rb && (state!=IDLE) && wdata[0];
+
     // register access
     reg[15:0]   norcsr;
     wire[7:0]   norcsr_cmd_octet = norcsr[15:8];
@@ -1091,12 +1099,14 @@ module qspinor_ip_access_controller(
         if (~rstn) begin
             norcsr <= 0;
             qspi_csb <= 1'b1;
+            prev_req_invld <= 0;
         end else if (req & ~invld) case (addr)
             0:
-                if (w_rb)
+                if (w_rb) begin
                     qspi_csb <= ~wdata[0] && (state==IDLE);
-                else
-                    rdata <= {30'd0, (state!=IDLE), ~qspi_csb};
+                end else begin
+                    rdata <= {29'd0, prev_req_invld, (state!=IDLE), ~qspi_csb};
+                end
             3:
                 rdata <= {24'd0, misoq_rd};
             4:
