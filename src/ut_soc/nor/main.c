@@ -13,6 +13,12 @@ int main(){
         QSPINOR->txd = 0x0bu;
         QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
 
+        // check prev req invld
+        // TIMER->tr = QSPINOR->ipcsr;
+        // check prev req invld
+        // QSPINOR->ipcsr = 0;
+        // TIMER->tr = QSPINOR->ipcsr;
+
         while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
 
         QSPINOR->txd = 0x00u;
