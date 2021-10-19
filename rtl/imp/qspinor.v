@@ -719,7 +719,7 @@ module qspinor_ip_access_controller(
      *  NORCSR | 6       | 2    | R/W    | -
      *
      * IPCSR
-     *  DUMMY_OUT_PATTERN(15:12) | COUNT(11:8) | WIDTH(7:6) | DUMMY(5) | DIR(4) | (3) | INVLD(2) | BUSY(1) | SEL(0)
+     *  DUMMY_OUT_PATTERN(15:12) | COUNT(11:8) | WIDTH(7:6) | DUMMY(5) | DIR(4) | (3:2) | BUSY(1) | SEL(0)
      * TXQCSR
      *  (7:2) | CLR(1) | RDY(0)
      * RXQCSR
@@ -812,8 +812,101 @@ module qspinor_ip_access_controller(
         .full (rxq_full)
     );
 
-    // // // // BEGIN: data interaction with NOR flash
-    // state
+    // data interaction busy indicator
+    wire    busy;
+    wire    seq_req = req && ~invld && w_rb && addr==0;
+
+    // latch request for data interaction
+    reg[15:0]   queued_ipcsr_wdata;
+    reg         queued;
+    always @ (posedge clk) begin
+        if (~rstn) begin
+            queued <= 0;
+        end else begin
+            if (seq_req & busy) begin
+                queued <= 1;
+                queued_ipcsr_wdata <= wdata[15:0];
+            end
+
+            if (~busy)
+                queued <= 0;
+        end
+    end
+
+    wire[15:0]  normal_ipcsr_wdata = wdata[15:0];
+    wire        delayed_seq_req = queued & ~busy;
+    wire        normal_seq_req = seq_req & ~busy;
+    wire[15:0]  ipcsr_wdata;
+    dff # (
+        .WIDTH(16     ),
+        .VALID("async")
+    ) ipcsr_wdata_dff (
+        .clk(clk        ),
+        .vld(normal_seq_req | delayed_seq_req),
+        .in (delayed_seq_req ? queued_ipcsr_wdata : normal_ipcsr_wdata),
+        .out(ipcsr_wdata)
+    );
+
+    // resp generation
+    always @ (posedge clk) begin
+        if (~rstn)
+            resp <= 0;
+        else if (busy)
+            resp <= (req & ~invld & ~seq_req) | delayed_seq_req;
+        else
+            resp <= (req & ~invld) | delayed_seq_req;
+    end
+
+    // register access
+    reg[15:0]   norcsr;
+    always @ (posedge clk) begin
+        if (~rstn)
+            norcsr <= 0;
+        else if (req & ~invld) case (addr)
+            0: rdata <= {30'd0, busy, ~qspi_csb};
+            3: rdata <= {24'd0, rxq_rd};
+            4: rdata <= {31'd0, ~txq_full};
+            5: rdata <= {31'd0, ~rxq_empty};
+            6:
+                if (w_rb)
+                    norcsr <= wdata[15:0];
+                else
+                    rdata <= {16'd0, norcsr};
+        endcase
+    end
+
+    always @ (posedge clk) begin
+        if (~rstn)
+            qspi_csb <= 1'b1;
+        else if (normal_seq_req | delayed_seq_req)
+            qspi_csb <= ~ipcsr_wdata[`IP_SEL];
+    end
+
+    // cfg out for bus read module
+    // Modes: 0-111 1-112 2-114 3-122 4-144 5-222 6-444
+    assign cfg_cmd_width = (norcsr[`NOR_MODE]==6) ? `QSPINOR_X4 :
+                           (norcsr[`NOR_MODE]==5) ? `QSPINOR_X2 :
+                           /* otherwise */    `QSPINOR_X1;
+    assign cfg_addr_width = (norcsr[`NOR_MODE]==6) ? `QSPINOR_X4 :
+                            (norcsr[`NOR_MODE]==5) ? `QSPINOR_X2 :
+                            (norcsr[`NOR_MODE]==4) ? `QSPINOR_X4 :
+                            (norcsr[`NOR_MODE]==3) ? `QSPINOR_X2 :
+                            /* norcsr[`NOR_MODE] */    `QSPINOR_X1;
+    assign cfg_dmy_width = cfg_addr_width;
+    assign cfg_data_width = (norcsr[`NOR_MODE]==6) ? `QSPINOR_X4 :
+                            (norcsr[`NOR_MODE]==5) ? `QSPINOR_X2 :
+                            (norcsr[`NOR_MODE]==4) ? `QSPINOR_X4 :
+                            (norcsr[`NOR_MODE]==3) ? `QSPINOR_X2 :
+                            (norcsr[`NOR_MODE]==2) ? `QSPINOR_X4 :
+                            (norcsr[`NOR_MODE]==1) ? `QSPINOR_X2 :
+                            /* otherwise */    `QSPINOR_X1;
+    assign  cfg_cmd_octet = norcsr[`NOR_CMD];
+    assign  cfg_dmy_cnt = norcsr[`NOR_DMYCNT];
+    assign  cfg_dmy_dir = norcsr[`NOR_DMYDIR];
+    assign  cfg_dmy_out_pattern = 4'd0;
+
+
+    // data interaction state control
     localparam  IDLE          = 0 ,
                 PREP_TLOOP    = 1 ,
                 PREP_TCNT15   = 2 , PREP_TCNT14   = 3 , PREP_TCNT13   = 4 , PREP_TCNT12   = 5 , PREP_TCNT11   = 6 , PREP_TCNT10   = 7 , PREP_TCNT9    = 8 , PREP_TCNT8    = 9 , PREP_TCNT7    = 10, PREP_TCNT6    = 11, PREP_TCNT5    = 12, PREP_TCNT4    = 13, PREP_TCNT3    = 14, PREP_TCNT2    = 15, PREP_TCNT1    = 16,
@@ -833,63 +926,66 @@ module qspinor_ip_access_controller(
         else
             state <= next_state;
 
+    assign  busy = (state!=IDLE);
+
     always @ (*) case (state)
         IDLE:
-            if (!req || invld || addr || ~wdata[`IP_SEL]) // no valid req
+            if (delayed_seq_req | seq_req) begin
+                if (ipcsr_wdata[`IP_DMY]) case (ipcsr_wdata[`IP_CNT]) // dummy
+                    default: next_state = qspi_csb ? PREP_DCNT16 : DCNT16;
+                    1 : next_state = qspi_csb ? PREP_DCNT1  : DCNT1 ;
+                    2 : next_state = qspi_csb ? PREP_DCNT2  : DCNT2 ;
+                    3 : next_state = qspi_csb ? PREP_DCNT3  : DCNT3 ;
+                    4 : next_state = qspi_csb ? PREP_DCNT4  : DCNT4 ;
+                    5 : next_state = qspi_csb ? PREP_DCNT5  : DCNT5 ;
+                    6 : next_state = qspi_csb ? PREP_DCNT6  : DCNT6 ;
+                    7 : next_state = qspi_csb ? PREP_DCNT7  : DCNT7 ;
+                    8 : next_state = qspi_csb ? PREP_DCNT8  : DCNT8 ;
+                    9 : next_state = qspi_csb ? PREP_DCNT9  : DCNT9 ;
+                    10: next_state = qspi_csb ? PREP_DCNT10 : DCNT10;
+                    11: next_state = qspi_csb ? PREP_DCNT11 : DCNT11;
+                    12: next_state = qspi_csb ? PREP_DCNT12 : DCNT12;
+                    13: next_state = qspi_csb ? PREP_DCNT13 : DCNT13;
+                    14: next_state = qspi_csb ? PREP_DCNT14 : DCNT14;
+                    15: next_state = qspi_csb ? PREP_DCNT15 : DCNT15;
+                endcase else if (ipcsr_wdata[`IP_DIR]) case (ipcsr_wdata[`IP_CNT]) // tx
+                    default: next_state = qspi_csb ? PREP_TLOOP : ~txq_empty ? TLOOP : IDLE ;
+                    1 : next_state = qspi_csb ? PREP_TCNT1  : TCNT1  ;
+                    2 : next_state = qspi_csb ? PREP_TCNT2  : TCNT2  ;
+                    3 : next_state = qspi_csb ? PREP_TCNT3  : TCNT3  ;
+                    4 : next_state = qspi_csb ? PREP_TCNT4  : TCNT4  ;
+                    5 : next_state = qspi_csb ? PREP_TCNT5  : TCNT5  ;
+                    6 : next_state = qspi_csb ? PREP_TCNT6  : TCNT6  ;
+                    7 : next_state = qspi_csb ? PREP_TCNT7  : TCNT7  ;
+                    8 : next_state = qspi_csb ? PREP_TCNT8  : TCNT8  ;
+                    9 : next_state = qspi_csb ? PREP_TCNT9  : TCNT9  ;
+                    10: next_state = qspi_csb ? PREP_TCNT10 : TCNT10 ;
+                    11: next_state = qspi_csb ? PREP_TCNT11 : TCNT11 ;
+                    12: next_state = qspi_csb ? PREP_TCNT12 : TCNT12 ;
+                    13: next_state = qspi_csb ? PREP_TCNT13 : TCNT13 ;
+                    14: next_state = qspi_csb ? PREP_TCNT14 : TCNT14 ;
+                    15: next_state = qspi_csb ? PREP_TCNT15 : TCNT15 ;
+                endcase else case (ipcsr_wdata[`IP_CNT]) // rx
+                    default: next_state = qspi_csb ? PREP_RLOOP : ~rxq_full ? RLOOP : IDLE ;
+                    1 : next_state = qspi_csb ? PREP_RCNT1  : RCNT1  ;
+                    2 : next_state = qspi_csb ? PREP_RCNT2  : RCNT2  ;
+                    3 : next_state = qspi_csb ? PREP_RCNT3  : RCNT3  ;
+                    4 : next_state = qspi_csb ? PREP_RCNT4  : RCNT4  ;
+                    5 : next_state = qspi_csb ? PREP_RCNT5  : RCNT5  ;
+                    6 : next_state = qspi_csb ? PREP_RCNT6  : RCNT6  ;
+                    7 : next_state = qspi_csb ? PREP_RCNT7  : RCNT7  ;
+                    8 : next_state = qspi_csb ? PREP_RCNT8  : RCNT8  ;
+                    9 : next_state = qspi_csb ? PREP_RCNT9  : RCNT9  ;
+                    10: next_state = qspi_csb ? PREP_RCNT10 : RCNT10 ;
+                    11: next_state = qspi_csb ? PREP_RCNT11 : RCNT11 ;
+                    12: next_state = qspi_csb ? PREP_RCNT12 : RCNT12 ;
+                    13: next_state = qspi_csb ? PREP_RCNT13 : RCNT13 ;
+                    14: next_state = qspi_csb ? PREP_RCNT14 : RCNT14 ;
+                    15: next_state = qspi_csb ? PREP_RCNT15 : RCNT15 ;
+                endcase
+            end else
                 next_state = IDLE;
-            else if (wdata[`IP_DMY]) case (wdata[`IP_CNT]) // dummy
-                default: next_state = qspi_csb ? PREP_DCNT16 : DCNT16;
-                1 : next_state = qspi_csb ? PREP_DCNT1  : DCNT1 ;
-                2 : next_state = qspi_csb ? PREP_DCNT2  : DCNT2 ;
-                3 : next_state = qspi_csb ? PREP_DCNT3  : DCNT3 ;
-                4 : next_state = qspi_csb ? PREP_DCNT4  : DCNT4 ;
-                5 : next_state = qspi_csb ? PREP_DCNT5  : DCNT5 ;
-                6 : next_state = qspi_csb ? PREP_DCNT6  : DCNT6 ;
-                7 : next_state = qspi_csb ? PREP_DCNT7  : DCNT7 ;
-                8 : next_state = qspi_csb ? PREP_DCNT8  : DCNT8 ;
-                9 : next_state = qspi_csb ? PREP_DCNT9  : DCNT9 ;
-                10: next_state = qspi_csb ? PREP_DCNT10 : DCNT10;
-                11: next_state = qspi_csb ? PREP_DCNT11 : DCNT11;
-                12: next_state = qspi_csb ? PREP_DCNT12 : DCNT12;
-                13: next_state = qspi_csb ? PREP_DCNT13 : DCNT13;
-                14: next_state = qspi_csb ? PREP_DCNT14 : DCNT14;
-                15: next_state = qspi_csb ? PREP_DCNT15 : DCNT15;
-            endcase else if (wdata[`IP_DIR]) case (wdata[`IP_CNT]) // tx
-                default: next_state = qspi_csb ? PREP_TLOOP : ~txq_empty ? TLOOP : IDLE ;
-                1 : next_state = qspi_csb ? PREP_TCNT1  : TCNT1  ;
-                2 : next_state = qspi_csb ? PREP_TCNT2  : TCNT2  ;
-                3 : next_state = qspi_csb ? PREP_TCNT3  : TCNT3  ;
-                4 : next_state = qspi_csb ? PREP_TCNT4  : TCNT4  ;
-                5 : next_state = qspi_csb ? PREP_TCNT5  : TCNT5  ;
-                6 : next_state = qspi_csb ? PREP_TCNT6  : TCNT6  ;
-                7 : next_state = qspi_csb ? PREP_TCNT7  : TCNT7  ;
-                8 : next_state = qspi_csb ? PREP_TCNT8  : TCNT8  ;
-                9 : next_state = qspi_csb ? PREP_TCNT9  : TCNT9  ;
-                10: next_state = qspi_csb ? PREP_TCNT10 : TCNT10 ;
-                11: next_state = qspi_csb ? PREP_TCNT11 : TCNT11 ;
-                12: next_state = qspi_csb ? PREP_TCNT12 : TCNT12 ;
-                13: next_state = qspi_csb ? PREP_TCNT13 : TCNT13 ;
-                14: next_state = qspi_csb ? PREP_TCNT14 : TCNT14 ;
-                15: next_state = qspi_csb ? PREP_TCNT15 : TCNT15 ;
-            endcase else case (wdata[`IP_CNT]) // rx
-                default: next_state = qspi_csb ? PREP_RLOOP : ~rxq_full ? RLOOP : IDLE ;
-                1 : next_state = qspi_csb ? PREP_RCNT1  : RCNT1  ;
-                2 : next_state = qspi_csb ? PREP_RCNT2  : RCNT2  ;
-                3 : next_state = qspi_csb ? PREP_RCNT3  : RCNT3  ;
-                4 : next_state = qspi_csb ? PREP_RCNT4  : RCNT4  ;
-                5 : next_state = qspi_csb ? PREP_RCNT5  : RCNT5  ;
-                6 : next_state = qspi_csb ? PREP_RCNT6  : RCNT6  ;
-                7 : next_state = qspi_csb ? PREP_RCNT7  : RCNT7  ;
-                8 : next_state = qspi_csb ? PREP_RCNT8  : RCNT8  ;
-                9 : next_state = qspi_csb ? PREP_RCNT9  : RCNT9  ;
-                10: next_state = qspi_csb ? PREP_RCNT10 : RCNT10 ;
-                11: next_state = qspi_csb ? PREP_RCNT11 : RCNT11 ;
-                12: next_state = qspi_csb ? PREP_RCNT12 : RCNT12 ;
-                13: next_state = qspi_csb ? PREP_RCNT13 : RCNT13 ;
-                14: next_state = qspi_csb ? PREP_RCNT14 : RCNT14 ;
-                15: next_state = qspi_csb ? PREP_RCNT15 : RCNT15 ;
-            endcase
-        PREP_TLOOP: next_state = ~txq_empty ? TLOOP : IDLE;
+        PREP_TLOOP  : next_state = ~txq_empty ? TLOOP : IDLE;
         PREP_TCNT15 : next_state = TCNT15;
         PREP_TCNT14 : next_state = TCNT14;
         PREP_TCNT13 : next_state = TCNT13;
@@ -905,7 +1001,7 @@ module qspinor_ip_access_controller(
         PREP_TCNT3  : next_state = TCNT3 ;
         PREP_TCNT2  : next_state = TCNT2 ;
         PREP_TCNT1  : next_state = TCNT1 ;
-        PREP_RLOOP: next_state = ~rxq_full ? RLOOP : IDLE;
+        PREP_RLOOP  : next_state = ~rxq_full ? RLOOP : IDLE;
         PREP_RCNT15 : next_state = RCNT15;
         PREP_RCNT14 : next_state = RCNT14;
         PREP_RCNT13 : next_state = RCNT13;
@@ -937,7 +1033,7 @@ module qspinor_ip_access_controller(
         PREP_DCNT3  : next_state = DCNT3 ;
         PREP_DCNT2  : next_state = DCNT2 ;
         PREP_DCNT1  : next_state = DCNT1 ;
-        TLOOP: next_state = (tx_resp && txq_empty) ? IDLE : TLOOP;
+        TLOOP :  next_state = (tx_resp && txq_empty) ? IDLE : TLOOP;
         TCNT15:  next_state = tx_resp ? TCNT14 : TCNT15;
         TCNT14:  next_state = tx_resp ? TCNT13 : TCNT14;
         TCNT13:  next_state = tx_resp ? TCNT12 : TCNT13;
@@ -953,7 +1049,7 @@ module qspinor_ip_access_controller(
         TCNT3 :  next_state = tx_resp ? TCNT2  : TCNT3 ;
         TCNT2 :  next_state = tx_resp ? TCNT1  : TCNT2 ;
         TCNT1 :  next_state = tx_resp ? IDLE : TCNT1;
-        RLOOP: next_state = (rx_resp && rxq_full) ? IDLE : RLOOP;
+        RLOOP :  next_state = (rx_resp && rxq_full) ? IDLE : RLOOP;
         RCNT15:  next_state = rx_resp ? RCNT14 : RCNT15;
         RCNT14:  next_state = rx_resp ? RCNT13 : RCNT14;
         RCNT13:  next_state = rx_resp ? RCNT12 : RCNT13;
@@ -988,19 +1084,7 @@ module qspinor_ip_access_controller(
         default: next_state = IDLE;
     endcase
 
-    // latch request for data interaction
-    wire[`BUS_WIDTH-1:0]    ipcsr_wdata;
-    dff # (
-        .WIDTH(`BUS_WIDTH),
-        .VALID("async")
-    ) ipcsr_wdata_dff (
-        .clk(clk        ),
-        .vld(req && ~invld && w_rb && state==IDLE),
-        .in (wdata      ),
-        .out(ipcsr_wdata)
-    );
-
-    // control
+    // data interaction control
     assign  width = ipcsr_wdata[`IP_WID];
 
     assign  txq_rdy = ~txq_empty;
@@ -1015,118 +1099,54 @@ module qspinor_ip_access_controller(
     assign  dmy_out_pattern = ipcsr_wdata[`IP_DOP];
 
     always @ (*) case (next_state) // better use assign to propagate x
-        TLOOP: begin tx_req = (req && state==IDLE) || state==PREP_TLOOP || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT15:  begin tx_req = (req && state==IDLE) || state==PREP_TCNT15; rx_req = 0; dmy_req = 0; end
-        TCNT14:  begin tx_req = (req && state==IDLE) || state==PREP_TCNT14 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT13:  begin tx_req = (req && state==IDLE) || state==PREP_TCNT13 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT12:  begin tx_req = (req && state==IDLE) || state==PREP_TCNT12 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT11:  begin tx_req = (req && state==IDLE) || state==PREP_TCNT11 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT10:  begin tx_req = (req && state==IDLE) || state==PREP_TCNT10 || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT9 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT9  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT8 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT8  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT7 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT7  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT6 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT6  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT5 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT5  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT4 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT4  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT3 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT3  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT2 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT2  || tx_resp; rx_req = 0; dmy_req = 0; end
-        TCNT1 :  begin tx_req = (req && state==IDLE) || state==PREP_TCNT1  || tx_resp; rx_req = 0; dmy_req = 0; end
-        RLOOP: begin rx_req = (req && state==IDLE) || state==PREP_RLOOP || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT15:  begin rx_req = (req && state==IDLE) || state==PREP_RCNT15; tx_req = 0; dmy_req = 0; end
-        RCNT14:  begin rx_req = (req && state==IDLE) || state==PREP_RCNT14 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT13:  begin rx_req = (req && state==IDLE) || state==PREP_RCNT13 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT12:  begin rx_req = (req && state==IDLE) || state==PREP_RCNT12 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT11:  begin rx_req = (req && state==IDLE) || state==PREP_RCNT11 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT10:  begin rx_req = (req && state==IDLE) || state==PREP_RCNT10 || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT9 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT9  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT8 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT8  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT7 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT7  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT6 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT6  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT5 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT5  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT4 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT4  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT3 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT3  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT2 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT2  || rx_resp; tx_req = 0; dmy_req = 0; end
-        RCNT1 :  begin rx_req = (req && state==IDLE) || state==PREP_RCNT1  || rx_resp; tx_req = 0; dmy_req = 0; end
-        DCNT16:  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT16; tx_req = 0; rx_req = 0; end
-        DCNT15:  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT14 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT14:  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT14 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT13:  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT13 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT12:  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT12 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT11:  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT11 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT10:  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT10 || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT9 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT9  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT8 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT8  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT7 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT7  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT6 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT6  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT5 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT5  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT4 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT4  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT3 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT3  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT2 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT2  || dmy_resp; tx_req = 0; rx_req = 0; end
-        DCNT1 :  begin dmy_req = (req && state==IDLE) || state==PREP_DCNT1  || dmy_resp; tx_req = 0; rx_req = 0; end
+        TLOOP:   begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TLOOP || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT15:  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT15; rx_req = 0; dmy_req = 0; end
+        TCNT14:  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT14 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT13:  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT13 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT12:  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT12 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT11:  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT11 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT10:  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT10 || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT9 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT9  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT8 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT8  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT7 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT7  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT6 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT6  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT5 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT5  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT4 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT4  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT3 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT3  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT2 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT2  || tx_resp; rx_req = 0; dmy_req = 0; end
+        TCNT1 :  begin tx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_TCNT1  || tx_resp; rx_req = 0; dmy_req = 0; end
+        RLOOP:   begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RLOOP || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT15:  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT15; tx_req = 0; dmy_req = 0; end
+        RCNT14:  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT14 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT13:  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT13 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT12:  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT12 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT11:  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT11 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT10:  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT10 || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT9 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT9  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT8 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT8  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT7 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT7  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT6 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT6  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT5 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT5  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT4 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT4  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT3 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT3  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT2 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT2  || rx_resp; tx_req = 0; dmy_req = 0; end
+        RCNT1 :  begin rx_req  = (normal_seq_req | delayed_seq_req) || state==PREP_RCNT1  || rx_resp; tx_req = 0; dmy_req = 0; end
+        DCNT16:  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT16; tx_req = 0; rx_req = 0; end
+        DCNT15:  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT14 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT14:  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT14 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT13:  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT13 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT12:  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT12 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT11:  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT11 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT10:  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT10 || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT9 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT9  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT8 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT8  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT7 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT7  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT6 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT6  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT5 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT5  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT4 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT4  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT3 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT3  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT2 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT2  || dmy_resp; tx_req = 0; rx_req = 0; end
+        DCNT1 :  begin dmy_req = (normal_seq_req | delayed_seq_req) || state==PREP_DCNT1  || dmy_resp; tx_req = 0; rx_req = 0; end
         default: begin tx_req = 0; rx_req = 0; dmy_req = 0; end
     endcase
-    // // // // END: data interaction with NOR flash
-
-    // resp generation
-    always @ (posedge clk) begin
-        if (~rstn)
-            resp <= 0;
-        else
-            resp <= req & ~invld;
-    end
-
-    // valid req or ignored
-    reg prev_req_invld;
-    always @ (posedge clk)
-        if (~rstn)
-            prev_req_invld <= 0;
-        else if (req && ~invld && addr==0)
-            prev_req_invld <= w_rb && (state!=IDLE);
-
-    // register access
-    reg[15:0]   norcsr;
-    always @ (posedge clk) begin
-        if (~rstn) begin
-            norcsr <= 0;
-            qspi_csb <= 1'b1;
-        end else if (req & ~invld) case (addr)
-            0:
-                if (w_rb) begin
-                    qspi_csb <= ~wdata[`IP_SEL] && (state==IDLE);
-                end else begin
-                    rdata <= {29'd0, prev_req_invld, (state!=IDLE), ~qspi_csb};
-                end
-            3: rdata <= {24'd0, rxq_rd};
-            4: rdata <= {31'd0, ~txq_full};
-            5: rdata <= {31'd0, ~rxq_empty};
-            6:
-                if (w_rb)
-                    norcsr <= wdata[15:0];
-                else
-                    rdata <= norcsr;
-        endcase
-    end
-
-    // cfg out for bus read module
-    // Modes: 0-111 1-112 2-114 3-122 4-144 5-222 6-444
-    assign cfg_cmd_width = (norcsr[`NOR_MODE]==6) ? `QSPINOR_X4 :
-                           (norcsr[`NOR_MODE]==5) ? `QSPINOR_X2 :
-                           /* otherwise */    `QSPINOR_X1;
-    assign cfg_addr_width = (norcsr[`NOR_MODE]==6) ? `QSPINOR_X4 :
-                            (norcsr[`NOR_MODE]==5) ? `QSPINOR_X2 :
-                            (norcsr[`NOR_MODE]==4) ? `QSPINOR_X4 :
-                            (norcsr[`NOR_MODE]==3) ? `QSPINOR_X2 :
-                            /* norcsr[`NOR_MODE] */    `QSPINOR_X1;
-    assign cfg_dmy_width = cfg_addr_width;
-    assign cfg_data_width = (norcsr[`NOR_MODE]==6) ? `QSPINOR_X4 :
-                            (norcsr[`NOR_MODE]==5) ? `QSPINOR_X2 :
-                            (norcsr[`NOR_MODE]==4) ? `QSPINOR_X4 :
-                            (norcsr[`NOR_MODE]==3) ? `QSPINOR_X2 :
-                            (norcsr[`NOR_MODE]==2) ? `QSPINOR_X4 :
-                            (norcsr[`NOR_MODE]==1) ? `QSPINOR_X2 :
-                            /* otherwise */    `QSPINOR_X1;
-    assign  cfg_cmd_octet = norcsr[`NOR_CMD];
-    assign  cfg_dmy_cnt = norcsr[`NOR_DMYCNT];
-    assign  cfg_dmy_dir = norcsr[`NOR_DMYDIR];
-    assign  cfg_dmy_out_pattern = 4'd0;
 endmodule
