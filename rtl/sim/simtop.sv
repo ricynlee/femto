@@ -2,7 +2,7 @@
 `include "simpaths.vh"
 
 module simtop #(
-    parameter NOR_TYPE = "spi", // spi, qspi
+    parameter NOR_TYPE = "qspi", // spi, dpi, qpi, qspi
     parameter HEX_PATH = `HEX_PATH
 );
 
@@ -19,21 +19,39 @@ module simtop #(
     wire nor_csb;
     wire [3:0] nor_sio;
     generate
-        if(NOR_TYPE=="spi") begin
-            spinor norflash(
-                .sck(nor_sck),
-                .csb(nor_csb),
-                .si(nor_sio[0]),
-                .so(nor_sio[1])
+        if (NOR_TYPE=="dpi") begin
+            dpinor norflash(
+                .sck(nor_sck     ),
+                .csb(nor_csb     ),
+                .dio(nor_sio[1:0])
             );
             initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
-        end else begin
+        end else if (NOR_TYPE=="qpi") begin
             qspinor norflash(
                 .sck(nor_sck),
                 .csb(nor_csb),
                 .dio(nor_sio)
             );
             initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
+        end else begin // spi, qspi: MX25L51245G
+            pullup(nor_sio[0]);
+            pullup(nor_sio[1]);
+            pullup(nor_sio[2]);
+            pullup(nor_sio[3]);
+
+            MX25U51245G # (
+                .Init_File({HEX_PATH, "nor-init.hex"})
+            ) norflash (
+                .SCLK (nor_sck   ),
+                .CS   (nor_csb   ),
+                .SI   (nor_sio[0]),
+                .SO   (nor_sio[1]),
+                .WP   (nor_sio[2]),
+                .SIO3 (nor_sio[3]),
+                .RESET(1'b1      )
+            );
+
+            initial #10ns norflash.Status_Reg[6] = 1'b1; // Quad enabled by default
         end
     endgenerate
 
@@ -61,12 +79,19 @@ module simtop #(
 
     // endsim
     always @ (posedge fpga.clk) begin
-        if (fpga.top.tmr_req && fpga.top.bus_wdata=='h50415353) begin
+        if (fpga.top.tmr_req && fpga.top.bus_wdata=="PASS") begin
             $display("PASS");
             $finish(0);
-        end else if (fpga.top.tmr_req && fpga.top.bus_wdata=='h4641494c) begin
+        end else if (fpga.top.tmr_req && fpga.top.bus_wdata=="FAIL") begin
             $display("FAIL");
             $finish(0);
+        end
+    end
+
+    // debug print
+    always @ (posedge fpga.clk) begin
+        if (fpga.top.tmr_req && fpga.top.bus_wdata[31:8]=="PRN") begin
+            $write("%c", fpga.top.bus_wdata[7:0]);
         end
     end
 
@@ -100,47 +125,59 @@ module sram(
 
 endmodule
 
-module spinor( // supports 1-1-1 read operations only
-    input wire  sck,
-    input wire  csb,
-    input wire  si,
-    output reg  so
+module dpinor( // supports 2-2-2 read operations only
+    input wire       sck,
+    input wire       csb,
+    inout wire [1:0] dio
 );
 
     reg [7:0] array[0:511];
 
-    reg [7:0] cmd;
+    reg [7:0]  cmd;
     reg [23:0] addr;
+    reg [1:0]  dir = 0;
+    reg [1:0]  dout;
+    wire [1:0] din;
+
+    generate
+        for (genvar i=0; i<2; i=i+1) begin
+            assign dio[i] = dir[i] ? dout[i] : 1'bz;
+            assign din[i] = dir[i] ? 1'bx : dio[i];
+        end
+    endgenerate
+
     always @ (negedge csb) fork
         begin:spi_comm
             integer i;
-            for(i=7; i>=0; i=i-1)
-                @(posedge sck) cmd[i]=si;
-            $display("CMD=%x", cmd);
+            dir = 2'h0;
+            for(i=6; i>=0; i=i-2)
+                @(posedge sck) cmd[i+:2]=din;
 
-            for(i=23; i>=0; i=i-1)
-                @(posedge sck) addr[i]=si;
-            $display("ADDR=%x DATA=%x", addr, array[addr]);
+            dir = 2'h0;
+            for(i=22; i>=0; i=i-2)
+                @(posedge sck) addr[i+:2]=din;
 
-            for(i=14; i>=0; i=i-1) // 15 dummies
+            dir = 2'h0;
+            for(i=4; i>=0; i=i-1)
                 @(posedge sck);
 
+            #40 dir = 2'h3;
             forever begin
-                for (i=7; i>=0; i=i-1)
-                    @(negedge sck) so = array[addr][i];
+                for (i=6; i>=0; i=i-2)
+                    @(negedge sck) dout[1:0] = array[addr][i+:2];
                 addr=addr+1;
             end
         end
         begin
             @(posedge csb);
-            so <= 1'bx;
+            dir = 2'h0;
             disable spi_comm;
         end
-join
+    join
 
 endmodule
 
-module qspinor( // supports 4-4-4 read operations only
+module qpinor( // supports 4-4-4 read operations only
     input wire       sck,
     input wire       csb,
     inout wire [3:0] dio
@@ -173,7 +210,7 @@ module qspinor( // supports 4-4-4 read operations only
                 @(posedge sck) addr[i+:4]=din;
 
             dir = 4'h0;
-            for(i=9; i>=0; i=i-1)
+            for(i=5; i>=0; i=i-1)
                 @(posedge sck);
 
             #40 dir = 4'hf;

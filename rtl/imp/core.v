@@ -847,7 +847,7 @@ module expander( // conpressed instruction expansion
                         /*in_instr[6:2]!=5'd0*/ {7'b0000000,rs2,rd_rs1,3'b000,rd_rs1,OPCODE_CAL} //c.add
                     )
                 ) :
-                /*funct3==3'b110*/ {{4'd0,in_instr[8:7],in_instr[12]},{2'b01,rd_q_rs2_q},5'd2/*x2*/,3'b010,{in_instr[11:9],2'd0},OPCODE_STORE} //j.swsp
+                /*funct3==3'b110*/ {{4'd0,in_instr[8:7],in_instr[12]},rs2,5'd2/*x2*/,3'b010,{in_instr[11:9],2'd0},OPCODE_STORE} //c.swsp
             ) :
             /* OPCODE_NC */
                 in_instr

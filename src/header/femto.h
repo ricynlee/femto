@@ -13,9 +13,9 @@
     typedef struct {
         volatile unsigned io;
         volatile unsigned dir;
-    } gpio_t;
+    } femto_gpio_t;
 
-    #define GPIO        ((gpio_t*)0x40000000)
+    #define GPIO        ((femto_gpio_t*)0x40000000)
     #define GPIO_BITS   (4u) // valid gpio bits
     #define GPIO_MASK   MASK_WIDTH(GPIO_BITS) // valid gpio bit mask
 
@@ -27,9 +27,9 @@
                        unsigned char :7;
         const volatile unsigned char rxq_rdy:1;
                        unsigned char :7;
-    } uart_t;
+    } femto_uart_t;
 
-    #define UART    ((uart_t*)0x50000000)
+    #define UART    ((femto_uart_t*)0x50000000)
 
 // QSPI NOR
     typedef struct {
@@ -39,9 +39,9 @@
         volatile unsigned char       txqcsr;
         volatile unsigned char       rxqcsr;
         volatile unsigned short      norcsr;
-    } qspinor_t;
+    } femto_qspinor_t;
 
-    #define QSPINOR ((qspinor_t*)0x60000000)
+    #define QSPINOR ((femto_qspinor_t*)0x60000000)
 
     #define QSPINOR_IPCSR_SEL_SHIFT     (0u)
     #define QSPINOR_IPCSR_SEL_MASK      (MASK_WIDTH(1u)<<QSPINOR_IPCSR_SEL_SHIFT)
@@ -93,7 +93,7 @@
     #define QSPINOR_NORCSR_CMD_MASK     (MASK_WIDTH(8u)<<QSPINOR_NORCSR_CMD_SHIFT)
     #define QSPINOR_NORCSR_CMD(v)       (((v) << QSPINOR_NORCSR_CMD_SHIFT) & QSPINOR_NORCSR_CMD_MASK)
 
-    enum nor_mode {
+    enum femto_nor_mode {
         NOR_MODE_111,
         NOR_MODE_112,
         NOR_MODE_114,
@@ -106,18 +106,18 @@
 // TIMER
     typedef struct {
         volatile unsigned   tr;
-    } timer_t;
+    } femto_timer_t;
 
-    #define TIMER ((timer_t*)0x70000000)
+    #define TIMER ((femto_timer_t*)0x70000000)
 
 // RESET
     typedef struct {
         volatile unsigned char  rst;
-    } reset_t;
+    } femto_reset_t;
 
-    #define RESET ((reset_t*)0xf0000000)
+    #define RESET ((femto_reset_t*)0xf0000000)
 
-    enum reset_target {
+    enum femto_reset_target {
         RESET_ALL    ,
         RESET_CORE   ,
         RESET_ROM    ,
