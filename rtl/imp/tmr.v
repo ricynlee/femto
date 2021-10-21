@@ -2,7 +2,9 @@
 `include "timescale.vh"
 
 (* keep_hierarchy = "yes" *)
-module timer_controller (
+module timer_controller # (
+    parameter   DIV = `TMR_DIV // 0<DIV<=65536
+)(
     input wire  clk,
     input wire  rstn, // sync
 
@@ -46,13 +48,31 @@ module timer_controller (
     always @ (posedge clk)
         if (req & ~invld & ~w_rb)
             rdata <= tr;
-    
+
+    reg[15:0]   div;
+    always @ (posedge clk) begin
+        if (~rstn)
+            div <= 0;
+        else if (req & ~invld & w_rb)
+            div <= DIV-1;
+        else if (tr) begin
+            if (div==0)
+                div <= DIV-1;
+            else
+                div <= div-1;
+        end
+        /* // Resetting div is unnecessary but keep the code
+        else
+            div <= 0;
+        */
+    end
+
     always @ (posedge clk) begin
         if (~rstn) begin
             tr <= 0;
         end else if (req & ~invld & w_rb) begin
             tr <= wdata;
-        end else if (tr) begin
+        end else if (tr && !div) begin
             tr <= tr-1;
         end
     end

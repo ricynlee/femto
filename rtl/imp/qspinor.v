@@ -254,7 +254,7 @@ module qspinor_io # (
             if (tx_req) begin
                 if (txq_rdy) begin
                     next_state = TX;
-                    next_cnt = (width==X1) ? 15 : (width==X2) ? 7 : /* X4 */ 1;
+                    next_cnt = (width==X1) ? 15 : (width==X2) ? 7 : /* X4 */ 3;
                 end else begin
                     next_state = WAIT_TXQ;
                     next_cnt = (-1);
@@ -262,7 +262,7 @@ module qspinor_io # (
             end else if (rx_req) begin
                 if (rxq_rdy) begin
                     next_state = RX;
-                    next_cnt = (width==X1) ? 15 : (width==X2) ? 7 : /* X4 */ 1;
+                    next_cnt = (width==X1) ? 15 : (width==X2) ? 7 : /* X4 */ 3;
                 end else begin
                     next_state = WAIT_RXQ;
                     next_cnt = (-1);
@@ -282,7 +282,7 @@ module qspinor_io # (
         end else if (state==WAIT_TXQ) begin
             if (txq_rdy) begin
                 next_state = TX;
-                next_cnt = (width==X1) ? 15 : (width==X2) ? 7 : /* X4 */ 1;
+                next_cnt = (width==X1) ? 15 : (width==X2) ? 7 : /* X4 */ 3;
             end else begin
                 next_state = WAIT_TXQ;
                 next_cnt = (-1);
@@ -290,7 +290,7 @@ module qspinor_io # (
         end else if (state==WAIT_RXQ) begin
             if (rxq_rdy) begin
                 next_state = RX;
-                next_cnt = (width==X1) ? 15 : (width==X2) ? 7 : /* X4 */ 1;
+                next_cnt = (width==X1) ? 15 : (width==X2) ? 7 : /* X4 */ 3;
             end else begin
                 next_state = WAIT_RXQ;
                 next_cnt = (-1);
@@ -600,17 +600,17 @@ module qspinor_bus_read_controller (
     always @ (posedge clk) begin
         if (rx_resp && state==DATA) case (req_acc)
             `BUS_ACC_4B: begin
-                rdata[7:0]   <= (cnt==3) ? rxq_d : rdata[7:0];
-                rdata[15:8]  <= (cnt==2) ? rxq_d : rdata[15:8];
-                rdata[23:16] <= (cnt==1) ? rxq_d : rdata[23:16];
-                rdata[31:24] <= (cnt==0) ? rxq_d : rdata[31:24];
+                if (cnt==3) rdata[7:0]   <= rxq_d;
+                if (cnt==2) rdata[15:8]  <= rxq_d;
+                if (cnt==1) rdata[23:16] <= rxq_d;
+                if (cnt==0) rdata[31:24] <= rxq_d;
             end
             `BUS_ACC_2B: begin
-                rdata[7:0]   <= (cnt==1) ? rxq_d : rdata[7:0];
-                rdata[15:8]  <= (cnt==0) ? rxq_d : rdata[15:8];
+                if (cnt==1) rdata[7:0]  <= rxq_d;
+                if (cnt==0) rdata[15:8] <= rxq_d;
             end
             default: // BUS_ACC_1B
-                rdata[7:0] <= (cnt==0) ? rxq_d : rdata[7:0];
+                if (cnt==0) rdata[7:0] <= rxq_d;
         endcase
     end
 endmodule

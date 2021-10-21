@@ -103,6 +103,12 @@
         NOR_MODE_444,
     };
 
+    enum femto_qspinor_width {
+        QSPINOR_X1,
+        QSPINOR_X2,
+        QSPINOR_X4,
+    };
+
 // TIMER
     typedef struct {
         volatile unsigned   tr;

@@ -87,6 +87,9 @@
 /* uart */
 `define UART_BAUD           (57600)
 
+/* timer */
+`define TMR_DIV             (`SYSCLK_FREQ/1000000)
+
 /* rst */
 `define RST_CORE            (0)
 `define RST_ROM             (1)

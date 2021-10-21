@@ -2,7 +2,6 @@
 `include "simpaths.vh"
 
 module simtop #(
-    parameter NOR_TYPE = "qspi", // spi, dpi, qpi, qspi
     parameter HEX_PATH = `HEX_PATH
 );
 
@@ -17,43 +16,41 @@ module simtop #(
 
     wire nor_sck;
     wire nor_csb;
-    wire [3:0] nor_sio;
-    generate
-        if (NOR_TYPE=="dpi") begin
-            dpinor norflash(
-                .sck(nor_sck     ),
-                .csb(nor_csb     ),
-                .dio(nor_sio[1:0])
-            );
-            initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
-        end else if (NOR_TYPE=="qpi") begin
-            qspinor norflash(
-                .sck(nor_sck),
-                .csb(nor_csb),
-                .dio(nor_sio)
-            );
-            initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
-        end else begin // spi, qspi: MX25L51245G
-            pullup(nor_sio[0]);
-            pullup(nor_sio[1]);
-            pullup(nor_sio[2]);
-            pullup(nor_sio[3]);
+    wire [3:0]  nor_sio;
 
-            MX25U51245G # (
-                .Init_File({HEX_PATH, "nor-init.hex"})
-            ) norflash (
-                .SCLK (nor_sck   ),
-                .CS   (nor_csb   ),
-                .SI   (nor_sio[0]),
-                .SO   (nor_sio[1]),
-                .WP   (nor_sio[2]),
-                .SIO3 (nor_sio[3]),
-                .RESET(1'b1      )
-            );
+    pullup(nor_sio[0]);
+    pullup(nor_sio[1]);
+    pullup(nor_sio[2]);
+    pullup(nor_sio[3]);
 
-            initial #10ns norflash.Status_Reg[6] = 1'b1; // Quad enabled by default
-        end
-    endgenerate
+    localparam  DPI_SEL = 1, QPI_SEL = 2, SPI_SEL = 0;
+    reg[1:0]    norflash_sel = SPI_SEL;
+    dpinor dpinorflash(
+        .sck(nor_sck     ),
+        .csb(nor_csb | (norflash_sel!=DPI_SEL)),
+        .dio(nor_sio[1:0])
+    );
+    initial $readmemh({HEX_PATH, "nor-init.hex"}, dpinorflash.array);
+
+    qpinor qpinorflash(
+        .sck(nor_sck),
+        .csb(nor_csb | (norflash_sel!=QPI_SEL)),
+        .dio(nor_sio)
+    );
+    initial $readmemh({HEX_PATH, "nor-init.hex"}, qpinorflash.array);
+
+    MX25U51245G # (
+        .Init_File({HEX_PATH, "nor-init.hex"})
+    ) spinorflash (
+        .SCLK (nor_sck   ),
+        .CS   (nor_csb | (norflash_sel!=SPI_SEL)),
+        .SI   (nor_sio[0]),
+        .SO   (nor_sio[1]),
+        .WP   (nor_sio[2]),
+        .SIO3 (nor_sio[3]),
+        .RESET(1'b1      )
+    );
+    initial #10ns spinorflash.Status_Reg[6] = 1'b1; // Quad enabled by default
 
     sram sram();
     initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
@@ -88,11 +85,14 @@ module simtop #(
         end
     end
 
-    // debug print
-    always @ (posedge fpga.clk) begin
-        if (fpga.top.tmr_req && fpga.top.bus_wdata[31:8]=="PRN") begin
-            $write("%c", fpga.top.bus_wdata[7:0]);
-        end
+    // nor sel
+    always @ (posedge fpga.clk) if (fpga.top.tmr_req) begin
+        if (fpga.top.bus_wdata=="D2PI")
+            norflash_sel = DPI_SEL;
+        else if (fpga.top.bus_wdata=="Q4PI")
+            norflash_sel = QPI_SEL;
+        else
+            norflash_sel = SPI_SEL;
     end
 
 endmodule
@@ -158,7 +158,7 @@ module dpinor( // supports 2-2-2 read operations only
                 @(posedge sck) addr[i+:2]=din;
 
             dir = 2'h0;
-            for(i=4; i>=0; i=i-1)
+            for(i=7; i>=0; i=i-1)
                 @(posedge sck);
 
             #40 dir = 2'h3;
@@ -210,7 +210,7 @@ module qpinor( // supports 4-4-4 read operations only
                 @(posedge sck) addr[i+:4]=din;
 
             dir = 4'h0;
-            for(i=5; i>=0; i=i-1)
+            for(i=9; i>=0; i=i-1)
                 @(posedge sck);
 
             #40 dir = 4'hf;
