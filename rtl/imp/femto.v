@@ -2,7 +2,7 @@
 `include "femto.vh"
 
 (* keep_hierarchy = "yes" *)
-module top(
+module femto (
     input wire  clk ,
     input wire  rstn,
 
@@ -24,6 +24,7 @@ module top(
 
     // fault signals
     wire    core_fault,
+            bus_fault,
             rom_fault,
             tcm_fault,
             sram_fault,
@@ -76,7 +77,7 @@ module top(
     ) req_acc_dff (
         .clk(clk    ),
         .vld(bus_req),
-        .in (|{core_fault, rom_fault, tcm_fault, sram_fault, nor_fault, gpio_fault, uart_fault, qspinor_fault, tmr_fault, rst_fault}),
+        .in (|{core_fault, bus_fault, rom_fault, tcm_fault, sram_fault, nor_fault, gpio_fault, uart_fault, qspinor_fault, tmr_fault, rst_fault}),
         .out(fault  )
     );
 
@@ -110,6 +111,9 @@ module top(
         .in  ({rom_req_sel, tcm_req_sel, sram_req_sel, nor_req_sel, gpio_req_sel, uart_req_sel, qspinor_req_sel, tmr_req_sel, rst_req_sel}),
         .out ({rom_resp_sel, tcm_resp_sel, sram_resp_sel, nor_resp_sel, gpio_resp_sel, uart_resp_sel, qspinor_resp_sel, tmr_resp_sel, rst_resp_sel})
     );
+
+    // bus fault
+    assign bus_fault = bus_req & ~|{rom_req_sel, tcm_req_sel, sram_req_sel, nor_req_sel, gpio_req_sel, uart_req_sel, qspinor_req_sel, tmr_req_sel, rst_req_sel};
 
     // req, resp and rdata
     wire    rom_req     = bus_req & rom_req_sel    ,

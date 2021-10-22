@@ -55,7 +55,7 @@ module simtop #(
     sram sram();
     initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
 
-    wrapper fpga(
+    wrapper top (
         .sysclk     (clk),
         .sysrst     (rst),
         .led_r      (led[3]),
@@ -75,21 +75,21 @@ module simtop #(
     );
 
     // endsim
-    always @ (posedge fpga.clk) begin
-        if (fpga.top.tmr_req && fpga.top.bus_wdata=="PASS") begin
+    always @ (posedge top.clk) begin
+        if (top.femto.tmr_req && top.femto.bus_wdata=="PASS") begin
             $display("PASS");
             $finish(0);
-        end else if (fpga.top.tmr_req && fpga.top.bus_wdata=="FAIL") begin
+        end else if (top.femto.tmr_req && top.femto.bus_wdata=="FAIL") begin
             $display("FAIL");
             $finish(0);
         end
     end
 
     // nor sel
-    always @ (posedge fpga.clk) if (fpga.top.tmr_req) begin
-        if (fpga.top.bus_wdata=="D2PI")
+    always @ (posedge top.clk) if (top.femto.tmr_req) begin
+        if (top.femto.bus_wdata=="D2PI")
             norflash_sel = DPI_SEL;
-        else if (fpga.top.bus_wdata=="Q4PI")
+        else if (top.femto.bus_wdata=="Q4PI")
             norflash_sel = QPI_SEL;
         else
             norflash_sel = SPI_SEL;

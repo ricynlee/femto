@@ -46,7 +46,7 @@ module wrapper(
         .out(btn   )
     );
 
-    top top (
+    femto femto (
         .clk (clk ),
         .rstn(~rst),
 
