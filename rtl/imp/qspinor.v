@@ -708,11 +708,14 @@ module qspinor_ip_access_controller(
     wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
     assign fault    = req & invld;
 
+    // data interaction busy indicator
+    wire    busy;
+
     // data queues
     wire      txq_w = req & ~invld & (addr==2);
     wire[7:0] txq_wd = wdata[7:0];
     wire      txq_full, txq_empty;
-    wire      txq_clr = req & ~invld & (addr==4) & w_rb & (wdata[`TXQ_CLR]);
+    wire      txq_clr = req & ~invld & (addr==4) & w_rb & wdata[`TXQ_CLR] & ~busy;
 
     wire      txq_r;
     wire[7:0] txq_rd_raw, txq_rd;
@@ -745,7 +748,7 @@ module qspinor_ip_access_controller(
     wire      rxq_r = req & ~invld & (addr==3);
     wire[7:0] rxq_rd;
     wire      rxq_empty, rxq_full;
-    wire      rxq_clr = req & ~invld & (addr==5) & w_rb & (wdata[`RXQ_CLR]);
+    wire      rxq_clr = req & ~invld & (addr==5) & w_rb & wdata[`RXQ_CLR] & ~busy;
 
     wire      rxq_w;
     wire[7:0] rxq_wd;
@@ -766,11 +769,8 @@ module qspinor_ip_access_controller(
         .full (rxq_full)
     );
 
-    // data interaction busy indicator
-    wire    busy;
-    wire    seq_req = req && ~invld && w_rb && addr==0;
-
     // latch request for data interaction
+    wire    seq_req = req && ~invld && w_rb && addr==0;
     reg[15:0]   queued_ipcsr_wdata;
     reg         queued;
     always @ (posedge clk) begin

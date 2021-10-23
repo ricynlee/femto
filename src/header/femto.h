@@ -23,13 +23,20 @@
     typedef struct {
         volatile unsigned char       txd;
         const volatile unsigned char rxd;
-        const volatile unsigned char txq_rdy:1;
-                       unsigned char :7;
-        const volatile unsigned char rxq_rdy:1;
-                       unsigned char :7;
+        const volatile unsigned char txqsr;
+        volatile unsigned char       rxqcsr;
     } femto_uart_t;
 
     #define UART    ((femto_uart_t*)0x50000000)
+
+    #define UART_TXQSR_RDY_SHIFT    (0u)
+    #define UART_TXQSR_RDY_MASK     (MASK_WIDTH(1u)<<UART_TXQSR_RDY_SHIFT)
+
+    #define UART_RXQCSR_RDY_SHIFT   (0u)
+    #define UART_RXQCSR_RDY_MASK    (MASK_WIDTH(1u)<<UART_RXQCSR_RDY_SHIFT)
+
+    #define UART_RXQCSR_CLR_SHIFT   (1u)
+    #define UART_RXQCSR_CLR_MASK    (MASK_WIDTH(1u)<<UART_RXQCSR_CLR_SHIFT)
 
 // QSPI NOR
     typedef struct {

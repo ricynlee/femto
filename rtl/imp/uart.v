@@ -24,14 +24,19 @@ module uart_controller(
      *  Name    | Address | Size | Access | Note
      *  TXD     | 0       | 1    | W      | -
      *  RXD     | 1       | 1    | R      | -
-     *  TXQ_RDY | 2       | 1    | R      | TXQ not full
-     *  RXQ_RDY | 3       | 1    | R      | RXQ not empty
+     *  TXQSR   | 2       | 1    | R      | -
+     *  RXQCSR  | 3       | 1    | R/W    | -
+     *
+     * TXQSR
+     *  (7:1) | RDY(0)
+     * RXQCSR
+     *  (7:2) | CLR(1) | RDY(0)
      */
 
     // fault generation
     wire invld_addr = 0;
     wire invld_acc  = (acc != `BUS_ACC_1B);
-    wire invld_wr   = (addr ? w_rb : ~w_rb);
+    wire invld_wr   = ((addr==0 && ~w_rb) || ((addr==1 || addr==2) && w_rb));
     wire invld_d    = 0;
 
     wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
@@ -47,7 +52,7 @@ module uart_controller(
     end
 
     // uart t/r interface
-    wire uart_rxq_empty, uart_txq_full;
+    wire uart_rxq_empty, uart_rxq_clr, uart_txq_full;
     wire uart_tx_req, uart_rx_req;
     wire [7:0] uart_rx_data;
     wire [7:0] uart_tx_data = wdata[7:0];
@@ -58,6 +63,7 @@ module uart_controller(
         .rx  (rx  ),
         .tx  (tx  ),
         .rxq_empty(uart_rxq_empty),
+        .rxq_clr  (uart_rxq_clr  ),
         .txq_full (uart_txq_full ),
         .recv_resp(uart_rx_req   ),
         .send_req (uart_tx_req   ),
@@ -67,17 +73,14 @@ module uart_controller(
 
     assign uart_tx_req=(req & ~invld) && (addr==0) && w_rb;
     assign uart_rx_req=(req & ~invld) && (addr==1) && ~w_rb;
+    assign uart_rxq_clr=(req & ~invld) && (addr==3) && w_rb && wdata[1];
 
     always @ (posedge clk) begin
-        if (req & ~invld & ~w_rb) begin
-            if (addr==1) begin
-                rdata[7:0] <= uart_rx_data;
-            end else if (addr==2) begin
-                rdata[7:0] <= {7'd0, ~uart_txq_full};
-            end else if (addr==3) begin
-                rdata[7:0] <= {7'd0, ~uart_rxq_empty};
-            end
-        end
+        if (req & ~invld & ~w_rb) case (addr)
+            1: rdata[7:0] <= uart_rx_data;
+            2: rdata[7:0] <= {7'd0, ~uart_txq_full};
+            3: rdata[7:0] <= {7'd0, ~uart_rxq_empty};
+        endcase
     end
 endmodule
 
@@ -91,6 +94,7 @@ module uart_transceiver(
 
     // Rx user interface
     output wire         rxq_empty,
+    input wire          rxq_clr,
     input wire          recv_resp,
     output wire[7:0]    recv_data,
 
@@ -104,8 +108,9 @@ module uart_transceiver(
     wire[7:0]   uart_rx_fetch_data;
 
     fifo # (
-        .WIDTH(8),
-        .DEPTH(8)
+        .WIDTH(8               ),
+        .DEPTH(`UART_FIFO_DEPTH),
+        .CLEAR("sync"          )
     ) uart_rx_fifo (
         .clk  (clk               ),
         .rstn (rstn              ),
@@ -113,7 +118,8 @@ module uart_transceiver(
         .dout (recv_data         ),
         .w    (uart_rx_fetch_trig),
         .r    (recv_resp         ),
-        .empty(rxq_empty         )
+        .empty(rxq_empty         ),
+        .clr  (rxq_clr           )
     );
 
     uart_rx ur(
@@ -131,8 +137,8 @@ module uart_transceiver(
     wire uart_tx_idle;
 
     fifo # (
-        .WIDTH(8),
-        .DEPTH(8)
+        .WIDTH(8               ),
+        .DEPTH(`UART_FIFO_DEPTH)
     ) uart_tx_fifo (
         .clk  (clk              ),
         .rstn (rstn             ),
