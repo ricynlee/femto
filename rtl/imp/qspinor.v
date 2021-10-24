@@ -748,7 +748,7 @@ module qspinor_ip_access_controller(
     wire      rxq_r = req & ~invld & (addr==3);
     wire[7:0] rxq_rd;
     wire      rxq_empty, rxq_full;
-    wire      rxq_clr = req & ~invld & (addr==5) & w_rb & wdata[`RXQ_CLR] & ~busy;
+    wire      rxq_clr = req & ~invld & (addr==5) & w_rb & wdata[`RXQ_CLR];
 
     wire      rxq_w;
     wire[7:0] rxq_wd;
