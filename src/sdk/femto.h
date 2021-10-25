@@ -3,6 +3,11 @@
 
     #define MASK_WIDTH(n) (((1u << ((n)-1))<<1u)-1u) /* 1<=n<=32 */
 
+    enum femto_io_dir {
+        DIR_IN,
+        DIR_OUT,
+    };
+
 // Mem
     #define ROM     0x00000000u
     #define TCM     0x10000000u

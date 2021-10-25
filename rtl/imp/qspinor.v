@@ -720,8 +720,8 @@ module qspinor_ip_access_controller(
     wire      txq_r;
     wire[7:0] txq_rd_raw, txq_rd;
     fifo # (
-        .WIDTH(8),
-        .DEPTH(16),
+        .WIDTH(8                  ),
+        .DEPTH(`QSPINOR_FIFO_DEPTH),
         .CLEAR("sync")
     ) qspinor_txq (
         .clk  (clk ),
@@ -754,8 +754,8 @@ module qspinor_ip_access_controller(
     wire[7:0] rxq_wd;
 
     fifo # (
-        .WIDTH(8),
-        .DEPTH(16),
+        .WIDTH(8                  ),
+        .DEPTH(`QSPINOR_FIFO_DEPTH),
         .CLEAR("sync")
     ) qspinor_rxq (
         .clk  (clk ),
@@ -861,9 +861,9 @@ module qspinor_ip_access_controller(
 
     // data interaction state control
     localparam  IDLE       = 0 ,
-                PREP_TLOOP = 1 ,
+                PREP_TLOOP = 1 , // wait for CS or FIFO
                 PREP_TCNT  = 2 ,
-                PREP_RLOOP = 3 ,
+                PREP_RLOOP = 3 , // wait for CS or FIFO
                 PREP_RCNT  = 4 ,
                 PREP_DCNT  = 5 ,
                 TLOOP      = 6 ,
@@ -888,7 +888,7 @@ module qspinor_ip_access_controller(
 
     always @ (*) case (state)
         IDLE:
-            if (delayed_seq_req | seq_req) begin
+            if ((delayed_seq_req | normal_seq_req) & ipcsr_wdata[`IP_SEL]) begin
                 if (ipcsr_wdata[`IP_DMY]) begin // dummy
                     next_state = qspi_csb ? PREP_DCNT : DCNT;
                     next_cnt = ipcsr_wdata[`IP_CNT] ? ipcsr_wdata[`IP_CNT] : 16;
@@ -897,7 +897,7 @@ module qspinor_ip_access_controller(
                         next_state = qspi_csb ? PREP_TCNT : TCNT;
                         next_cnt = ipcsr_wdata[`IP_CNT];
                     end else begin
-                        next_state = qspi_csb ? PREP_TLOOP : ~txq_empty ? TLOOP : IDLE;
+                        next_state = (qspi_csb | txq_empty) ? PREP_TLOOP : TLOOP;
                         next_cnt = 0;
                     end
                 end else begin // rx
@@ -905,7 +905,7 @@ module qspinor_ip_access_controller(
                         next_state = qspi_csb ? PREP_RCNT : RCNT;
                         next_cnt = ipcsr_wdata[`IP_CNT];
                     end else begin
-                        next_state = qspi_csb ? PREP_RLOOP : ~rxq_full ? RLOOP : IDLE;
+                        next_state = (qspi_csb | rxq_full) ? PREP_RLOOP : RLOOP;
                         next_cnt = 0;
                     end
                 end
@@ -914,7 +914,7 @@ module qspinor_ip_access_controller(
                 next_cnt = 0;
             end
         PREP_TLOOP: begin
-            next_state = ~txq_empty ? TLOOP : IDLE;
+            next_state = txq_empty ? PREP_TLOOP : TLOOP;
             next_cnt = 0;
         end
         PREP_TCNT: begin
@@ -922,7 +922,7 @@ module qspinor_ip_access_controller(
             next_cnt = cnt;
         end
         PREP_RLOOP: begin
-            next_state = ~rxq_full ? RLOOP : IDLE;
+            next_state = rxq_full ? PREP_RLOOP : RLOOP;
             next_cnt = 0;
         end
         PREP_RCNT: begin

@@ -88,6 +88,9 @@
 `define UART_BAUD           (57600)
 `define UART_FIFO_DEPTH     (8)
 
+/* qspinor */
+`define QSPINOR_FIFO_DEPTH  (16)
+
 /* timer */
 `define TMR_DIV             (`SYSCLK_FREQ/1000000)
 
