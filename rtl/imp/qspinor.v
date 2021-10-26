@@ -35,20 +35,15 @@ module qspinor_controller(
     output wire[3:0]    qspi_mosi,
     input wire[3:0]     qspi_miso
 );
-
-    wire[1:0]   nor_width,           qspinor_width;
     wire        nor_tx_req,          qspinor_tx_req;
+    wire[1:0]   nor_width,           qspinor_width;
     wire        nor_txq_rdy,         qspinor_txq_rdy;
     wire[7:0]   nor_txq_d,           qspinor_txq_d;
-    wire        nor_tx_resp,         qspinor_tx_resp;
     wire        nor_rx_req,          qspinor_rx_req;
     wire        nor_rxq_rdy,         qspinor_rxq_rdy;
-    wire[7:0]   nor_rxq_d,           qspinor_rxq_d;
-    wire        nor_rx_resp,         qspinor_rx_resp;
     wire        nor_dmy_req,         qspinor_dmy_req;
     wire        nor_dmy_dir,         qspinor_dmy_dir;
     wire[3:0]   nor_dmy_out_pattern, qspinor_dmy_out_pattern;
-    wire        nor_dmy_resp,        qspinor_dmy_resp;
     wire        nor_qspi_csb,        qspinor_qspi_csb;
 
     wire[1:0]   cfg_cmd_width;
@@ -59,6 +54,18 @@ module qspinor_controller(
     wire[3:0]   cfg_dmy_cnt;
     wire        cfg_dmy_dir;
     wire[3:0]   cfg_dmy_out_pattern;
+
+    wire        io_tx_req = qspinor_tx_req | nor_tx_req,
+                io_rx_req = qspinor_rx_req | nor_rx_req,
+                io_dmy_req = qspinor_dmy_req | nor_dmy_req;
+    wire[1:0]   io_width = nor_qspi_csb ? qspinor_width : nor_width;
+    wire        io_txq_rdy = nor_qspi_csb ? qspinor_txq_rdy : nor_txq_rdy,
+                io_rxq_rdy = nor_qspi_csb ? qspinor_rxq_rdy : nor_rxq_rdy;
+    wire[7:0]   io_txq_d = nor_qspi_csb ? qspinor_txq_d : nor_txq_d;
+    wire        io_dmy_dir = nor_qspi_csb ? qspinor_dmy_dir : nor_dmy_dir;
+    wire[3:0]   io_dmy_out_pattern = nor_qspi_csb ? qspinor_dmy_out_pattern : nor_dmy_out_pattern;
+    wire        io_tx_resp, io_rx_resp, io_dmy_resp;
+    wire[7:0]   io_rxq_d;
 
     qspinor_bus_read_controller qspinor_bus_read_controller (
         .clk (clk     ),
@@ -73,6 +80,7 @@ module qspinor_controller(
         .resp (nor_resp ),
         .fault(nor_fault),
 
+        .status_qspinor_csb (qspinor_qspi_csb   ),
         .cfg_cmd_width      (cfg_cmd_width      ),
         .cfg_addr_width     (cfg_addr_width     ),
         .cfg_dmy_width      (cfg_dmy_width      ),
@@ -86,15 +94,15 @@ module qspinor_controller(
         .tx_req         (nor_tx_req         ),
         .txq_rdy        (nor_txq_rdy        ),
         .txq_d          (nor_txq_d          ),
-        .tx_resp        (nor_tx_resp        ),
+        .tx_resp        (io_tx_resp         ),
         .rx_req         (nor_rx_req         ),
         .rxq_rdy        (nor_rxq_rdy        ),
-        .rxq_d          (nor_rxq_d          ),
-        .rx_resp        (nor_rx_resp        ),
+        .rxq_d          (io_rxq_d           ),
+        .rx_resp        (io_rx_resp         ),
         .dmy_req        (nor_dmy_req        ),
         .dmy_dir        (nor_dmy_dir        ),
         .dmy_out_pattern(nor_dmy_out_pattern),
-        .dmy_resp       (nor_dmy_resp       ),
+        .dmy_resp       (io_dmy_resp       ),
 
         .qspi_csb(nor_qspi_csb)
     );
@@ -125,45 +133,18 @@ module qspinor_controller(
         .tx_req         (qspinor_tx_req         ),
         .txq_rdy        (qspinor_txq_rdy        ),
         .txq_d          (qspinor_txq_d          ),
-        .tx_resp        (qspinor_tx_resp        ),
+        .tx_resp        (io_tx_resp             ),
         .rx_req         (qspinor_rx_req         ),
         .rxq_rdy        (qspinor_rxq_rdy        ),
-        .rxq_d          (qspinor_rxq_d          ),
-        .rx_resp        (qspinor_rx_resp        ),
+        .rxq_d          (io_rxq_d               ),
+        .rx_resp        (io_rx_resp             ),
         .dmy_req        (qspinor_dmy_req        ),
         .dmy_dir        (qspinor_dmy_dir        ),
         .dmy_out_pattern(qspinor_dmy_out_pattern),
-        .dmy_resp       (qspinor_dmy_resp       ),
+        .dmy_resp       (io_dmy_resp            ),
 
         .qspi_csb(qspinor_qspi_csb)
     );
-
-    wire[1:0]   io_width;
-    wire        io_tx_req, io_rx_req, io_dmy_req;
-    wire        io_txq_rdy, io_rxq_rdy;
-    wire[7:0]   io_txq_d, io_rxq_d;
-    wire        io_tx_resp, io_rx_resp, io_dmy_resp;
-    wire        io_dmy_dir;
-    wire[3:0]   io_dmy_out_pattern;
-
-    assign nor_tx_resp = ~nor_qspi_csb & io_tx_resp;
-    assign qspinor_tx_resp = ~qspinor_qspi_csb & io_tx_resp;
-    assign nor_rx_resp = ~nor_qspi_csb & io_rx_resp;
-    assign qspinor_rx_resp = ~qspinor_qspi_csb & io_rx_resp;
-    assign nor_dmy_resp = ~nor_qspi_csb & io_dmy_resp;
-    assign qspinor_dmy_resp = ~qspinor_qspi_csb & io_dmy_resp;
-    assign nor_rxq_d = io_rxq_d;
-    assign qspinor_rxq_d = io_rxq_d;
-
-    assign io_width           = nor_qspi_csb ? qspinor_width           : nor_width          ;
-    assign io_tx_req          = nor_qspi_csb ? qspinor_tx_req          : nor_tx_req         ;
-    assign io_txq_rdy         = nor_qspi_csb ? qspinor_txq_rdy         : nor_txq_rdy        ;
-    assign io_txq_d           = nor_qspi_csb ? qspinor_txq_d           : nor_txq_d          ;
-    assign io_rx_req          = nor_qspi_csb ? qspinor_rx_req          : nor_rx_req         ;
-    assign io_rxq_rdy         = nor_qspi_csb ? qspinor_rxq_rdy         : nor_rxq_rdy        ;
-    assign io_dmy_req         = nor_qspi_csb ? qspinor_dmy_req         : nor_dmy_req        ;
-    assign io_dmy_dir         = nor_qspi_csb ? qspinor_dmy_dir         : nor_dmy_dir        ;
-    assign io_dmy_out_pattern = nor_qspi_csb ? qspinor_dmy_out_pattern : nor_dmy_out_pattern;
 
     qspinor_io qspinor_io (
         .clk (clk                    ),
@@ -191,8 +172,8 @@ module qspinor_controller(
         .qspi_mosi(qspi_mosi),
         .qspi_miso(qspi_miso)
     );
-    assign  qspi_csb = nor_qspi_csb & qspinor_qspi_csb;
 
+    assign  qspi_csb = nor_qspi_csb & qspinor_qspi_csb;
 endmodule
 
 // qspi nor master
@@ -391,7 +372,9 @@ module qspinor_bus_read_controller (
     output reg                      resp,
     output wire                     fault,
 
-    // cfg from qspinor_ip_access_controller
+    // cfg/status from qspinor_ip_access_controller
+    input wire          status_qspinor_csb,
+
     input wire[1:0]     cfg_cmd_width,
     input wire[1:0]     cfg_addr_width,
     input wire[1:0]     cfg_dmy_width,
@@ -421,7 +404,7 @@ module qspinor_bus_read_controller (
     input wire          dmy_resp,
 
     // cs
-    output wire qspi_csb
+    output reg  qspi_csb
 );
     // fault generation
     wire invld_addr = 0;
@@ -447,11 +430,12 @@ module qspinor_bus_read_controller (
 
     // state
     localparam  IDLE  = 0,
-                PREP  = 1,
-                CMD   = 2,
-                ADDR  = 3,
-                DMY   = 4,
-                DATA  = 5;
+                WAIT  = 1,
+                PREP  = 2,
+                CMD   = 3,
+                ADDR  = 4,
+                DMY   = 5,
+                DATA  = 6;
 
     reg[7:0]    state, next_state;
     reg[7:0]    cnt, next_cnt;
@@ -468,12 +452,26 @@ module qspinor_bus_read_controller (
     always @ (*) case (state)
         IDLE:
             if (req & ~invld) begin
-                next_state = PREP;
-                next_cnt = 0;
+                next_state = WAIT;
+                next_cnt = 1; // keep csb hi for a while in case of a narrow positive pulse
             end else begin
                 next_state = IDLE;
                 next_cnt = 0;
             end
+        WAIT: begin
+            if (status_qspinor_csb) begin
+                if (cnt==0) begin
+                    next_state = PREP;
+                    next_cnt = 0;
+                end else begin
+                    next_state = WAIT;
+                    next_cnt = cnt-1;
+                end
+            end else begin
+                next_state = WAIT;
+                next_cnt = cnt;
+            end
+        end
         PREP: begin
             next_state = CMD;
             next_cnt = 0;
@@ -537,7 +535,14 @@ module qspinor_bus_read_controller (
     endcase
 
     // control
-    assign qspi_csb = state==IDLE;
+    always @ (posedge clk) begin
+        if (~rstn)
+            qspi_csb <= 1;
+        else if (next_state==IDLE)
+            qspi_csb <= 1;
+        else if (next_state==PREP)
+            qspi_csb <= 0;
+    end
 
     always @ (*) case (next_state) // better use assign to propagate x
         CMD: begin
@@ -675,9 +680,9 @@ module qspinor_ip_access_controller(
      * IPCSR
      *  DUMMY_OUT_PATTERN(15:12) | COUNT(11:8) | WIDTH(7:6) | DUMMY(5) | DIR(4) | (3:2) | BUSY(1) | SEL(0)
      * TXQCSR
-     *  (7:2) | CLR(1) | RDY(0)
+     *  CLR(7) | WSCNT(6:0)
      * RXQCSR
-     *  (7:2) | CLR(1) | RDY(0)
+     *  CLR(7) | RSCNT(6:0)
      * NORCSR
      *  CMD(15:8) | DUMMY_COUNT(7:4) | DUMMY_DIR(3) | MODE(2:0)
      */
@@ -691,8 +696,8 @@ module qspinor_ip_access_controller(
     `define IP_BSY      1
     `define IP_SEL      0
 
-    `define TXQ_CLR     1
-    `define RXQ_CLR     1
+    `define TXQ_CLR     7
+    `define RXQ_CLR     7
 
     `define NOR_CMD     15:8
     `define NOR_DMYCNT  7:4
@@ -769,6 +774,28 @@ module qspinor_ip_access_controller(
         .full (rxq_full)
     );
 
+    reg[6:0] wscnt, rscnt; // writable/readable slot cnt
+    always @ (posedge clk) begin
+        if (~rstn) begin
+            wscnt <= `QSPINOR_FIFO_DEPTH;
+            rscnt <= 0;
+        end else begin
+            if (txq_clr)
+                wscnt <= `QSPINOR_FIFO_DEPTH;
+            else case ({txq_w&~txq_full, txq_r&~txq_empty})
+                2'b01: wscnt<=wscnt+1;
+                2'b10: wscnt<=wscnt-1;
+            endcase
+
+            if (rxq_clr)
+                rscnt <= 0;
+            else case ({rxq_w&~rxq_full, rxq_r&~rxq_empty})
+                2'b01: rscnt<=rscnt-1;
+                2'b10: rscnt<=rscnt+1;
+            endcase
+        end
+    end
+
     // latch request for data interaction
     wire    seq_req = req && ~invld && w_rb && addr==0;
     reg[15:0]   queued_ipcsr_wdata;
@@ -818,8 +845,8 @@ module qspinor_ip_access_controller(
         else if (req & ~invld) case (addr)
             0: rdata <= {30'd0, busy, ~qspi_csb};
             3: rdata <= {24'd0, rxq_rd};
-            4: rdata <= {31'd0, ~txq_full};
-            5: rdata <= {31'd0, ~rxq_empty};
+            4: rdata <= {25'd0, wscnt};
+            5: rdata <= {25'd0, rscnt};
             6:
                 if (w_rb)
                     norcsr <= wdata[15:0];
