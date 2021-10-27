@@ -25,7 +25,7 @@ extern bool uart_tx_ready(void);
 
 extern void uart_clear_rx_fifo(void);
 
-extern bool uart_read_fifo(uint8_t* ptr_d);
+extern bool uart_read_fifo(uint8_t* const ptr_d);
 extern bool uart_write_fifo(uint8_t d);
 
 extern void uart_block_receive(uint8_t const* buf, size_t n);
@@ -39,7 +39,7 @@ extern bool qspinor_tx_ready(void);
 
 extern void qspinor_clear_fifo(bool rx, bool tx);
 
-extern bool qspinor_read_fifo(uint8_t* ptr_d);
+extern bool qspinor_read_fifo(uint8_t* const ptr_d);
 extern bool qspinor_write_fifo(uint8_t d);
 
 typedef enum {
