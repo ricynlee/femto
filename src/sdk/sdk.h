@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "femto.h"
 
 // NOR
 typedef enum femto_nor_mode nor_mode_t;
@@ -12,12 +13,12 @@ extern void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no);
 // GPIO
 typedef enum femto_io_dir gpio_dir_t;
 
-extern gpio_dir_t gpio_get_dir(uint32_t pin_index);
-extern void gpio_set_dir(uint32_t pin_index, gpio_dir_t dir);
+extern gpio_dir_t gpio_get_dir(uint8_t pin_index);
+extern void gpio_set_dir(uint8_t pin_index, gpio_dir_t dir);
 
-extern bool gpio_get(uint32_t pin_index);
-extern void gpio_set(uint32_t pin_index, bool level);
-extern void gpio_tog(uint32_t pin_index);
+extern bool gpio_get(uint8_t pin_index);
+extern void gpio_set(uint8_t pin_index, bool level);
+extern void gpio_tog(uint8_t pin_index);
 
 // UART
 extern bool uart_rx_ready(void);

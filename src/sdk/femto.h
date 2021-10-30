@@ -113,6 +113,8 @@
         NOR_MODE_144,
         NOR_MODE_222,
         NOR_MODE_444,
+        NOR_MODE_LLIM = NOR_MODE_111,
+        NOR_MODE_ULIM = NOR_MODE_444,
     };
 
     enum femto_qspinor_width {
