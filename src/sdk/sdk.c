@@ -110,5 +110,51 @@ void uart_block_send(const uint8_t* const buf, size_t n) {
 }
 
 // QSPINOR
+bool qspinor_rx_ready(void) {
+    return (QSPINOR->rxqcsr & QSPINOR_RXQCSR_CNT_MASK) ? true : false;
+}
 
-// TODO
+bool qspinor_tx_ready(void) {
+    return (QSPINOR->txqcsr & QSPINOR_RXQCSR_CNT_MASK) ? true : false;
+}
+
+void qspinor_clear_fifo(bool rx, bool tx) {
+    if (rx) {
+        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+    }
+    if (tx) {
+        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
+    }
+}
+
+bool qspinor_read_fifo(uint8_t* const ptr_d) {
+    if (!ptr_d) {
+        return false;
+    }
+
+    if (qspinor_rx_ready()) {
+        *ptr_d = QSPINOR->rxd;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool qspinor_write_fifo(uint8_t d) {
+    if (qspinor_tx_ready()) {
+        QSPINOR->txd = d;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool qspinor_busy(void) {
+    if (QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+// TODO: not finished yet
