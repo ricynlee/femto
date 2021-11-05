@@ -157,4 +157,84 @@ bool qspinor_busy(void) {
     }
 }
 
-// TODO: not finished yet
+void qspinor_fifo_send(uint8_t n, qspinor_width_t width) {
+    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK     |
+                     QSPINOR_IPCSR_DIR(DIR_OUT) |
+                     QSPINOR_IPCSR_WID(width)   |
+                     QSPINOR_IPCSR_CNT(n)       ;
+}
+
+void qspinor_fifo_receive(uint8_t n, qspinor_width_t width) {
+    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK     |
+                     QSPINOR_IPCSR_DIR(DIR_IN)  |
+                     QSPINOR_IPCSR_WID(width)   |
+                     QSPINOR_IPCSR_CNT(n)       ;
+}
+
+void qspinor_dummy_cycle(uint8_t n, qspinor_width_t width) {
+    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK     |
+                     QSPINOR_IPCSR_DMY_MASK     |
+                     QSPINOR_IPCSR_DIR(DIR_OUT) |
+                     QSPINOR_IPCSR_WID(width)   |
+                     QSPINOR_IPCSR_CNT(n)       ;
+}
+
+void qspinor_stop(void) {
+    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK & ~QSPINOR_IPCSR_SEL_MASK;
+}
+
+void qspinor_block_receive(uint8_t* const buf, size_t n) {
+    size_t i=0;
+
+    while (i<n) {
+        size_t e = i+QSPINOR_RXQCSR_CNT(QSPINOR->rxqcsr);
+        for (e=(n<e?n:e); i<e; i++) {
+            buf[i] = QSPINOR->rxd;
+        }
+    }
+}
+
+void qspinor_block_send(const uint8_t* const buf, size_t n) {
+    size_t i=0;
+
+    while (i<n) {
+        size_t e = i+QSPINOR_TXQCSR_CNT(QSPINOR->txqcsr);
+        for (e=(n<e?n:e); i<e; i++) {
+            QSPINOR->txd = buf[i];
+        }
+    }
+}
+
+// TIMER
+void timer_set(uint32_t val) {
+    TIMER->tr = val;
+}
+
+uint32_t timer_get(void) {
+    return TIMER->tr;
+}
+
+// RESET
+void reset_soc(void) {
+    RESET->rst = RESET_ALL;
+}
+
+void reset_core(void) {
+    RESET->rst = RESET_CORE;
+}
+
+void reset_uart(void) {
+    RESET->rst = RESET_UART;
+}
+
+void reset_gpio(void) {
+    RESET->rst = RESET_GPIO;
+}
+
+void reset_qspinor(void) {
+    RESET->rst = RESET_QSPINOR;
+}
+
+void reset_timer(void) {
+    RESET->rst = RESET_TIMER;
+}

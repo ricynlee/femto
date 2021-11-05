@@ -51,7 +51,7 @@ typedef enum {
 extern bool qspinor_busy(void);
 extern void qspinor_fifo_send(uint8_t n, qspinor_width_t width);
 extern void qspinor_fifo_receive(uint8_t n, qspinor_width_t width);
-extern void qspinor_dummy_cycle(uint8_t n);
+extern void qspinor_dummy_cycle(uint8_t n, qspinor_width_t width);
 extern void qspinor_stop(void);
 
 extern void qspinor_block_receive(uint8_t* const buf, size_t n);
