@@ -5,18 +5,18 @@ set_property -dict {PACKAGE_PIN L17 IOSTANDARD LVCMOS33} [get_ports sysclk]
 ## QSPI NOR
 # set_property -dict {PACKAGE_PIN E19 IOSTANDARD LVCMOS33} [get_ports qspi_sck]
 # set_property -dict {PACKAGE_PIN K19 IOSTANDARD LVCMOS33} [get_ports qspi_csb]
-# set_property -dict {PACKAGE_PIN D18 IOSTANDARD LVCMOS33} [get_ports {qspi_data[0]}]
-# set_property -dict {PACKAGE_PIN D19 IOSTANDARD LVCMOS33} [get_ports {qspi_data[1]}]
-# set_property -dict {PACKAGE_PIN G18 IOSTANDARD LVCMOS33} [get_ports {qspi_data[2]}]
-# set_property -dict {PACKAGE_PIN F18 IOSTANDARD LVCMOS33} [get_ports {qspi_data[3]}]
+# set_property -dict {PACKAGE_PIN D18 IOSTANDARD LVCMOS33} [get_ports {qspi_sio[0]}]
+# set_property -dict {PACKAGE_PIN D19 IOSTANDARD LVCMOS33} [get_ports {qspi_sio[1]}]
+# set_property -dict {PACKAGE_PIN G18 IOSTANDARD LVCMOS33} [get_ports {qspi_sio[2]}]
+# set_property -dict {PACKAGE_PIN F18 IOSTANDARD LVCMOS33} [get_ports {qspi_sio[3]}]
 
 ## DSPI NOR
-set_property -dict { PACKAGE_PIN H17   IOSTANDARD LVCMOS33 } [get_ports {qspi_data[0]}]
-set_property -dict { PACKAGE_PIN H19   IOSTANDARD LVCMOS33 } [get_ports {qspi_data[1]}]
+set_property -dict { PACKAGE_PIN H17   IOSTANDARD LVCMOS33 } [get_ports {qspi_sio[0]}]
+set_property -dict { PACKAGE_PIN H19   IOSTANDARD LVCMOS33 } [get_ports {qspi_sio[1]}]
 set_property -dict { PACKAGE_PIN J19   IOSTANDARD LVCMOS33 } [get_ports qspi_sck]
 set_property -dict { PACKAGE_PIN K18   IOSTANDARD LVCMOS33 } [get_ports qspi_csb]
-set_property -dict { PACKAGE_PIN G17   IOSTANDARD LVCMOS33 } [get_ports {qspi_data[2]}]; # place holder
-set_property -dict { PACKAGE_PIN G19   IOSTANDARD LVCMOS33 } [get_ports {qspi_data[3]}]; # place holder
+set_property -dict { PACKAGE_PIN G17   IOSTANDARD LVCMOS33 } [get_ports {qspi_sio[2]}]; # place holder
+set_property -dict { PACKAGE_PIN G19   IOSTANDARD LVCMOS33 } [get_ports {qspi_sio[3]}]; # place holder
 
 ## LEDs
 set_property -dict {PACKAGE_PIN B17 IOSTANDARD LVCMOS33} [get_ports {led_b}]
