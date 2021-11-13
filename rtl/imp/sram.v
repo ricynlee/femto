@@ -1,6 +1,5 @@
 `include "timescale.vh"
 
-(* keep_hierarchy = "yes" *)
 module sram_controller(
     input wire  clk,  // <100MHz
     input wire  rstn, // sync

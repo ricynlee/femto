@@ -1,6 +1,5 @@
 `include "timescale.vh"
 
-(* keep_hierarchy = "yes" *)
 module gpio_controller(
     input wire  clk,
     input wire  rstn,
@@ -53,7 +52,7 @@ module gpio_controller(
         end else if (req) begin
             if (addr==0) begin
                 if (~w_rb) begin // read io
-                    rdata_r <= i;
+                    rdata_r <= ((dir^{`GPIO_WIDTH{`IOR_DIR_IN}}) & o) | ((dir^{`GPIO_WIDTH{`IOR_DIR_OUT}}) & i);
                 end else begin // write io
                     o <= wdata[`GPIO_WIDTH-1:0];
                 end

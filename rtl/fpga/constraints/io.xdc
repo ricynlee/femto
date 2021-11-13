@@ -25,8 +25,8 @@ set_property -dict {PACKAGE_PIN C17 IOSTANDARD LVCMOS33} [get_ports {led_r}]
 # set_property -dict {PACKAGE_PIN C16 IOSTANDARD LVCMOS33} [get_ports fault]
 
 ## Buttons
-set_property -dict {PACKAGE_PIN A18 IOSTANDARD LVCMOS33} [get_ports {button}]
-set_property -dict {PACKAGE_PIN B18 IOSTANDARD LVCMOS33} [get_ports sysrst]
+set_property -dict {PACKAGE_PIN B18 IOSTANDARD LVCMOS33} [get_ports {button}]
+set_property -dict {PACKAGE_PIN A18 IOSTANDARD LVCMOS33} [get_ports sysrst]
 
 ## UART
 set_property -dict {PACKAGE_PIN J18 IOSTANDARD LVCMOS33} [get_ports uart_tx]

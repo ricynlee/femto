@@ -1,6 +1,5 @@
 `include "timescale.vh"
 
-(*keep_hierarchy="true"*)
 // fpga wrapper - this is not part of the mcu
 module wrapper(
     input wire  sysclk,
@@ -68,15 +67,19 @@ module wrapper(
 
 endmodule
 
-(*keep_hierarchy="true"*)
 module deglitcher (
     input wire  clk,
     input wire  in,
     output wire out
 );
     (*asyc_reg="true"*) reg[2:0]    v = 3'b000;
-    always @ (posedge clk)
-        v <= {v[1:0], in};
+    reg[10:0] cnt;
+    always @ (posedge clk) begin
+        cnt <= cnt+1;
+
+        if (cnt==0)
+            v <= {v[1:0], in};
+    end
 
     assign  out = (v==3'b000 || v==3'b001 || v==3'b010 || v==3'b100) ? 1'b0 : 1'b1;
 endmodule

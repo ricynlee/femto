@@ -1,7 +1,6 @@
 `include "femto.vh"
 `include "timescale.vh"
 
-(* keep_hierarchy = "yes" *)
 module timer_controller # (
     parameter   DIV = `TMR_DIV // 0<DIV<=65536
 )(

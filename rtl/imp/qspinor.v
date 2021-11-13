@@ -1,7 +1,6 @@
 `include "femto.vh"
 `include "timescale.vh"
 
-(* keep_hierarchy = "yes" *)
 module qspinor_controller(
     input wire  clk,
 

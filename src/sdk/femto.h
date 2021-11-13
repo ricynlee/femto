@@ -8,6 +8,10 @@
         DIR_OUT,
     };
 
+    typedef _Bool bool;
+    #define false (0)
+    #define true  (1)
+
 // Mem
     #define ROM     0x00000000u
     #define TCM     0x10000000u

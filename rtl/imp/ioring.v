@@ -1,7 +1,6 @@
 `include "timescale.vh"
 `include "simpaths.vh"
 
-(* keep_hierarchy = "yes" *)
 module ioring(
     // from/to modules
     input wire[`GPIO_WIDTH-1:0]     gpio_dir,

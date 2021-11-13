@@ -7,7 +7,7 @@
 void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no) {
     if ((int)mode<(int)NOR_MODE_LLIM) {
         mode = NOR_MODE_LLIM;
-    } else ((int)mode>(int)NOR_MODE_ULIM) {
+    } else if ((int)mode>(int)NOR_MODE_ULIM) {
         mode = NOR_MODE_ULIM;
     }
 
