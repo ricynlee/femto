@@ -130,6 +130,8 @@
         QSPINOR_X4,
     };
 
+    #define QSPINOR_FIFO_DEPTH  (16u)
+
 // TIMER
     typedef struct {
         volatile unsigned   tr;

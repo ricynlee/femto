@@ -34,28 +34,26 @@ extern void uart_block_send(const uint8_t* const buf, size_t n);
 
 // QSPINOR
 typedef enum femto_qspinor_width qspinor_width_t;
-
-extern bool qspinor_rx_ready(void);
-extern bool qspinor_tx_ready(void);
-
-extern void qspinor_clear_fifo(bool rx, bool tx);
-
-extern bool qspinor_read_fifo(uint8_t* const ptr_d);
-extern bool qspinor_write_fifo(uint8_t d);
-
 typedef enum {
     WHOLE_FIFO = 0, // send until fifo empty, or receive until fifo full
     DMY_CNT_16 = 0, // 0 stands for 16 dummy cycles
 } qspinor_cmd_cnt_t;
 
-extern bool qspinor_busy(void);
-extern void qspinor_fifo_send(uint8_t n, qspinor_width_t width);
-extern void qspinor_fifo_receive(uint8_t n, qspinor_width_t width);
-extern void qspinor_dummy_cycle(uint8_t n, qspinor_width_t width);
+extern bool qspinor_rxq_ready(void);
+extern bool qspinor_txq_ready(void);
+extern void qspinor_clear_rxq(void);
+extern void qspinor_clear_txq(void);
+extern bool qspinor_read_rxq(uint8_t* const ptr_d);
+extern bool qspinor_write_txq(uint8_t d);
+
+extern bool qspinor_is_busy(void);
+extern void qspinor_receive_data(uint8_t n, qspinor_width_t width);
+extern void qspinor_send_data(uint8_t n, qspinor_width_t width);
+extern void qspinor_send_dummy_cycle(uint8_t n, qspinor_width_t width);
 extern void qspinor_stop(void);
 
-extern void qspinor_block_receive(uint8_t* const buf, size_t n);
-extern void qspinor_block_send(const uint8_t* const buf, size_t n);
+extern void qspinor_blocking_receive_data(uint8_t* const buf, size_t n, qspinor_width_t width);
+extern void qspinor_blocking_send_data(const uint8_t* const buf, size_t n, qspinor_width_t width);
 
 // TIMER
 extern void timer_set(uint32_t val);

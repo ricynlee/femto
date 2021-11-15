@@ -5,7 +5,8 @@
 
 // Qspinor
 extern void nor_bus_read_init(void);
-extern void nor_erase(size_t start, size_t size);
+extern void nor_erase_1MB(void);
+extern void nor_erase_all(void);
 extern void nor_program(size_t start, size_t size, const uint8_t* const data);
 extern void nor_read(size_t start, size_t size, uint8_t* const data);
 

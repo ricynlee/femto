@@ -1,6 +1,13 @@
 #include "bsdk.h"
 
 // Qspinor
+void nor_bus_read_init(void) {
+    nor_init(NOR_MODE_122, 0xbbu, 4);
+}
+
+void nor_erase_1MB(void) {
+
+}
 
 // Gpio
 enum {
