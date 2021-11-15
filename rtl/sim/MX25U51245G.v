@@ -139,7 +139,7 @@ module MX25U51245G( SCLK,
                 tPGBUF_RST      = 40,   // Page buffer reset time
                 tBP             = 25_000,      //  Byte program time
                 tSE             = 25_000_000,      // Sector erase time  
-                tBE             = 220_000_000,      // Block erase time
+                tBE             = 220_000,      // Block erase time
                 tBE32           = 150_000_000,    // Block 32KB erase time
                 tCE             = 150_000,      // unit is ms instead of ns  
                 tPP             = 150_000,      // Program time
