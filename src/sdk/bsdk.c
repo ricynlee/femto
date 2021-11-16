@@ -15,14 +15,14 @@ void nor_erase_block(size_t block_offset) {
     offset_converter_t offset = {.offset_n = block_offset*(64u*1024u)};
     uint8_t status;
 
-    qspinor_stop();
+    qspinor_finish();
     qspinor_clear_txq();
     qspinor_clear_rxq();
 
     // Send WREN
     qspinor_write_txq(0x06u);
     qspinor_send_data(1u, QSPINOR_X1);
-    qspinor_stop();
+    qspinor_finish();
 
     // Send erasure command
     timer_set(10u);
@@ -31,7 +31,7 @@ void nor_erase_block(size_t block_offset) {
     for (int i=2; i>=0; i--)
         qspinor_write_txq(offset.offset_a[i]);
     qspinor_send_data(4u, QSPINOR_X1);
-    qspinor_stop();
+    qspinor_finish();
 
     // Wait for finish
     do {
@@ -40,30 +40,30 @@ void nor_erase_block(size_t block_offset) {
         qspinor_write_txq(0x05u);
         qspinor_send_data(1u, QSPINOR_X1);
         qspinor_receive_data(1u, QSPINOR_X1);
-        qspinor_stop();
+        qspinor_finish();
         qspinor_read_rxq(&status);
     } while(status & 0x1u);
 }
 
-void nor_program(size_t page_offset, const uint8_t* const data, size_t size) {
+void nor_program(size_t start_page_offset, const uint8_t* const data, size_t size) {
     if (!data || !size)
         return;
 
-    offset_converter_t offset = {.offset_n = page_offset*256u};
+    offset_converter_t offset = {.offset_n = start_page_offset*256u};
     uint8_t status;
     size_t k = 0, n;
 
     while (size) {
         n = size>256u ? 256u : size;
 
-        qspinor_stop();
+        qspinor_finish();
         qspinor_clear_txq();
         qspinor_clear_rxq();
 
         // Send WREN
         qspinor_write_txq(0x06u);
         qspinor_send_data(1u, QSPINOR_X1);
-        qspinor_stop();
+        qspinor_finish();
 
         // Send page program command & data
         timer_set(10u);
@@ -72,8 +72,8 @@ void nor_program(size_t page_offset, const uint8_t* const data, size_t size) {
         for (int i=2; i>=0; i--)
             qspinor_write_txq(offset.offset_a[i]);
         qspinor_send_data(4u, QSPINOR_X1);
-        qspinor_blocking_send_data(data+k, n, QSPINOR_X1);
-        qspinor_stop();
+        qspinor_send_blob(data+k, n, QSPINOR_X1);
+        qspinor_finish();
 
         // Wait for finish
         do {
@@ -82,7 +82,7 @@ void nor_program(size_t page_offset, const uint8_t* const data, size_t size) {
             qspinor_write_txq(0x05u);
             qspinor_send_data(1u, QSPINOR_X1);
             qspinor_receive_data(1u, QSPINOR_X1);
-            qspinor_stop();
+            qspinor_finish();
             qspinor_read_rxq(&status);
         } while(status & 0x1u);
 
@@ -97,7 +97,7 @@ void nor_read(size_t byte_offset, uint8_t* const data, size_t size) {
 
     offset_converter_t offset = {.offset_n = byte_offset};
 
-    qspinor_stop();
+    qspinor_finish();
     qspinor_clear_txq();
     qspinor_clear_rxq();
 
@@ -114,8 +114,8 @@ void nor_read(size_t byte_offset, uint8_t* const data, size_t size) {
     qspinor_send_dummy_cycle(4u, QSPINOR_X2);
 
     // Receive data
-    qspinor_blocking_receive_data(data, size, QSPINOR_X2);
-    qspinor_stop();
+    qspinor_receive_blob(data, size, QSPINOR_X2);
+    qspinor_finish();
 }
 
 // Gpio

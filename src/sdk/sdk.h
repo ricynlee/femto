@@ -29,8 +29,8 @@ extern void uart_clear_rx_fifo(void);
 extern bool uart_read_fifo(uint8_t* const ptr_d);
 extern bool uart_write_fifo(uint8_t d);
 
-extern void uart_block_receive(uint8_t* const buf, size_t n);
-extern void uart_block_send(const uint8_t* const buf, size_t n);
+extern void uart_receive_blob(uint8_t* const buf, size_t n);
+extern void uart_send_blob(const uint8_t* const buf, size_t n);
 
 // QSPINOR
 typedef enum femto_qspinor_width qspinor_width_t;
@@ -50,10 +50,10 @@ extern bool qspinor_is_busy(void);
 extern void qspinor_receive_data(uint8_t n, qspinor_width_t width);
 extern void qspinor_send_data(uint8_t n, qspinor_width_t width);
 extern void qspinor_send_dummy_cycle(uint8_t n, qspinor_width_t width);
-extern void qspinor_stop(void);
+extern void qspinor_finish(void);
 
-extern void qspinor_blocking_receive_data(uint8_t* const buf, size_t n, qspinor_width_t width);
-extern void qspinor_blocking_send_data(const uint8_t* const buf, size_t n, qspinor_width_t width);
+extern void qspinor_receive_blob(uint8_t* const buf, size_t n, qspinor_width_t width);
+extern void qspinor_send_blob(const uint8_t* const buf, size_t n, qspinor_width_t width);
 
 // TIMER
 extern void timer_set(uint32_t val);

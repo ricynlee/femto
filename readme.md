@@ -24,12 +24,11 @@ femto
       - ut_core: 处理器核仿真验证
 - src: 软件代码
   - imp: 引导程序/Flashloader/示例应用程序
-    - bsdk: 板卡适配的软件开发包
     - rom: Bootloader工程
     - flashloader: flashloader工程
     - app: 简单的测试应用
   - linker: 关键ld连接脚本
-  - sdk: 软件开发包
+  - sdk: 软件开发包/板级软件开发包
   - tools: 脚本工具
   - ut_soc: SoC仿真验证程序
 - clean.bat: 清理运行环境

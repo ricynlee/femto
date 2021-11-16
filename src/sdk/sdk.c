@@ -97,13 +97,13 @@ bool uart_write_fifo(uint8_t d) {
     }
 }
 
-void uart_block_receive(uint8_t* const buf, size_t n) {
+void uart_receive_blob(uint8_t* const buf, size_t n) {
     for (size_t i=0; i<n; i++) {
         while (!uart_read_fifo(buf+i));
     }
 }
 
-void uart_block_send(const uint8_t* const buf, size_t n) {
+void uart_send_blob(const uint8_t* const buf, size_t n) {
     for (size_t i=0; i<n; i++) {
         while (!uart_write_fifo(buf[i]));
     }
@@ -170,7 +170,6 @@ void qspinor_send_data(uint8_t n, qspinor_width_t width) {
                      QSPINOR_IPCSR_CNT(n)       ;
 }
 
-
 void qspinor_send_dummy_cycle(uint8_t n, qspinor_width_t width) {
     QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK     |
                      QSPINOR_IPCSR_DMY_MASK     |
@@ -179,11 +178,11 @@ void qspinor_send_dummy_cycle(uint8_t n, qspinor_width_t width) {
                      QSPINOR_IPCSR_CNT(n)       ;
 }
 
-void qspinor_stop(void) {
+void qspinor_finish(void) {
     QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK & ~QSPINOR_IPCSR_SEL_MASK;
 }
 
-void qspinor_blocking_receive_data(uint8_t* const buf, size_t n, qspinor_width_t width) {
+void qspinor_receive_blob(uint8_t* const buf, size_t n, qspinor_width_t width) {
     if (!buf || !n)
         return;
 
@@ -205,7 +204,7 @@ void qspinor_blocking_receive_data(uint8_t* const buf, size_t n, qspinor_width_t
     qspinor_clear_rxq();
 }
 
-void qspinor_blocking_send_data(const uint8_t* const buf, size_t n, qspinor_width_t width) {
+void qspinor_send_blob(const uint8_t* const buf, size_t n, qspinor_width_t width) {
     if (!buf || !n)
         return;
 
