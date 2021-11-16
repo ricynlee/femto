@@ -806,7 +806,7 @@ module expander( // conpressed instruction expansion
     assign out_instr =
         undef_instr_c ? {`ILEN{1'b0}} : (
             (opcode==OPCODE_C0) ? (
-                funct3==3'b000 ? {{2'd0,in_instr[10:7],in_instr[12:11],in_instr[4],in_instr[5],2'd0},5'd2/*x2*/,3'b000,{2'b01,rd_q_rs2_q},OPCODE_IMMCAL} : //c.addi4spn
+                funct3==3'b000 ? {{2'd0,in_instr[10:7],in_instr[12:11],in_instr[5],in_instr[6],2'd0},5'd2/*x2*/,3'b000,{2'b01,rd_q_rs2_q},OPCODE_IMMCAL} : //c.addi4spn
                 funct3==3'b010 ? {{5'd0,in_instr[5],in_instr[12:10],in_instr[6],2'd0},{2'b01,rd_q_rs1_q},3'b010,{2'b01,rd_q_rs2_q},OPCODE_LOAD} : //c.lw
                 /*funct3==3'b110*/ {{5'd0,in_instr[5],in_instr[12]},{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b010,{in_instr[11:10],in_instr[6],2'd0},OPCODE_STORE} //c.sw
             ) :
@@ -882,7 +882,7 @@ module pipeline( // SR
             s1[0] <= 1'b0;
             s2[0] <= 1'b0;
         end else if (clr) begin
-            s1[`ILEN+`XLEN+2-1:1] <= {(`ILEN+`XLEN+1){1'bx}};
+            s1[`ILEN+`XLEN+2-1:1] <= {(`ILEN+`XLEN+1){1'b0}};
             s1[0] <= 1'b0;
             // s2[0] <= 1'b0; // clr, i.e. jmp, should not clear ex/wb stage's vld flag
         end else if (hld) begin

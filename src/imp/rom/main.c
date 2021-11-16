@@ -12,4 +12,5 @@ void main() {
     nor_program(0u, wdata, sizeof(wdata));
     light_leds(false, false, true);
     nor_read(0u, rdata, sizeof(wdata));
+    while(1);
 }

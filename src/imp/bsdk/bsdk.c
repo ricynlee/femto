@@ -102,19 +102,19 @@ void nor_read(size_t byte_offset, uint8_t* const data, size_t size) {
     qspinor_clear_rxq();
 
     // Send command
-    qspinor_write_txq(0xd8u);
+    qspinor_write_txq(0xbbu);
     qspinor_send_data(1u, QSPINOR_X1);
 
     // Send address
     for (int i=2; i>=0; i--)
         qspinor_write_txq(offset.offset_a[i]);
-    qspinor_send_data(1u, QSPINOR_X4);
+    qspinor_send_data(3u, QSPINOR_X2);
 
     // Send dummy cycles
-    qspinor_send_dummy_cycle(4u, QSPINOR_X4);
+    qspinor_send_dummy_cycle(4u, QSPINOR_X2);
 
     // Receive data
-    qspinor_blocking_receive_data(data, size, QSPINOR_X4);
+    qspinor_blocking_receive_data(data, size, QSPINOR_X2);
     qspinor_stop();
 }
 
