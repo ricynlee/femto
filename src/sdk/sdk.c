@@ -71,11 +71,11 @@ bool uart_tx_ready(void) {
     return (UART->txqsr & UART_TXQSR_RDY_MASK) ? true : false;
 }
 
-void uart_clear_rx_fifo(void) {
+void uart_clear_rxq(void) {
     UART->rxqcsr = UART_RXQCSR_CLR_MASK;
 }
 
-bool uart_read_fifo(uint8_t* const ptr_d) {
+bool uart_read_rxq(uint8_t* const ptr_d) {
     if (!ptr_d) {
         return false;
     }
@@ -88,7 +88,7 @@ bool uart_read_fifo(uint8_t* const ptr_d) {
     }
 }
 
-bool uart_write_fifo(uint8_t d) {
+bool uart_write_txq(uint8_t d) {
     if (uart_tx_ready()) {
         UART->txd = d;
         return true;
@@ -99,13 +99,13 @@ bool uart_write_fifo(uint8_t d) {
 
 void uart_receive_blob(uint8_t* const buf, size_t n) {
     for (size_t i=0; i<n; i++) {
-        while (!uart_read_fifo(buf+i));
+        while (!uart_read_rxq(buf+i));
     }
 }
 
 void uart_send_blob(const uint8_t* const buf, size_t n) {
     for (size_t i=0; i<n; i++) {
-        while (!uart_write_fifo(buf[i]));
+        while (!uart_write_txq(buf[i]));
     }
 }
 

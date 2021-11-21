@@ -6,7 +6,7 @@ void go_nor_boot(void);
 void main(void) {
     // wait ~16 sec for uart activity
     gpio_init();
-    uart_clear_rx_fifo();
+    uart_clear_rxq();
 
     for (int t=0; t<16; t++) {
         for (int dc=0; dc<64; dc++) {
@@ -50,7 +50,7 @@ void go_uart_boot(void) {
 
     do {
         while (uart_rx_ready()) {
-            uart_read_fifo(sram++);
+            uart_read_rxq(sram++);
             timer_set(512u*1024u); // ~0.5s time out
         }
     } while (timer_get());

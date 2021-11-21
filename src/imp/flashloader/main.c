@@ -6,7 +6,7 @@
         char debug_buffer[256];                                         \
         int ret = sprintf(debug_buffer, __VA_ARGS__);                   \
         for (int i=0; i<sizeof(debug_buffer) && debug_buffer[i]; i++) { \
-            while(!uart_write_fifo(debug_buffer[i]));                   \
+            while(!uart_write_txq(debug_buffer[i]));                    \
         }                                                               \
         ret;                                                            \
     })

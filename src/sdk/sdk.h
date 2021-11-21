@@ -24,10 +24,10 @@ extern void gpio_tog(uint8_t pin_index);
 extern bool uart_rx_ready(void);
 extern bool uart_tx_ready(void);
 
-extern void uart_clear_rx_fifo(void);
+extern void uart_clear_rxq(void);
 
-extern bool uart_read_fifo(uint8_t* const ptr_d);
-extern bool uart_write_fifo(uint8_t d);
+extern bool uart_read_rxq(uint8_t* const ptr_d);
+extern bool uart_write_txq(uint8_t d);
 
 extern void uart_receive_blob(uint8_t* const buf, size_t n);
 extern void uart_send_blob(const uint8_t* const buf, size_t n);
