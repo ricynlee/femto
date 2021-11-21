@@ -4,28 +4,18 @@ void go_uart_boot(void);
 void go_nor_boot(void);
 
 void main(void) {
-    // wait 16 sec for uart activity
+    // wait ~16 sec for uart activity
     gpio_init();
     uart_clear_rx_fifo();
 
-    for (int t=0; t<8; t++) {
+    for (int t=0; t<16; t++) {
         for (int dc=0; dc<64; dc++) {
             for (int c=0; c<64; c++) {
                 timer_set(256u);
                 while (timer_get())
                     if (uart_rx_ready())
                         goto done_waiting;
-                light_leds(false, c<dc, false);
-            }
-        }
-
-        for (int dc=0; dc<64; dc++) {
-            for (int c=0; c<64; c++) {
-                timer_set(256u);
-                while (timer_get())
-                    if (uart_rx_ready())
-                        goto done_waiting;
-                light_leds(false, c>=dc, false);
+                light_leds(false, (t & 0x1u) ? (c>=dc) : (c<dc), false);
             }
         }
     }

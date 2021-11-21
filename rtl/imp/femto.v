@@ -1,6 +1,7 @@
 `include "timescale.vh"
 `include "femto.vh"
 
+(*keep_hierarchy="true"*)
 module femto (
     input wire  clk ,
     input wire  rstn,
