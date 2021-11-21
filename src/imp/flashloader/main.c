@@ -1,61 +1,50 @@
+#include "bsdk.h"
 #include <stdio.h>
-#include "femto.h"
-#include "qspinor.h"
-
-gpio_t* const gpio = GPIO;
-uart_t* const uart = UART;
-
-// GPIO
-#define BIT(n)  (1<<(n))
-#define RED     BIT(1)
-#define GREEN   BIT(2)
-#define BLUE    BIT(3)
-
-/*
- entry
- */
-#include "../nor.h" // XIP image
-#define SIZE_3MB    (0x00300000u)
 
 #define debug_printf(...) \
     ({                                                                  \
         char debug_buffer[256];                                         \
         int ret = sprintf(debug_buffer, __VA_ARGS__);                   \
         for (int i=0; i<sizeof(debug_buffer) && debug_buffer[i]; i++) { \
-            while(uart->txq_full);                                      \
-            uart->txd = debug_buffer[i];                                \
+            while(!uart_rx_ready());                                    \
+            uart_write_fifo(debug_buffer[i]);                           \
         }                                                               \
         ret;                                                            \
     })
 
-void main() {
-    // restore_spi();
-    // quad_enable();
-    if ((*(int*)(QSPINOR_DATA+SIZE_3MB)) != (*(int*)image)) {
-        debug_printf("Flash is being correctly programmed\n");
-        erase(QSPINOR_DATA+SIZE_3MB, sizeof(image));
-        program(QSPINOR_DATA+SIZE_3MB, image, sizeof(image));
-    }
+void main(void) {
+    light_leds(false, true, false);
+    timer_set(1024u*256u);
+    while (timer_get());
+    light_leds(false, false, false);
+    timer_set(1024u*256u);
+    while (timer_get());
+    light_leds(false, true, false);
+    timer_set(1024u*256u);
+    while (timer_get());
+    light_leds(false, false, false);
+    timer_set(1024u*256u);
+    while (timer_get());
+    light_leds(false, true, false);
+    timer_set(1024u*256u);
+    while (timer_get());
+    light_leds(false, false, false);
 
-    // Jump to QSPINOR
-    gpio->io=0;
-    gpio->dir=GREEN;
-    
-    for (int i=0; i<36; i++) {
-        gpio->io = GREEN ^ gpio->io;
-        for (int i=0; i<60000; i++);
-    }
+    debug_printf("Hello, world!\n");
 
-    gpio->dir = 0;
-    gpio->io = 0;
+    gpio_init();
 
-    for (int i=0; i<64; i++) {
-        debug_printf("%d: 0x%02x\n", i, ((char*)(QSPINOR_DATA+SIZE_3MB))[i]);
-    }
-
-    void (* const app)(void) = (void (*)(void))(QSPINOR_DATA+SIZE_3MB);
-
-    app();
-
-    while(1);
+    while (1)
+        for (int t=0; t<2; t++) {
+            for (int dc=0; dc<64; dc++)
+                for (int c=0; c<64; c++) {
+                    timer_set(192u);
+                    while (timer_get());
+                    light_leds((t & 0x1u) ? (c>dc) : (c<=dc), false, false);
+                }
+            if (t & 0x1u) {
+                timer_set(1024u*256u);
+                while (timer_get());
+            }
+        }
 }
