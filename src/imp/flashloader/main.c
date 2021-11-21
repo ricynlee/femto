@@ -6,30 +6,12 @@
         char debug_buffer[256];                                         \
         int ret = sprintf(debug_buffer, __VA_ARGS__);                   \
         for (int i=0; i<sizeof(debug_buffer) && debug_buffer[i]; i++) { \
-            while(!uart_rx_ready());                                    \
-            uart_write_fifo(debug_buffer[i]);                           \
+            while(!uart_write_fifo(debug_buffer[i]));                   \
         }                                                               \
         ret;                                                            \
     })
 
 void main(void) {
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
-
     debug_printf("Hello, world!\n");
 
     gpio_init();
