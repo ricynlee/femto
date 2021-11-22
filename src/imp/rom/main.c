@@ -45,6 +45,16 @@ void main(void) {
     while(1);
 }
 
+void led_flash_before_boot(void) {
+    for (int i=0; i<3; i++) {
+        for (int b=0; b<=1; b++) {
+            light_leds(false, !b, false);
+            timer_set(1024u*256u);
+            while (timer_get());
+        }
+    }
+}
+
 void go_uart_boot(void) {
     uint8_t* sram = (uint8_t*)SRAM;
 
@@ -57,22 +67,7 @@ void go_uart_boot(void) {
 
     void (* const func)(void) = (void (*)(void))(SRAM);
 
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
+    led_flash_before_boot();
 
     func();
 }
@@ -81,22 +76,7 @@ void go_nor_boot(void) {
     nor_bus_read_init();
     void (* const func)(void) = (void (*)(void))(NOR);
 
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, true, false);
-    timer_set(1024u*256u);
-    while (timer_get());
-    light_leds(false, false, false);
+    led_flash_before_boot();
 
     func();
 }

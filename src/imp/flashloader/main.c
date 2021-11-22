@@ -47,13 +47,13 @@ void main(void) {
 
     do {
         while (uart_rx_ready()) {
-            uart_read_rxq(&buffer[n]);
+            uart_read_rxq(&buffer[n++]);
             timer_set(512u*1024u); // ~0.5s time out
         }
     } while (timer_get());
 
     // write nor
-    debug_printf("Got data. Erasing NOR...\n");
+    debug_printf("Got %d bytes. Erasing NOR...\n", n);
     for (int i=0; i<(n+64u*1024u-1u)/(64u*1024u); i++)
         nor_erase_block(i);
 

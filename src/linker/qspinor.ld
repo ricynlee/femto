@@ -22,6 +22,7 @@ SECTIONS
   } > sram
   PROVIDE(__stack_pointer = .);
   PROVIDE(__global_pointer = $sram_begin + 0x800);
+  PROVIDE(end = .); /* for malloc, etc. */
 
   . = $nor_begin;
   .text (.):

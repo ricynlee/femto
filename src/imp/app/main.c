@@ -1,19 +1,29 @@
-#include "femto.h"
+#include "bsdk.h"
+#include <stdio.h>
 
-gpio_t* const gpio = GPIO;
-uart_t* const uart = UART;
+#define debug_printf(...) \
+    ({                                                                  \
+        char debug_buffer[256];                                         \
+        int ret = sprintf(debug_buffer, __VA_ARGS__);                   \
+        for (int i=0; i<sizeof(debug_buffer) && debug_buffer[i]; i++) { \
+            while(!uart_write_txq(debug_buffer[i]));                    \
+        }                                                               \
+        ret;                                                            \
+    })
 
-#define BIT(n)  (1<<(n))
-#define RED     BIT(1)
-#define GREEN   BIT(2)
-#define BLUE    BIT(3)
-
-void main() {
-    gpio->dir=BLUE;
-    gpio->io =BLUE;
-
-    while (1) {
-        for (int i=0; i<5000; i++);
-        gpio->io = BLUE^gpio->io;
-    }
+void main(void) {
+    debug_printf("This is a test application\n");
+    while (1)
+        for (int t=0; t<2; t++) {
+            for (int dc=0; dc<64; dc++)
+                for (int c=0; c<64; c++) {
+                    timer_set(192u);
+                    while (timer_get());
+                    light_leds(false, false, (t & 0x1u) ? (c>dc) : (c<=dc));
+                }
+            if (t & 0x1u) {
+                timer_set(1024u*256u);
+                while (timer_get());
+            }
+        }
 }
