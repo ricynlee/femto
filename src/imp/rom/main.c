@@ -30,8 +30,7 @@ void main(void) {
     done_waiting:
 
     // led off
-    timer_set(8u); // do not cause a glitch
-    while (timer_get());
+    timer_delay_us(8u); // do not cause a glitch
     light_leds(false, false, false);
 
     // boot flow
@@ -49,8 +48,7 @@ void led_flash_before_boot(void) {
     for (int i=0; i<3; i++) {
         for (int b=0; b<=1; b++) {
             light_leds(false, !b, false);
-            timer_set(1024u*256u);
-            while (timer_get());
+            timer_delay_us(1024u*256u);
         }
     }
 }

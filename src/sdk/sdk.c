@@ -234,6 +234,11 @@ uint32_t timer_get(void) {
     return TIMER->tr;
 }
 
+void timer_delay_us(uint32_t val) {
+    timer_set(val);
+    while(timer_get());
+}
+
 // RESET
 void reset_soc(void) {
     RESET->rst = RESET_ALL;

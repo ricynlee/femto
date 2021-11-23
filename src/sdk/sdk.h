@@ -58,6 +58,7 @@ extern void qspinor_send_blob(const uint8_t* const buf, size_t n, qspinor_width_
 // TIMER
 extern void timer_set(uint32_t val);
 extern uint32_t timer_get(void);
+extern void timer_delay_us(uint32_t val);
 
 // RESET
 extern void reset_soc(void);

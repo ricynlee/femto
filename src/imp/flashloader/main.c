@@ -37,8 +37,7 @@ void main(void) {
 
     done_waiting:
 
-    timer_set(8u); // do not cause a glitch
-    while (timer_get());
+    timer_delay_us(8u); // do not cause a glitch
     light_leds(false, false, false);
 
     // receive data, 128KB at most
