@@ -25,8 +25,7 @@ void nor_erase_block(size_t block_offset) {
     qspinor_finish();
 
     // Send erasure command
-    timer_set(10u);
-    while(timer_get());
+    timer_delay_us(10u);
     qspinor_write_txq(0xd8u);
     for (int i=2; i>=0; i--)
         qspinor_write_txq(offset.offset_a[i]);
@@ -35,8 +34,7 @@ void nor_erase_block(size_t block_offset) {
 
     // Wait for finish
     do {
-        timer_set(10u);
-        while(timer_get());
+        timer_delay_us(10u);
         qspinor_write_txq(0x05u);
         qspinor_send_data(1u, QSPINOR_X1);
         qspinor_receive_data(1u, QSPINOR_X1);
@@ -66,8 +64,7 @@ void nor_program(size_t start_page_offset, const uint8_t* const data, size_t siz
         qspinor_finish();
 
         // Send page program command & data
-        timer_set(10u);
-        while(timer_get());
+        timer_delay_us(10u);
         qspinor_write_txq(0x02u);
         for (int i=2; i>=0; i--)
             qspinor_write_txq(offset.offset_a[i]);
@@ -77,8 +74,7 @@ void nor_program(size_t start_page_offset, const uint8_t* const data, size_t siz
 
         // Wait for finish
         do {
-            timer_set(10u);
-            while(timer_get());
+            timer_delay_us(10u);
             qspinor_write_txq(0x05u);
             qspinor_send_data(1u, QSPINOR_X1);
             qspinor_receive_data(1u, QSPINOR_X1);
