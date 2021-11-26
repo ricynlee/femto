@@ -21,7 +21,7 @@ void nor_erase_block(size_t block_offset) {
 
     // Send WREN
     qspinor_write_txq(0x06u);
-    qspinor_send_data(1u, QSPINOR_X1);
+    qspinor_begin_send(1u, QSPINOR_X1);
     qspinor_finish();
 
     // Send erasure command
@@ -29,15 +29,15 @@ void nor_erase_block(size_t block_offset) {
     qspinor_write_txq(0xd8u);
     for (int i=2; i>=0; i--)
         qspinor_write_txq(offset.offset_a[i]);
-    qspinor_send_data(4u, QSPINOR_X1);
+    qspinor_begin_send(4u, QSPINOR_X1);
     qspinor_finish();
 
     // Wait for finish
     do {
         timer_delay_us(10u);
         qspinor_write_txq(0x05u);
-        qspinor_send_data(1u, QSPINOR_X1);
-        qspinor_receive_data(1u, QSPINOR_X1);
+        qspinor_begin_send(1u, QSPINOR_X1);
+        qspinor_begin_receive(1u, QSPINOR_X1);
         qspinor_finish();
         qspinor_read_rxq(&status);
     } while(status & 0x1u);
@@ -60,7 +60,7 @@ void nor_program(size_t start_page_offset, const uint8_t* const data, size_t siz
 
         // Send WREN
         qspinor_write_txq(0x06u);
-        qspinor_send_data(1u, QSPINOR_X1);
+        qspinor_begin_send(1u, QSPINOR_X1);
         qspinor_finish();
 
         // Send page program command & data
@@ -68,22 +68,23 @@ void nor_program(size_t start_page_offset, const uint8_t* const data, size_t siz
         qspinor_write_txq(0x02u);
         for (int i=2; i>=0; i--)
             qspinor_write_txq(offset.offset_a[i]);
-        qspinor_send_data(4u, QSPINOR_X1);
-        qspinor_send_blob(data+k, n, QSPINOR_X1);
+        qspinor_begin_send(4u, QSPINOR_X1);
+        qspinor_send_data(data+k, n, QSPINOR_X1);
         qspinor_finish();
 
         // Wait for finish
         do {
             timer_delay_us(10u);
             qspinor_write_txq(0x05u);
-            qspinor_send_data(1u, QSPINOR_X1);
-            qspinor_receive_data(1u, QSPINOR_X1);
+            qspinor_begin_send(1u, QSPINOR_X1);
+            qspinor_begin_receive(1u, QSPINOR_X1);
             qspinor_finish();
             qspinor_read_rxq(&status);
         } while(status & 0x1u);
 
         size -= n;
         k += n;
+        offset.offset_n += n;
     }
 }
 
@@ -99,18 +100,18 @@ void nor_read(size_t byte_offset, uint8_t* const data, size_t size) {
 
     // Send command
     qspinor_write_txq(0xbbu);
-    qspinor_send_data(1u, QSPINOR_X1);
+    qspinor_begin_send(1u, QSPINOR_X1);
 
     // Send address
     for (int i=2; i>=0; i--)
         qspinor_write_txq(offset.offset_a[i]);
-    qspinor_send_data(3u, QSPINOR_X2);
+    qspinor_begin_send(3u, QSPINOR_X2);
 
     // Send dummy cycles
     qspinor_send_dummy_cycle(4u, QSPINOR_X2);
 
     // Receive data
-    qspinor_receive_blob(data, size, QSPINOR_X2);
+    qspinor_receive_data(data, size, QSPINOR_X2);
     qspinor_finish();
 }
 

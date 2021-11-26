@@ -4,14 +4,13 @@ void go_uart_boot(void);
 void go_nor_boot(void);
 
 void main(void) {
-    // wait ~16 sec for uart activity
     gpio_init();
     uart_clear_rxq();
 
     for (int t=0; t<16; t++) {
         for (int dc=0; dc<64; dc++) {
             for (int c=0; c<64; c++) {
-                timer_set(192u);
+                timer_set(256u);
                 while (timer_get())
                     if (uart_rx_ready())
                         goto done_waiting;
@@ -20,7 +19,7 @@ void main(void) {
         }
 
         if (t & 0x1u) {
-            timer_set(1024u*256u);
+            timer_set(768u*256u);
             while (timer_get())
                 if (uart_rx_ready())
                     goto done_waiting;
