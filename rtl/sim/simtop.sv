@@ -85,6 +85,13 @@ module simtop #(
         end
     end
 
+    // print
+    always @ (posedge top.clk) begin
+        if (top.femto.tmr_req && top.femto.bus_wdata[31:8]=="PRN") begin
+            $write("%c", top.femto.bus_wdata[7:0]);
+        end
+    end
+
     // nor sel
     always @ (posedge top.clk) if (top.femto.tmr_req) begin
         if (top.femto.bus_wdata=="D2PI")
