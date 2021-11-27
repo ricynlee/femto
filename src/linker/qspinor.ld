@@ -10,7 +10,7 @@ MEMORY
 
 $stack_size = 512;
 $sram_begin = 0x20040000;
-$nor_begin = 0x30300000;
+$nor_begin = 0x30000000;
 
 SECTIONS
 {

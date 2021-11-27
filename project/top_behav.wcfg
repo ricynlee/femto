@@ -11,109 +11,53 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="166666666fs"></ZoomStartTime>
-      <ZoomEndTime time="1166666667fs"></ZoomEndTime>
+      <ZoomStartTime time="0fs"></ZoomStartTime>
+      <ZoomEndTime time="1755255258fs"></ZoomEndTime>
       <Cursor1Time time="1000000000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="201"></NameColumnWidth>
-      <ValueColumnWidth column_width="122"></ValueColumnWidth>
+      <ValueColumnWidth column_width="118"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="24" />
-   <wvobject fp_name="/simtop/inst/clk" type="logic">
-      <obj_property name="ElementShortName">clk</obj_property>
-      <obj_property name="ObjectShortName">clk</obj_property>
+   <WVObjectSize size="3" />
+   <wvobject fp_name="/simtop/led" type="array">
+      <obj_property name="ElementShortName">led[3:0]</obj_property>
+      <obj_property name="ObjectShortName">led[3:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/simtop/inst/rstn" type="logic">
-      <obj_property name="ElementShortName">rstn</obj_property>
-      <obj_property name="ObjectShortName">rstn</obj_property>
+   <wvobject fp_name="group49" type="group">
+      <obj_property name="label">NOR</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/simtop/nor_csb" type="logic">
+         <obj_property name="ElementShortName">nor_csb</obj_property>
+         <obj_property name="ObjectShortName">nor_csb</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/nor_sck" type="logic">
+         <obj_property name="ElementShortName">nor_sck</obj_property>
+         <obj_property name="ObjectShortName">nor_sck</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/nor_sio" type="array">
+         <obj_property name="ElementShortName">nor_sio[3:0]</obj_property>
+         <obj_property name="ObjectShortName">nor_sio[3:0]</obj_property>
+      </wvobject>
    </wvobject>
-   <wvobject fp_name="/simtop/inst/cmd_trig" type="logic">
-      <obj_property name="ElementShortName">cmd_trig</obj_property>
-      <obj_property name="ObjectShortName">cmd_trig</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/cmd" type="array">
-      <obj_property name="ElementShortName">cmd[7:4]</obj_property>
-      <obj_property name="ObjectShortName">cmd[7:4]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/cmd_done" type="logic">
-      <obj_property name="ElementShortName">cmd_done</obj_property>
-      <obj_property name="ObjectShortName">cmd_done</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/host_do_rdy" type="logic">
-      <obj_property name="ElementShortName">host_do_rdy</obj_property>
-      <obj_property name="ObjectShortName">host_do_rdy</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/host_do_req" type="logic">
-      <obj_property name="ElementShortName">host_do_req</obj_property>
-      <obj_property name="ObjectShortName">host_do_req</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/host_do" type="array">
-      <obj_property name="ElementShortName">host_do[7:0]</obj_property>
-      <obj_property name="ObjectShortName">host_do[7:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/host_di_rdy" type="logic">
-      <obj_property name="ElementShortName">host_di_rdy</obj_property>
-      <obj_property name="ObjectShortName">host_di_rdy</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/host_di_req" type="logic">
-      <obj_property name="ElementShortName">host_di_req</obj_property>
-      <obj_property name="ObjectShortName">host_di_req</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/host_di" type="array">
-      <obj_property name="ElementShortName">host_di[7:0]</obj_property>
-      <obj_property name="ObjectShortName">host_di[7:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/spi_sclk" type="logic">
-      <obj_property name="ElementShortName">spi_sclk</obj_property>
-      <obj_property name="ObjectShortName">spi_sclk</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/spi_dir" type="array">
-      <obj_property name="ElementShortName">spi_dir[3:0]</obj_property>
-      <obj_property name="ObjectShortName">spi_dir[3:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/spi_miso" type="array">
-      <obj_property name="ElementShortName">spi_miso[3:0]</obj_property>
-      <obj_property name="ObjectShortName">spi_miso[3:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/spi_mosi" type="array">
-      <obj_property name="ElementShortName">spi_mosi[3:0]</obj_property>
-      <obj_property name="ObjectShortName">spi_mosi[3:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/cmd_buff" type="array">
-      <obj_property name="ElementShortName">cmd_buff[7:4]</obj_property>
-      <obj_property name="ObjectShortName">cmd_buff[7:4]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/cmd_imm" type="array">
-      <obj_property name="ElementShortName">cmd_imm[7:4]</obj_property>
-      <obj_property name="ObjectShortName">cmd_imm[7:4]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/state" type="array">
-      <obj_property name="ElementShortName">state[7:0]</obj_property>
-      <obj_property name="ObjectShortName">state[7:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/next_state" type="array">
-      <obj_property name="ElementShortName">next_state[7:0]</obj_property>
-      <obj_property name="ObjectShortName">next_state[7:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/tx_togg_index" type="array">
-      <obj_property name="ElementShortName">tx_togg_index[7:0]</obj_property>
-      <obj_property name="ObjectShortName">tx_togg_index[7:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/rx_togg_index" type="array">
-      <obj_property name="ElementShortName">rx_togg_index[7:0]</obj_property>
-      <obj_property name="ObjectShortName">rx_togg_index[7:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/IDLE" type="array">
-      <obj_property name="ElementShortName">IDLE[31:0]</obj_property>
-      <obj_property name="ObjectShortName">IDLE[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/WAIT" type="array">
-      <obj_property name="ElementShortName">WAIT[31:0]</obj_property>
-      <obj_property name="ObjectShortName">WAIT[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/inst/TOGG" type="array">
-      <obj_property name="ElementShortName">TOGG[31:0]</obj_property>
-      <obj_property name="ObjectShortName">TOGG[31:0]</obj_property>
+   <wvobject fp_name="group48" type="group">
+      <obj_property name="label">Core</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/simtop/top/femto/core/s2_vld" type="logic">
+         <obj_property name="ElementShortName">s2_vld</obj_property>
+         <obj_property name="ObjectShortName">s2_vld</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/s2_pc" type="array">
+         <obj_property name="ElementShortName">s2_pc[31:0]</obj_property>
+         <obj_property name="ObjectShortName">s2_pc[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/s2_ir" type="array">
+         <obj_property name="ElementShortName">s2_ir[31:0]</obj_property>
+         <obj_property name="ObjectShortName">s2_ir[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/\STAGE1.x " type="array">
+         <obj_property name="ElementShortName">\STAGE1.x [0:15][31:0]</obj_property>
+         <obj_property name="ObjectShortName">\STAGE1.x [0:15][31:0]</obj_property>
+      </wvobject>
    </wvobject>
 </wave_config>
