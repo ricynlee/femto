@@ -8,7 +8,7 @@
 // NOR
 typedef enum femto_nor_mode nor_mode_t;
 
-extern void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no);
+extern void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no, bool dmy_out, uint8_t dmy_out_pattern);
 
 // GPIO
 typedef enum femto_io_dir gpio_dir_t;

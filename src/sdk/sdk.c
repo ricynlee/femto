@@ -4,14 +4,18 @@
 #include "sdk.h"
 
 // NOR
-void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no) {
+void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no, bool dmy_out, uint8_t dmy_out_pattern) {
     if ((int)mode<(int)NOR_MODE_LLIM) {
         mode = NOR_MODE_LLIM;
     } else if ((int)mode>(int)NOR_MODE_ULIM) {
         mode = NOR_MODE_ULIM;
     }
 
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE((int)mode) | QSPINOR_NORCSR_CMD(cmd) | QSPINOR_NORCSR_DMYCNT(dmy_cycle_no);
+    QSPINOR->norcmd = cmd;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE((int)mode)             |
+                      QSPINOR_NORCSR_DMYCNT(dmy_cycle_no)        |
+                      QSPINOR_NORCSR_DMYPAT(dmy_out_pattern)     |
+                      (dmy_out ? QSPINOR_NORCSR_DMYDIR_MASK : 0u);
 }
 
 // GPIO

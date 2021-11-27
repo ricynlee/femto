@@ -8,7 +8,7 @@ typedef union {
 } offset_converter_t;
 
 void nor_bus_read_init(void) {
-    nor_init(NOR_MODE_122, 0xbbu, 4u);
+    nor_init(NOR_MODE_122, 0xbbu, 4u, true, 0x3u);
 }
 
 void nor_erase_block(size_t block_offset) {

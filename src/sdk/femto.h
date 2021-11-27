@@ -49,12 +49,15 @@
 
 // QSPI NOR
     typedef struct {
-        volatile unsigned short      ipcsr;
-        volatile unsigned char       txd;
-        const volatile unsigned char rxd;
-        volatile unsigned char       txqcsr;
-        volatile unsigned char       rxqcsr;
-        volatile unsigned short      norcsr;
+        volatile unsigned short          ipcsr;
+        union {
+            volatile unsigned char       txd;
+            const volatile unsigned char rxd;
+        };
+        volatile unsigned char           txqcsr;
+        volatile unsigned char           rxqcsr;
+        volatile unsigned char           norcmd;
+        volatile unsigned short          norcsr;
     } femto_qspinor_t;
 
     #define QSPINOR ((femto_qspinor_t*)0x60000000)
@@ -108,9 +111,9 @@
     #define QSPINOR_NORCSR_DMYCNT_MASK  (MASK_WIDTH(4u)<<QSPINOR_NORCSR_DMYCNT_SHIFT)
     #define QSPINOR_NORCSR_DMYCNT(v)    (((v) << QSPINOR_NORCSR_DMYCNT_SHIFT) & QSPINOR_NORCSR_DMYCNT_MASK)
 
-    #define QSPINOR_NORCSR_CMD_SHIFT    (8u)
-    #define QSPINOR_NORCSR_CMD_MASK     (MASK_WIDTH(8u)<<QSPINOR_NORCSR_CMD_SHIFT)
-    #define QSPINOR_NORCSR_CMD(v)       (((v) << QSPINOR_NORCSR_CMD_SHIFT) & QSPINOR_NORCSR_CMD_MASK)
+    #define QSPINOR_NORCSR_DMYPAT_SHIFT (8u)
+    #define QSPINOR_NORCSR_DMYPAT_MASK  (MASK_WIDTH(4u)<<QSPINOR_NORCSR_DMYPAT_SHIFT)
+    #define QSPINOR_NORCSR_DMYPAT(v)    (((v) << QSPINOR_NORCSR_DMYPAT_SHIFT) & QSPINOR_NORCSR_DMYPAT_MASK)
 
     enum femto_nor_mode {
         NOR_MODE_111,

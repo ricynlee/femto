@@ -670,10 +670,10 @@ module qspinor_ip_access_controller(
      * Register map
      *  Name   | Address | Size | Access | Note
      *  IPCSR  | 0       | 2    | R/W    | -
-     *  TXD    | 2       | 1    | W      | -
-     *  RXD    | 3       | 1    | R      | -
-     *  TXQCSR | 4       | 1    | R/W    | -
-     *  RXQCSR | 5       | 1    | R/W    | -
+     *  DATA   | 2       | 1    | R/W    | -
+     *  TXQCSR | 3       | 1    | R/W    | -
+     *  RXQCSR | 4       | 1    | R/W    | -
+     *  NORCMD | 5       | 1    | R/W    | -
      *  NORCSR | 6       | 2    | R/W    | -
      *
      * IPCSR
@@ -682,8 +682,10 @@ module qspinor_ip_access_controller(
      *  CLR(7) | WSCNT(6:0)
      * RXQCSR
      *  CLR(7) | RSCNT(6:0)
+     * NORCMD
+     *  CMD(7:0)
      * NORCSR
-     *  CMD(15:8) | DUMMY_COUNT(7:4) | DUMMY_DIR(3) | MODE(2:0)
+     *  (15:12) | DUMMY_OUT_PATTERN(11:8) | DUMMY_COUNT(7:4) | DUMMY_DIR(3) | MODE(2:0)
      */
 
     `define IP_DOP      15:12
@@ -698,7 +700,7 @@ module qspinor_ip_access_controller(
     `define TXQ_CLR     7
     `define RXQ_CLR     7
 
-    `define NOR_CMD     15:8
+    `define NOR_DMYPAT  11:8
     `define NOR_DMYCNT  7:4
     `define NOR_DMYDIR  3
     `define NOR_MODE    2:0
@@ -706,7 +708,7 @@ module qspinor_ip_access_controller(
     // fault generation
     wire invld_addr = (addr==1) || (addr==7);
     wire invld_acc  = (addr==0 || addr==6) ? (acc!=`BUS_ACC_2B) : (acc!=`BUS_ACC_1B);
-    wire invld_wr   = w_rb ? (addr==3) : (addr==2);
+    wire invld_wr   = 0;
     wire invld_d    = 0;
 
     wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
@@ -716,10 +718,10 @@ module qspinor_ip_access_controller(
     wire    busy;
 
     // data queues
-    wire      txq_w = req & ~invld & (addr==2);
+    wire      txq_w = req & ~invld & (addr==2) & w_rb;
     wire[7:0] txq_wd = wdata[7:0];
     wire      txq_full, txq_empty;
-    wire      txq_clr = req & ~invld & (addr==4) & w_rb & wdata[`TXQ_CLR] & ~busy;
+    wire      txq_clr = req & ~invld & (addr==3) & w_rb & wdata[`TXQ_CLR] & ~busy;
 
     wire      txq_r;
     wire[7:0] txq_rd_raw, txq_rd;
@@ -749,10 +751,10 @@ module qspinor_ip_access_controller(
         .out(txq_rd    )
     );
 
-    wire      rxq_r = req & ~invld & (addr==3);
+    wire      rxq_r = req & ~invld & (addr==2) & ~w_rb;
     wire[7:0] rxq_rd;
     wire      rxq_empty, rxq_full;
-    wire      rxq_clr = req & ~invld & (addr==5) & w_rb & wdata[`RXQ_CLR];
+    wire      rxq_clr = req & ~invld & (addr==4) & w_rb & wdata[`RXQ_CLR];
 
     wire      rxq_w;
     wire[7:0] rxq_wd;
@@ -837,20 +839,27 @@ module qspinor_ip_access_controller(
     end
 
     // register access
+    reg[7:0]    norcmd;
     reg[15:0]   norcsr;
     always @ (posedge clk) begin
-        if (~rstn)
+        if (~rstn) begin
+            norcmd <= 0;
             norcsr <= 0;
-        else if (req & ~invld) case (addr)
+        end else if (req & ~invld) case (addr)
             0: rdata <= {30'd0, busy, ~qspi_csb};
-            3: rdata <= {24'd0, rxq_rd};
-            4: rdata <= {25'd0, wscnt};
-            5: rdata <= {25'd0, rscnt};
+            2: rdata <= {24'd0, rxq_rd};
+            3: rdata <= {25'd0, wscnt};
+            4: rdata <= {25'd0, rscnt};
+            5:
+                if (w_rb)
+                    norcmd <= wdata[7:0];
+                else
+                    rdata <= {24'd0, norcmd};
             6:
                 if (w_rb)
-                    norcsr <= wdata[15:0];
+                    norcsr[11:0] <= wdata[11:0];
                 else
-                    rdata <= {16'd0, norcsr};
+                    rdata <= {20'd0, norcsr[11:0]};
         endcase
     end
 
@@ -879,11 +888,10 @@ module qspinor_ip_access_controller(
                             (norcsr[`NOR_MODE]==2) ? `QSPINOR_X4 :
                             (norcsr[`NOR_MODE]==1) ? `QSPINOR_X2 :
                             /* otherwise */          `QSPINOR_X1;
-    assign  cfg_cmd_octet = norcsr[`NOR_CMD];
+    assign  cfg_cmd_octet = norcmd;
     assign  cfg_dmy_cnt = norcsr[`NOR_DMYCNT];
     assign  cfg_dmy_dir = norcsr[`NOR_DMYDIR];
-    assign  cfg_dmy_out_pattern = 4'd0;
-
+    assign  cfg_dmy_out_pattern = norcsr[`NOR_DMYPAT];
 
     // data interaction state control
     localparam  IDLE       = 0 ,

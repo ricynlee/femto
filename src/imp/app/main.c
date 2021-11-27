@@ -3,6 +3,8 @@
 /* No data/bss */
 
 void main(void) {
+    gpio_init();
+
     while (1)
         for (int t=0; t<2; t++) {
             for (int dc=0; dc<64; dc++)
