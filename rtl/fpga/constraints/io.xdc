@@ -2,6 +2,12 @@
 set_property -dict {PACKAGE_PIN L17 IOSTANDARD LVCMOS33} [get_ports sysclk]
 # add the timing description above if no clocking modules are used in the design
 
+## NOR PULL
+set_property PULLUP true [get_ports {qspi_sio[3]}]
+set_property PULLUP true [get_ports {qspi_sio[2]}]
+set_property PULLUP true [get_ports {qspi_sio[1]}]
+set_property PULLUP true [get_ports {qspi_sio[0]}]
+
 ## QSPI NOR
 # set_property -dict {PACKAGE_PIN E19 IOSTANDARD LVCMOS33} [get_ports qspi_sck]
 # set_property -dict {PACKAGE_PIN K19 IOSTANDARD LVCMOS33} [get_ports qspi_csb]
