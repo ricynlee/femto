@@ -174,12 +174,13 @@ void qspinor_begin_send(uint8_t n, qspinor_width_t width) {
                      QSPINOR_IPCSR_CNT(n)       ;
 }
 
-void qspinor_send_dummy_cycle(uint8_t n, qspinor_width_t width) {
-    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK     |
-                     QSPINOR_IPCSR_DMY_MASK     |
-                     QSPINOR_IPCSR_DIR(DIR_OUT) |
-                     QSPINOR_IPCSR_WID(width)   |
-                     QSPINOR_IPCSR_CNT(n)       ;
+void qspinor_send_dummy_cycle(uint8_t n, qspinor_width_t width, bool dmy_out, uint8_t dmy_out_pattern) {
+    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK                        |
+                     QSPINOR_IPCSR_DMY_MASK                        |
+                     QSPINOR_IPCSR_DIR(dmy_out ? DIR_OUT : DIR_IN) |
+                     QSPINOR_IPCSR_DOP(dmy_out_pattern)            |
+                     QSPINOR_IPCSR_WID(width)                      |
+                     QSPINOR_IPCSR_CNT(n)                          ;
 }
 
 void qspinor_finish(void) {

@@ -25,7 +25,7 @@ void main(void) {
                     while (timer_get())
                         if (uart_rx_ready())
                             goto done_waiting;
-                    light_leds((t & 0x1u) ? (c>dc) : (c<=dc), false, false);
+                    light_leds(false, false, (t & 0x1u) ? (c>dc) : (c<=dc));
                 }
             if (t & 0x1u) {
                 timer_set(768u*256u);

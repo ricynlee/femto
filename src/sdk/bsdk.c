@@ -108,7 +108,7 @@ void nor_read(size_t byte_offset, uint8_t* const data, size_t size) {
     qspinor_begin_send(3u, QSPINOR_X2);
 
     // Send dummy cycles
-    qspinor_send_dummy_cycle(4u, QSPINOR_X2);
+    qspinor_send_dummy_cycle(4u, QSPINOR_X2, true, 0x03u);
 
     // Receive data
     qspinor_receive_data(data, size, QSPINOR_X2);
