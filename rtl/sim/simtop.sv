@@ -2,49 +2,68 @@
 `include "simpaths.vh"
 
 module simtop #(
-    parameter NOR_TYPE = "spi", // spi, qspi
     parameter HEX_PATH = `HEX_PATH
 );
 
     reg clk = 0;
     initial forever #41.667 clk<=~clk;
 
+    reg rst = 1;
+    initial #8us @(negedge clk) rst = 0;
+
     wire [3:0] led;
     wire uart_rxd, uart_txd;
-    wire fault;
 
     wire nor_sck;
     wire nor_csb;
-    wire [3:0] nor_sio;
-    generate
-        if(NOR_TYPE=="spi") begin
-            spinor norflash(
-                .sck(nor_sck),
-                .csb(nor_csb),
-                .si(nor_sio[0]),
-                .so(nor_sio[1])
-            );
-            initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
-        end else begin
-            qspinor norflash(
-                .sck(nor_sck),
-                .csb(nor_csb),
-                .dio(nor_sio)
-            );
-            initial $readmemh({HEX_PATH, "nor-init.hex"}, norflash.array);
-        end
-    endgenerate
+    wire [3:0]  nor_sio;
+
+    pullup(nor_sio[0]);
+    pullup(nor_sio[1]);
+    pullup(nor_sio[2]);
+    pullup(nor_sio[3]);
+
+    localparam  DPI_SEL = 1, QPI_SEL = 2, SPI_SEL = 0;
+    reg[1:0]    norflash_sel = SPI_SEL;
+    dpinor dpinorflash(
+        .sck(nor_sck     ),
+        .csb(nor_csb | (norflash_sel!=DPI_SEL)),
+        .dio(nor_sio[1:0])
+    );
+    initial $readmemh({HEX_PATH, "nor-init.hex"}, dpinorflash.array);
+
+    qpinor qpinorflash(
+        .sck(nor_sck),
+        .csb(nor_csb | (norflash_sel!=QPI_SEL)),
+        .dio(nor_sio)
+    );
+    initial $readmemh({HEX_PATH, "nor-init.hex"}, qpinorflash.array);
+
+    MX25U51245G # (
+        .Init_File({HEX_PATH, "nor-init.hex"})
+    ) spinorflash (
+        .SCLK (nor_sck   ),
+        .CS   (nor_csb | (norflash_sel!=SPI_SEL)),
+        .SI   (nor_sio[0]),
+        .SO   (nor_sio[1]),
+        .WP   (nor_sio[2]),
+        .SIO3 (nor_sio[3]),
+        .RESET(1'b1      )
+    );
+    initial #10ns spinorflash.Status_Reg[6] = 1'b1; // Quad enabled by default
 
     sram sram();
     initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
 
-    top top(
-        .sysclk     (clk             ),
-        .sysrst     (1'b0            ),
-        .fault      (fault           ),
-        .gpio       (led             ),
-        .uart_tx    (uart_txd   ),
-        .uart_rx    (uart_rxd   ),
+    wrapper top (
+        .sysclk     (clk),
+        .sysrst     (rst),
+        .led_r      (led[3]),
+        .led_g      (led[2]),
+        .led_b      (led[1]),
+        .button     (led[0]),
+        .uart_tx    (uart_txd), // loopback
+        .uart_rx    (uart_txd),
         .sram_ce_bar(sram.sram_ce_bar),
         .sram_oe_bar(sram.sram_oe_bar),
         .sram_we_bar(sram.sram_we_bar),
@@ -52,13 +71,37 @@ module simtop #(
         .sram_addr  (sram.sram_addr  ),
         .qspi_sck   (nor_sck),
         .qspi_csb   (nor_csb),
-        .qspi_data  (nor_sio)
+        .qspi_sio   (nor_sio)
     );
 
-    uart_host uart_host(
-        .dut_uart_rxd(uart_rxd),
-        .dut_uart_txd(uart_txd)
-    );
+    // endsim
+    always @ (posedge top.clk) begin
+        if (top.femto.tmr_req && top.femto.bus_wdata=="PASS") begin
+            $display("PASS");
+            $finish(0);
+        end else if (top.femto.tmr_req && top.femto.bus_wdata=="FAIL") begin
+            $display("FAIL");
+            $finish(0);
+        end
+    end
+
+    // print
+    always @ (posedge top.clk) begin
+        if (top.femto.tmr_req && top.femto.bus_wdata[31:8]=="PRN") begin
+            $write("%c", top.femto.bus_wdata[7:0]);
+        end
+    end
+
+    // nor sel
+    always @ (posedge top.clk) if (top.femto.tmr_req) begin
+        if (top.femto.bus_wdata=="D2PI")
+            norflash_sel = DPI_SEL;
+        else if (top.femto.bus_wdata=="Q4PI")
+            norflash_sel = QPI_SEL;
+        else
+            norflash_sel = SPI_SEL;
+    end
+
 endmodule
 
 module sram(
@@ -89,44 +132,59 @@ module sram(
 
 endmodule
 
-module spinor( // supports 1-1-1 read operations only
-    input wire  sck,
-    input wire  csb,
-    input wire  si,
-    output reg  so
+module dpinor( // supports 2-2-2 read operations only
+    input wire       sck,
+    input wire       csb,
+    inout wire [1:0] dio
 );
 
     reg [7:0] array[0:511];
 
-    reg [7:0] cmd;
+    reg [7:0]  cmd;
     reg [23:0] addr;
+    reg [1:0]  dir = 0;
+    reg [1:0]  dout;
+    wire [1:0] din;
+
+    generate
+        for (genvar i=0; i<2; i=i+1) begin
+            assign dio[i] = dir[i] ? dout[i] : 1'bz;
+            assign din[i] = dir[i] ? 1'bx : dio[i];
+        end
+    endgenerate
+
     always @ (negedge csb) fork
         begin:spi_comm
             integer i;
-            for(i=7; i>=0; i=i-1)
-                @(posedge sck) cmd[i]=si;
-            $display("CMD=%x", cmd);
-    
-            for(i=23; i>=0; i=i-1)
-                @(posedge sck) addr[i]=si;
-            $display("ADDR=%x DATA=%x", addr, array[addr]);
+            dir = 2'h0;
+            for(i=6; i>=0; i=i-2)
+                @(posedge sck) cmd[i+:2]=din;
 
+            dir = 2'h0;
+            for(i=22; i>=0; i=i-2)
+                @(posedge sck) addr[i+:2]=din;
+
+            dir = 2'h0;
+            for(i=7; i>=0; i=i-1)
+                @(posedge sck);
+
+            #40 dir = 2'h3;
             forever begin
-                for (i=7; i>=0; i=i-1)
-                    @(negedge sck) so = array[addr][i];
+                for (i=6; i>=0; i=i-2)
+                    @(negedge sck) dout[1:0] = array[addr][i+:2];
                 addr=addr+1;
             end
         end
         begin
             @(posedge csb);
-            so <= 1'bx;
+            dir = 2'h0;
             disable spi_comm;
         end
-join
+    join
 
 endmodule
 
-module qspinor( // supports 4-4-4 read operations only
+module qpinor( // supports 4-4-4 read operations only
     input wire       sck,
     input wire       csb,
     inout wire [3:0] dio
@@ -139,29 +197,29 @@ module qspinor( // supports 4-4-4 read operations only
     reg [3:0]  dir = 0;
     reg [3:0]  dout;
     wire [3:0] din;
-    
+
     generate
         for (genvar i=0; i<4; i=i+1) begin
             assign dio[i] = dir[i] ? dout[i] : 1'bz;
             assign din[i] = dir[i] ? 1'bx : dio[i];
         end
-    endgenerate 
-    
+    endgenerate
+
     always @ (negedge csb) fork
         begin:spi_comm
             integer i;
             dir = 4'h0;
             for(i=4; i>=0; i=i-4)
                 @(posedge sck) cmd[i+:4]=din;
-    
+
             dir = 4'h0;
             for(i=20; i>=0; i=i-4)
                 @(posedge sck) addr[i+:4]=din;
-            
+
             dir = 4'h0;
             for(i=9; i>=0; i=i-1)
                 @(posedge sck);
-            
+
             #40 dir = 4'hf;
             forever begin
                 for (i=4; i>=0; i=i-4)

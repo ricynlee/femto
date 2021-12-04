@@ -1,2 +1,0 @@
-RTL Vivado 2018.2
-SRC riscv-none-embed-gcc (xPack GNU RISC-V Embedded GCC, 32-bit) 8.3.0

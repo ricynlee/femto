@@ -1,10 +1,9 @@
 -- Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
 -- --------------------------------------------------------------------------------
 -- Tool Version: Vivado v.2018.2 (win64) Build 2258646 Thu Jun 14 20:03:12 MDT 2018
--- Date        : Sun Aug 16 09:54:11 2020
--- Host        : DESKTOP-95QVU9S running 64-bit major release  (build 9200)
--- Command     : write_vhdl -force -mode funcsim -rename_top clk_gen -prefix
---               clk_gen_ clk_gen_sim_netlist.vhdl
+-- Date        : Sat Oct  9 16:08:51 2021
+-- Host        : NXL53319 running 64-bit major release  (build 9200)
+-- Command     : write_vhdl -force -mode funcsim D:/femto/project/femto.srcs/sources_1/ip/clk_gen/clk_gen_sim_netlist.vhdl
 -- Design      : clk_gen
 -- Purpose     : This VHDL netlist is a functional simulation representation of the design and should not be modified or
 --               synthesized. This netlist cannot be used for SDF annotated simulation.
@@ -19,6 +18,8 @@ entity clk_gen_clk_gen_clk_wiz is
     clk_out : out STD_LOGIC;
     clk_in : in STD_LOGIC
   );
+  attribute ORIG_REF_NAME : string;
+  attribute ORIG_REF_NAME of clk_gen_clk_gen_clk_wiz : entity is "clk_gen_clk_wiz";
 end clk_gen_clk_gen_clk_wiz;
 
 architecture STRUCTURE of clk_gen_clk_gen_clk_wiz is
@@ -76,12 +77,12 @@ clkout1_buf: unisim.vcomponents.BUFG
 mmcm_adv_inst: unisim.vcomponents.MMCME2_ADV
     generic map(
       BANDWIDTH => "OPTIMIZED",
-      CLKFBOUT_MULT_F => 62.500000,
+      CLKFBOUT_MULT_F => 64.000000,
       CLKFBOUT_PHASE => 0.000000,
       CLKFBOUT_USE_FINE_PS => false,
       CLKIN1_PERIOD => 83.333000,
       CLKIN2_PERIOD => 0.000000,
-      CLKOUT0_DIVIDE_F => 62.500000,
+      CLKOUT0_DIVIDE_F => 32.000000,
       CLKOUT0_DUTY_CYCLE => 0.500000,
       CLKOUT0_PHASE => 0.000000,
       CLKOUT0_USE_FINE_PS => false,

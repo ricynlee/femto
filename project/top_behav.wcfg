@@ -12,238 +12,52 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0fs"></ZoomStartTime>
-      <ZoomEndTime time="23220000000001fs"></ZoomEndTime>
-      <Cursor1Time time="2001000000000fs"></Cursor1Time>
+      <ZoomEndTime time="1755255258fs"></ZoomEndTime>
+      <Cursor1Time time="1000000000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="201"></NameColumnWidth>
-      <ValueColumnWidth column_width="126"></ValueColumnWidth>
+      <ValueColumnWidth column_width="118"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="43" />
-   <wvobject fp_name="/simtop/top/core/rstn" type="logic">
-      <obj_property name="ElementShortName">rstn</obj_property>
-      <obj_property name="ObjectShortName">rstn</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/clk" type="logic">
-      <obj_property name="ElementShortName">clk</obj_property>
-      <obj_property name="ObjectShortName">clk</obj_property>
-   </wvobject>
-   <wvobject type="divider" fp_name="divider2421">
-      <obj_property name="label">FAULT</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core_fault" type="logic">
-      <obj_property name="ElementShortName">core_fault</obj_property>
-      <obj_property name="ObjectShortName">core_fault</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/core_fault_pc" type="array">
-      <obj_property name="ElementShortName">core_fault_pc[31:0]</obj_property>
-      <obj_property name="ObjectShortName">core_fault_pc[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/undef_instr" type="logic">
-      <obj_property name="ElementShortName">undef_instr</obj_property>
-      <obj_property name="ObjectShortName">undef_instr</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/overshift" type="logic">
-      <obj_property name="ElementShortName">overshift</obj_property>
-      <obj_property name="ObjectShortName">overshift</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/bus_fault" type="logic">
-      <obj_property name="ElementShortName">bus_fault</obj_property>
-      <obj_property name="ObjectShortName">bus_fault</obj_property>
-   </wvobject>
-   <wvobject type="divider" fp_name="divider1242">
-      <obj_property name="label">BUS</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-   </wvobject>
-   <wvobject fp_name="group2403" type="group">
-      <obj_property name="label">Bus req</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-      <obj_property name="isExpanded"></obj_property>
-      <wvobject fp_name="/simtop/top/core/bus_req" type="logic">
-         <obj_property name="ElementShortName">bus_req</obj_property>
-         <obj_property name="ObjectShortName">bus_req</obj_property>
-      </wvobject>
-      <wvobject fp_name="/simtop/top/core/bus_acc" type="array">
-         <obj_property name="ElementShortName">bus_acc[1:0]</obj_property>
-         <obj_property name="ObjectShortName">bus_acc[1:0]</obj_property>
-      </wvobject>
-      <wvobject fp_name="/simtop/top/core/bus_addr" type="array">
-         <obj_property name="ElementShortName">bus_addr[31:0]</obj_property>
-         <obj_property name="ObjectShortName">bus_addr[31:0]</obj_property>
-      </wvobject>
-      <wvobject fp_name="/simtop/top/core/bus_w_rb" type="logic">
-         <obj_property name="ElementShortName">bus_w_rb</obj_property>
-         <obj_property name="ObjectShortName">bus_w_rb</obj_property>
-      </wvobject>
-      <wvobject fp_name="/simtop/top/core/bus_wdata" type="array">
-         <obj_property name="ElementShortName">bus_wdata[31:0]</obj_property>
-         <obj_property name="ObjectShortName">bus_wdata[31:0]</obj_property>
-      </wvobject>
-   </wvobject>
-   <wvobject fp_name="group2404" type="group">
-      <obj_property name="label">Bus resp</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-      <wvobject fp_name="/simtop/top/core/bus_resp" type="logic">
-         <obj_property name="ElementShortName">bus_resp</obj_property>
-         <obj_property name="ObjectShortName">bus_resp</obj_property>
-      </wvobject>
-      <wvobject fp_name="/simtop/top/core/bus_rdata" type="array">
-         <obj_property name="ElementShortName">bus_rdata[31:0]</obj_property>
-         <obj_property name="ObjectShortName">bus_rdata[31:0]</obj_property>
-      </wvobject>
-   </wvobject>
-   <wvobject type="divider" fp_name="divider1242">
-      <obj_property name="label">CORE</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/\PIPELINE.state " type="array">
-      <obj_property name="ElementShortName">\PIPELINE.state [7:0]</obj_property>
-      <obj_property name="ObjectShortName">\PIPELINE.state [7:0]</obj_property>
-      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/jmp" type="logic">
-      <obj_property name="ElementShortName">jmp</obj_property>
-      <obj_property name="ObjectShortName">jmp</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/jump_addr" type="array">
-      <obj_property name="ElementShortName">jump_addr[31:0]</obj_property>
-      <obj_property name="ObjectShortName">jump_addr[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/hld" type="logic">
-      <obj_property name="ElementShortName">hld</obj_property>
-      <obj_property name="ObjectShortName">hld</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/pf_req_launched" type="logic">
-      <obj_property name="ElementShortName">pf_req_launched</obj_property>
-      <obj_property name="ObjectShortName">pf_req_launched</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/pf_resp_latched" type="logic">
-      <obj_property name="ElementShortName">pf_resp_latched</obj_property>
-      <obj_property name="ObjectShortName">pf_resp_latched</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/\STAGE1.x " type="array">
-      <obj_property name="ElementShortName">\STAGE1.x [0:15][31:0]</obj_property>
-      <obj_property name="ObjectShortName">\STAGE1.x [0:15][31:0]</obj_property>
-   </wvobject>
-   <wvobject type="divider" fp_name="divider1242">
-      <obj_property name="label">PF</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/pf_req" type="logic">
-      <obj_property name="ElementShortName">pf_req</obj_property>
-      <obj_property name="ObjectShortName">pf_req</obj_property>
-   </wvobject>
-   <wvobject type="divider" fp_name="divider1242">
-      <obj_property name="label">PIPELINE</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/if_vld" type="logic">
-      <obj_property name="ElementShortName">if_vld</obj_property>
-      <obj_property name="ObjectShortName">if_vld</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/if_c" type="logic">
-      <obj_property name="ElementShortName">if_c</obj_property>
-      <obj_property name="ObjectShortName">if_c</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/if_pc" type="array">
-      <obj_property name="ElementShortName">if_pc[31:0]</obj_property>
-      <obj_property name="ObjectShortName">if_pc[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/if_ir" type="array">
-      <obj_property name="ElementShortName">if_ir[31:0]</obj_property>
-      <obj_property name="ObjectShortName">if_ir[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/s1_vld" type="logic">
-      <obj_property name="ElementShortName">s1_vld</obj_property>
-      <obj_property name="ObjectShortName">s1_vld</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/s1_c" type="logic">
-      <obj_property name="ElementShortName">s1_c</obj_property>
-      <obj_property name="ObjectShortName">s1_c</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/s1_pc" type="array">
-      <obj_property name="ElementShortName">s1_pc[31:0]</obj_property>
-      <obj_property name="ObjectShortName">s1_pc[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/s1_ir" type="array">
-      <obj_property name="ElementShortName">s1_ir[31:0]</obj_property>
-      <obj_property name="ObjectShortName">s1_ir[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/s2_vld" type="logic">
-      <obj_property name="ElementShortName">s2_vld</obj_property>
-      <obj_property name="ObjectShortName">s2_vld</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/s2_c" type="logic">
-      <obj_property name="ElementShortName">s2_c</obj_property>
-      <obj_property name="ObjectShortName">s2_c</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/s2_pc" type="array">
-      <obj_property name="ElementShortName">s2_pc[31:0]</obj_property>
-      <obj_property name="ObjectShortName">s2_pc[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/top/core/s2_ir" type="array">
-      <obj_property name="ElementShortName">s2_ir[31:0]</obj_property>
-      <obj_property name="ObjectShortName">s2_ir[31:0]</obj_property>
-   </wvobject>
-   <wvobject type="divider" fp_name="divider1242">
-      <obj_property name="label">GPIO</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-   </wvobject>
+   <WVObjectSize size="3" />
    <wvobject fp_name="/simtop/led" type="array">
       <obj_property name="ElementShortName">led[3:0]</obj_property>
       <obj_property name="ObjectShortName">led[3:0]</obj_property>
-      <obj_property name="isExpanded"></obj_property>
-      <wvobject fp_name="/simtop/led[3]" type="logic">
-         <obj_property name="DisplayName">label</obj_property>
-         <obj_property name="ElementShortName">[3]</obj_property>
-         <obj_property name="ObjectShortName">[3]</obj_property>
-         <obj_property name="label">BLUE</obj_property>
-      </wvobject>
-      <wvobject fp_name="/simtop/led[2]" type="logic">
-         <obj_property name="DisplayName">label</obj_property>
-         <obj_property name="ElementShortName">[2]</obj_property>
-         <obj_property name="ObjectShortName">[2]</obj_property>
-         <obj_property name="label">GREEN</obj_property>
-      </wvobject>
-      <wvobject fp_name="/simtop/led[1]" type="logic">
-         <obj_property name="DisplayName">label</obj_property>
-         <obj_property name="ElementShortName">[1]</obj_property>
-         <obj_property name="ObjectShortName">[1]</obj_property>
-         <obj_property name="label">RED</obj_property>
-      </wvobject>
-      <wvobject fp_name="/simtop/led[0]" type="logic">
-         <obj_property name="ElementShortName">[0]</obj_property>
-         <obj_property name="ObjectShortName">[0]</obj_property>
-      </wvobject>
    </wvobject>
-   <wvobject type="divider" fp_name="divider1242">
-      <obj_property name="label">QSPI</obj_property>
+   <wvobject fp_name="group49" type="group">
+      <obj_property name="label">NOR</obj_property>
       <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/simtop/nor_csb" type="logic">
+         <obj_property name="ElementShortName">nor_csb</obj_property>
+         <obj_property name="ObjectShortName">nor_csb</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/nor_sck" type="logic">
+         <obj_property name="ElementShortName">nor_sck</obj_property>
+         <obj_property name="ObjectShortName">nor_sck</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/nor_sio" type="array">
+         <obj_property name="ElementShortName">nor_sio[3:0]</obj_property>
+         <obj_property name="ObjectShortName">nor_sio[3:0]</obj_property>
+      </wvobject>
    </wvobject>
-   <wvobject fp_name="/simtop/nor_sck" type="logic">
-      <obj_property name="ElementShortName">nor_sck</obj_property>
-      <obj_property name="ObjectShortName">nor_sck</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/nor_csb" type="logic">
-      <obj_property name="ElementShortName">nor_csb</obj_property>
-      <obj_property name="ObjectShortName">nor_csb</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/nor_sio" type="array">
-      <obj_property name="ElementShortName">nor_sio[3:0]</obj_property>
-      <obj_property name="ObjectShortName">nor_sio[3:0]</obj_property>
-      <obj_property name="isExpanded"></obj_property>
-   </wvobject>
-   <wvobject type="divider" fp_name="divider1242">
-      <obj_property name="label">UART</obj_property>
+   <wvobject fp_name="group48" type="group">
+      <obj_property name="label">Core</obj_property>
       <obj_property name="DisplayName">label</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/uart_rxd" type="logic">
-      <obj_property name="ElementShortName">uart_rxd</obj_property>
-      <obj_property name="ObjectShortName">uart_rxd</obj_property>
-   </wvobject>
-   <wvobject fp_name="/simtop/uart_txd" type="logic">
-      <obj_property name="ElementShortName">uart_txd</obj_property>
-      <obj_property name="ObjectShortName">uart_txd</obj_property>
+      <wvobject fp_name="/simtop/top/femto/core/s2_vld" type="logic">
+         <obj_property name="ElementShortName">s2_vld</obj_property>
+         <obj_property name="ObjectShortName">s2_vld</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/s2_pc" type="array">
+         <obj_property name="ElementShortName">s2_pc[31:0]</obj_property>
+         <obj_property name="ObjectShortName">s2_pc[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/s2_ir" type="array">
+         <obj_property name="ElementShortName">s2_ir[31:0]</obj_property>
+         <obj_property name="ObjectShortName">s2_ir[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/\STAGE1.x " type="array">
+         <obj_property name="ElementShortName">\STAGE1.x [0:15][31:0]</obj_property>
+         <obj_property name="ObjectShortName">\STAGE1.x [0:15][31:0]</obj_property>
+      </wvobject>
    </wvobject>
 </wave_config>
