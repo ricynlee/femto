@@ -159,7 +159,7 @@ module core (
         wire pf_resp_16_32b = (pf_resp_acc==`BUS_ACC_2B);
         wire[1:0] pf_vacant_entry16;
         assign pf_req = (pf_vacant_entry16!=2'd0);
-        assign pf_req_acc = pf_req_addr[1] ? `BUS_ACC_2B : `BUS_ACC_4B;
+        assign pf_req_acc = pf_req_addr[1] ? `BUS_ACC_2B : `BUS_ACC_4B; // why always 4B? confused myself
 
         wire[1:0] pf_filled_entry16;
         wire[`ILEN-1:0] if_ir_raw;

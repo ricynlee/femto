@@ -45,7 +45,8 @@ enum {
 };
 
 void test_read(){
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_111) | QSPINOR_NORCSR_DMYCNT(0) | QSPINOR_NORCSR_CMD(CMD_READ);
+    QSPINOR->norcmd = CMD_READ;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_111) | QSPINOR_NORCSR_DMYCNT(0);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
@@ -108,7 +109,8 @@ void test_read(){
 }
 
 void test_111read(){
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_111) | QSPINOR_NORCSR_DMYCNT(DMY_111READ) | QSPINOR_NORCSR_CMD(CMD_111READ);
+    QSPINOR->norcmd = CMD_111READ;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_111) | QSPINOR_NORCSR_DMYCNT(DMY_111READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
@@ -176,7 +178,8 @@ void test_111read(){
 }
 
 void test_112read(){
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_112) | QSPINOR_NORCSR_DMYCNT(DMY_112READ) | QSPINOR_NORCSR_CMD(CMD_112READ);
+    QSPINOR->norcmd = CMD_112READ;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_112) | QSPINOR_NORCSR_DMYCNT(DMY_112READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
@@ -244,7 +247,8 @@ void test_112read(){
 }
 
 void test_122read(){
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_122) | QSPINOR_NORCSR_DMYCNT(DMY_122READ) | QSPINOR_NORCSR_CMD(CMD_122READ);
+    QSPINOR->norcmd = CMD_122READ;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_122) | QSPINOR_NORCSR_DMYCNT(DMY_122READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
@@ -312,7 +316,8 @@ void test_122read(){
 }
 
 void test_114read(){
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_114) | QSPINOR_NORCSR_DMYCNT(DMY_114READ) | QSPINOR_NORCSR_CMD(CMD_114READ);
+    QSPINOR->norcmd = CMD_114READ;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_114) | QSPINOR_NORCSR_DMYCNT(DMY_114READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
@@ -380,7 +385,8 @@ void test_114read(){
 }
 
 void test_144read(){
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_144) | QSPINOR_NORCSR_DMYCNT(DMY_144READ) | QSPINOR_NORCSR_CMD(CMD_144READ);
+    QSPINOR->norcmd = CMD_144READ;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_144) | QSPINOR_NORCSR_DMYCNT(DMY_144READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
@@ -448,7 +454,8 @@ void test_144read(){
 }
 
 void test_222read(){
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_222) | QSPINOR_NORCSR_DMYCNT(DMY_222READ) | QSPINOR_NORCSR_CMD(CMD_222READ);
+    QSPINOR->norcmd = CMD_222READ;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_222) | QSPINOR_NORCSR_DMYCNT(DMY_222READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
@@ -516,7 +523,8 @@ void test_222read(){
 }
 
 void test_444read(){
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_444) | QSPINOR_NORCSR_DMYCNT(DMY_444READ) | QSPINOR_NORCSR_CMD(CMD_444READ);
+    QSPINOR->norcmd = CMD_444READ;
+    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_444) | QSPINOR_NORCSR_DMYCNT(DMY_444READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
