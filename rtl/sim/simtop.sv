@@ -74,12 +74,20 @@ module simtop #(
         .qspi_sio   (nor_sio)
     );
 
+    // internal reset
+    initial begin
+        force top.rst = 1'b1;
+        #8us;
+        @(posedge top.clk);
+        release top.rst;
+    end
+
     // endsim
     always @ (posedge top.clk) begin
-        if (top.femto.tmr_req && top.femto.bus_wdata=="PASS") begin
+        if (top.femto.dbus_tmr_req && top.femto.dbus_wdata=="PASS") begin
             $display("PASS");
             $finish(0);
-        end else if (top.femto.tmr_req && top.femto.bus_wdata=="FAIL") begin
+        end else if (top.femto.dbus_tmr_req && top.femto.dbus_wdata=="FAIL") begin
             $display("FAIL");
             $finish(0);
         end
@@ -87,16 +95,16 @@ module simtop #(
 
     // print
     always @ (posedge top.clk) begin
-        if (top.femto.tmr_req && top.femto.bus_wdata[31:8]=="PRN") begin
-            $write("%c", top.femto.bus_wdata[7:0]);
+        if (top.femto.dbus_tmr_req && top.femto.dbus_wdata[31:8]=="PRN") begin
+            $write("%c", top.femto.dbus_wdata[7:0]);
         end
     end
 
     // nor sel
-    always @ (posedge top.clk) if (top.femto.tmr_req) begin
-        if (top.femto.bus_wdata=="D2PI")
+    always @ (posedge top.clk) if (top.femto.dbus_tmr_req) begin
+        if (top.femto.dbus_wdata=="D2PI")
             norflash_sel = DPI_SEL;
-        else if (top.femto.bus_wdata=="Q4PI")
+        else if (top.femto.dbus_wdata=="Q4PI")
             norflash_sel = QPI_SEL;
         else
             norflash_sel = SPI_SEL;

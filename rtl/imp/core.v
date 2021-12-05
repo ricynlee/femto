@@ -9,14 +9,23 @@ module core (
     output reg              core_fault,
     output reg[`XLEN-1:0]   core_fault_pc,
 
-    // bus interface
-    output wire[`XLEN-1:0]                  bus_addr, // byte addr
-    output wire                             bus_w_rb,
-    output wire[$clog2(`BUS_ACC_CNT)-1:0]   bus_acc,
-    input wire[`BUS_WIDTH-1:0]              bus_rdata,
-    output wire[`BUS_WIDTH-1:0]             bus_wdata,
-    output wire                             bus_req,
-    input wire                              bus_resp
+    // data bus interface
+    output wire[`XLEN-1:0]                  dbus_addr, // byte addr
+    output wire                             dbus_w_rb,
+    output wire[$clog2(`BUS_ACC_CNT)-1:0]   dbus_acc,
+    input wire[`BUS_WIDTH-1:0]              dbus_rdata,
+    output wire[`BUS_WIDTH-1:0]             dbus_wdata,
+    output wire                             dbus_req,
+    input wire                              dbus_resp,
+
+    // instruction bus interface
+    output wire[`XLEN-1:0]                  ibus_addr, // byte addr
+    output wire                             ibus_w_rb,
+    output wire[$clog2(`BUS_ACC_CNT)-1:0]   ibus_acc,
+    input wire[`BUS_WIDTH-1:0]              ibus_rdata,
+    output wire[`BUS_WIDTH-1:0]             ibus_wdata,
+    output wire                             ibus_req,
+    input wire                              ibus_resp
 );
 
     `include "core.vh"
@@ -88,56 +97,88 @@ module core (
     wire undef_instr, overshift;
 
     /**********************************************************************************************************************/
-    begin:BUS_REQ_MUX
+    begin:BUS_REQ_CTRL
         // Bus busy indicator
-        wire bus_busy_post, bus_busy;
+        wire    ibus_busy_post, ibus_busy;
+        wire    dbus_busy_post, dbus_busy;
         dff #(
             .RESET("sync"),
             .VALID("sync")
-        ) bus_busy_dff (
-            .clk (clk               ),
-            .rstn(rstn              ),
-            .vld (bus_req | bus_resp),
-            .in  (bus_req           ),
-            .out (bus_busy_post     )
+        ) ibus_busy_dff (
+            .clk (clk                 ),
+            .rstn(rstn                ),
+            .vld (ibus_req | ibus_resp),
+            .in  (ibus_req            ),
+            .out (ibus_busy_post      )
+         );
+        assign ibus_busy = ~ibus_resp & ibus_busy_post;
+
+        dff #(
+            .RESET("sync"),
+            .VALID("sync")
+        ) dbus_busy_dff (
+            .clk (clk                 ),
+            .rstn(rstn                ),
+            .vld (dbus_req | dbus_resp),
+            .in  (dbus_req            ),
+            .out (dbus_busy_post      )
         );
-        assign bus_busy = ~bus_resp & bus_busy_post;
+        assign dbus_busy = ~dbus_resp & dbus_busy_post;
 
-        // Bus req mux (D req>PF req) / resp demux
-        assign bus_req  = (d_req | pf_req) & ~bus_busy;
-        assign bus_addr = d_req ? d_req_addr : pf_req_addr;
-        assign bus_w_rb = d_req ? d_req_w_rb : 1'b0;
-        assign bus_acc  = d_req ? d_req_acc  : pf_req_acc;
-        assign bus_wdata = d_req_wdata;
+        assign ibus_req  = pf_req & ~ibus_busy;
+        assign ibus_addr = pf_req_addr;
+        assign ibus_w_rb = 1'b0;
+        assign ibus_acc  = pf_req_acc;
+        assign ibus_wdata = 32'dx;
 
-        assign pf_req_launched = ~d_req & pf_req & ~bus_busy;
-        assign d_req_launched  = d_req  & ~bus_busy;
-    end
+        assign dbus_req  = d_req & ~dbus_busy;
+        assign dbus_addr = d_req_addr;
+        assign dbus_w_rb = d_req_w_rb;
+        assign dbus_acc  = d_req_acc;
+        assign dbus_wdata = d_req_wdata;
+
+        assign pf_req_launched = ibus_req;
+        assign d_req_launched  = dbus_req;
+     end
 
     /**********************************************************************************************************************/
-    begin:BUS_RESP_DEMUX
-        wire bus_resp_w_rb, bus_resp_is_pf;
-        wire[$clog2(`BUS_ACC_CNT)-1:0] bus_resp_acc;
+    begin:BUS_RESP_CTRL
+        wire    ibus_resp_w_rb, dbus_resp_w_rb;
+        wire[$clog2(`BUS_ACC_CNT)-1:0]  ibus_resp_acc, dbus_resp_acc;
+
+        wire    pf_req_not_cacelled;
         dff #(
-            .WIDTH(1 + $clog2(`BUS_ACC_CNT) + 1),
+            .WIDTH($clog2(`BUS_ACC_CNT) + 1),
             .VALID("sync"),
             .CLEAR("sync") // so as to cancel pf_req
-        ) bus_resp_dff (
-            .clk(clk    ),
-            .clr(jmp    ),
-            .vld(bus_req),
-            .in ({pf_req_launched, bus_acc, bus_w_rb}),
-            .out({bus_resp_is_pf, bus_resp_acc, bus_resp_w_rb})
+        ) ibus_resp_dff (
+            .clk(clk                                 ),
+            .clr(jmp                                 ),
+            .vld(ibus_req                            ),
+            .in ({ibus_acc, 1'b1}                    ),
+            .out({ibus_resp_acc, pf_req_not_cacelled})
+        );
+        assign ibus_resp_w_rb = 1'b0; // Always read access
+
+        dff #(
+            .WIDTH($clog2(`BUS_ACC_CNT) + 1),
+            .VALID("sync"                  )
+        ) dbus_resp_dff (
+            .clk(clk                            ),
+            .clr(jmp                            ),
+            .vld(dbus_req                       ),
+            .in ({dbus_acc, dbus_w_rb}          ),
+            .out({dbus_resp_acc, dbus_resp_w_rb})
         );
 
-        assign d_resp_latched = bus_resp & ~bus_resp_is_pf;
-        assign d_resp_acc = bus_resp_acc;
-        assign d_resp_data = bus_rdata;
-        assign d_resp_w_rb = bus_resp_w_rb;
+        assign pf_resp_latched = ibus_resp & pf_req_not_cacelled;
+        assign pf_resp_acc = ibus_resp_acc;
+        assign pf_resp_data = ibus_rdata;
 
-        assign pf_resp_latched = bus_resp & bus_resp_is_pf;
-        assign pf_resp_acc = bus_resp_acc;
-        assign pf_resp_data = bus_rdata;
+        assign d_resp_latched = dbus_resp;
+        assign d_resp_acc = dbus_resp_acc;
+        assign d_resp_data = dbus_rdata;
+        assign d_resp_w_rb = dbus_resp_w_rb;
     end
 
     /**********************************************************************************************************************/
@@ -157,11 +198,10 @@ module core (
         );
 
         wire pf_resp_16_32b = (pf_resp_acc==`BUS_ACC_2B);
-        wire[1:0] pf_vacant_entry16;
+        wire[1:0] pf_vacant_entry16, pf_filled_entry16;
         assign pf_req = (pf_vacant_entry16!=2'd0);
-        assign pf_req_acc = pf_req_addr[1] ? `BUS_ACC_2B : `BUS_ACC_4B; // why always 4B? confused myself
+        assign pf_req_acc = (pf_req_addr[1] || pf_filled_entry16!=2'd0) ? `BUS_ACC_2B : `BUS_ACC_4B;
 
-        wire[1:0] pf_filled_entry16;
         wire[`ILEN-1:0] if_ir_raw;
         prefetch_queue prefetch_queue(
             .clk             (clk              ),
