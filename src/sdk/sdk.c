@@ -294,6 +294,12 @@ void timer_delay_us(uint32_t val) {
     while(timer_get());
 }
 
+// AUDACQ
+bool ada_get_sample(ada_sample_t* const ptr_d) {
+    ptr_d->ssr = ADA->ssr;
+    return (ptr_d->status) ? true : false;
+}
+
 // RESET
 void reset_soc(void) {
     RESET->rst = RESET_ALL;

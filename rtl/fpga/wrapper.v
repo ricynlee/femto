@@ -13,15 +13,19 @@ module wrapper(
     input wire  uart_rx,
     output wire uart_tx,
 
-    output wire       sram_ce_bar,
-    output wire       sram_oe_bar,
-    output wire       sram_we_bar,
-    inout wire[7:0]   sram_data  ,
-    output wire[18:0] sram_addr  ,
-
-    output wire     qspi_sck,
-    output wire     qspi_csb,
-    inout wire[3:0] qspi_sio
+    // output wire       sram_ce_bar,
+    // output wire       sram_oe_bar,
+    // output wire       sram_we_bar,
+    // inout wire[7:0]   sram_data  ,
+    // output wire[18:0] sram_addr  ,
+    // 
+    // output wire     qspi_sck,
+    // output wire     qspi_csb,
+    // inout wire[3:0] qspi_sio
+    output wire ada_sck,
+    output wire ada_ws,
+    input wire  ada_sd,
+    output wire ada_lrs
 );
 
     wire    clk;
@@ -54,15 +58,19 @@ module wrapper(
         .uart_rx(uart_rx),
         .uart_tx(uart_tx),
 
-        .sram_ce_bar(sram_ce_bar),
-        .sram_oe_bar(sram_oe_bar),
-        .sram_we_bar(sram_we_bar),
-        .sram_data  (sram_data  ),
-        .sram_addr  (sram_addr  ),
-
-        .qspi_sck(qspi_sck),
-        .qspi_csb(qspi_csb),
-        .qspi_sio(qspi_sio)
+        // .sram_ce_bar(sram_ce_bar),
+        // .sram_oe_bar(sram_oe_bar),
+        // .sram_we_bar(sram_we_bar),
+        // .sram_data  (sram_data  ),
+        // .sram_addr  (sram_addr  ),
+        // 
+        // .qspi_sck(qspi_sck),
+        // .qspi_csb(qspi_csb),
+        // .qspi_sio(qspi_sio)
+        .ada_sck(ada_sck),
+        .ada_ws (ada_ws ),
+        .ada_sd (ada_sd ),
+        .ada_lrs(ada_lrs)
     );
 
 endmodule

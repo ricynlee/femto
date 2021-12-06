@@ -60,6 +60,18 @@ extern void timer_set(uint32_t val);
 extern uint32_t timer_get(void);
 extern void timer_delay_us(uint32_t val);
 
+// ADAACQ
+typedef union {
+    int32_t ssr;
+    struct {
+        int32_t sample: ADA_SAMPLE_WIDTH;
+        int32_t status: ADA_STATUS_WIDTH;
+    };
+    uint8_t data[sizeof(int32_t)];
+} ada_sample_t;
+
+bool ada_get_sample(ada_sample_t* const ptr_d);
+
 // RESET
 extern void reset_soc(void);
 extern void reset_core(void);

@@ -143,6 +143,21 @@
 
     #define TIMER ((femto_timer_t*)0x70000000)
 
+// ADA - audio data acquisition
+    typedef struct {
+        const volatile int  ssr;
+    } femto_audacq_t;
+
+    #define ADA ((femto_audacq_t*)0x80000000)
+
+    #define ADA_SAMPLE_SHIFT    (0u)
+    #define ADA_SAMPLE_WIDTH    (24u)
+    #define ADA_SAMPLE_MASK     (MASK_WIDTH(ADA_SAMPLE_WIDTH)<<ADA_SAMPLE_SHIFT)
+
+    #define ADA_STATUS_SHIFT    (24u)
+    #define ADA_STATUS_WIDTH    (8u)
+    #define ADA_STATUS_MASK     ((MASK_WIDTH(ADA_STATUS_WIDTH)<<ADA_STATUS_SHIFT))
+
 // RESET
     typedef struct {
         volatile unsigned char  rst;
