@@ -22,9 +22,9 @@ femto
 - rtl: RTL源代码
   - fpga: FPGA封装层
     - constraints: 约束
-    - imp: femto主体
-    - sim: 仿真验证所需的RTL环境
-      - ut_core: 处理器核仿真验证
+  - imp: femto主体
+  - sim: 仿真验证所需的RTL环境
+    - ut_core: 处理器核仿真验证
 - src: 软件代码
   - imp: 引导程序/Flashloader/示例应用程序
     - rom: Bootloader工程
