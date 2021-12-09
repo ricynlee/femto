@@ -1,3 +1,5 @@
+> dualbus分支上是程序/数据总线分立版本,但是仍推荐此单总线版本
+
 # 概览
 femto 是一款兼容 RISCV 指令的轻量级软核微控制器，可嵌入 FPGA，便于用软件实现一定复杂度的控制逻辑。目前 femto 在 MIT 协议下开源发布。femto 基本特性列表如下：
 - 单处理器核
@@ -19,9 +21,9 @@ femto
 - rtl: RTL源代码
   - fpga: FPGA封装层
     - constraints: 约束
-    - imp: femto主体
-    - sim: 仿真验证所需的RTL环境
-      - ut_core: 处理器核仿真验证
+  - imp: femto主体
+  - sim: 仿真验证所需的RTL环境
+    - ut_core: 处理器核仿真验证
 - src: 软件代码
   - imp: 引导程序/Flashloader/示例应用程序
     - rom: Bootloader工程
