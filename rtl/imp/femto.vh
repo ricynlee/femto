@@ -25,13 +25,13 @@
 
 /* addressable controllers / mem map */
 `define ROM_ADDR            (32'h0000_0000)
-`define ROM_SIZE            (16*1024)        // 16KB, 2's exponent
+`define ROM_SIZE            (4*1024)        // 4KB, 2's exponent
 `define ROM_VA_MASK         ({{(32-$clog2(`ROM_SIZE)){1'b0}},{$clog2(`ROM_SIZE){1'b1}}})
 `define ROM_VA_WIDTH        ($clog2(`ROM_SIZE))
 `define ROM_SEL_MASK        (~`ROM_VA_MASK)
 
 `define TCM_ADDR            (32'h1000_0000)
-`define TCM_SIZE            (8*1024)        // 8KB, 2's exponent
+`define TCM_SIZE            (4*1024)        // 4KB, 2's exponent
 `define TCM_VA_MASK         ({{(32-$clog2(`TCM_SIZE)){1'b0}},{$clog2(`TCM_SIZE){1'b1}}})
 `define TCM_VA_WIDTH        ($clog2(`TCM_SIZE))
 `define TCM_SEL_MASK        (~`TCM_VA_MASK)
@@ -90,7 +90,7 @@
 `define QSPINOR_X4          (2'd2)
 
 /* uart */
-`define UART_BAUD           (57600)
+`define UART_BAUD           (256000)
 `define UART_FIFO_DEPTH     (8)
 
 /* qspinor */

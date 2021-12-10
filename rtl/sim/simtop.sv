@@ -55,6 +55,7 @@ module simtop #(
     sram sram();
     initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
 
+    logic   i2s_sd;
     wrapper top (
         .sysclk     (clk),
         .sysrst     (rst),
@@ -64,15 +65,16 @@ module simtop #(
         .button     (led[0]),
         .uart_tx    (uart_txd), // loopback
         .uart_rx    (uart_txd),
-        .sram_ce_bar(sram.sram_ce_bar),
-        .sram_oe_bar(sram.sram_oe_bar),
-        .sram_we_bar(sram.sram_we_bar),
-        .sram_data  (sram.sram_data  ),
-        .sram_addr  (sram.sram_addr  ),
-        .qspi_sck   (nor_sck),
-        .qspi_csb   (nor_csb),
-        .qspi_sio   (nor_sio)
+        .ada_sd     (i2s_sd)
     );
+
+    always @ (posedge top.ada_sck) begin
+        if (top.ada_ws) begin
+            i2s_sd <= 1'bx;
+        end else begin
+            i2s_sd <= $urandom % 1;
+        end
+    end
 
     // endsim
     always @ (posedge top.clk) begin

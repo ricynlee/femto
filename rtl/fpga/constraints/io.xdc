@@ -71,8 +71,8 @@ set_property -dict {PACKAGE_PIN J17 IOSTANDARD LVCMOS33} [get_ports uart_rx]
 # set_property -dict {PACKAGE_PIN N19 IOSTANDARD LVCMOS33} [get_ports sram_ce_bar]
 
 ## I2S Microphone
-set_property -dict { PACKAGE_PIN G17   IOSTANDARD LVCMOS33 } [get_ports ada_lrs]
-set_property -dict { PACKAGE_PIN G19   IOSTANDARD LVCMOS33 } [get_ports ada_ws ]
-set_property -dict { PACKAGE_PIN N18   IOSTANDARD LVCMOS33 } [get_ports ada_sd ]
-set_property -dict { PACKAGE_PIN L18   IOSTANDARD LVCMOS33 } [get_ports ada_sck]
-
+set_property -dict { PACKAGE_PIN G17   IOSTANDARD LVCMOS33 } [get_ports ada_sd ]
+set_property -dict { PACKAGE_PIN G19   IOSTANDARD LVCMOS33 } [get_ports ada_sck]
+set_property -dict { PACKAGE_PIN N18   IOSTANDARD LVCMOS33 } [get_ports ada_lrs]
+set_property -dict { PACKAGE_PIN L18   IOSTANDARD LVCMOS33 } [get_ports ada_ws ]
+# set_property PULLDOWN true [get_ports ada_sd]
