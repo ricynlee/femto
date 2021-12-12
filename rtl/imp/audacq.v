@@ -185,3 +185,211 @@ module audacq # (
     assign  ws = (state==IDLE) || (state==HIGH);
     assign  arrive = (state==LOW && next_state==HIGH && trigger);
 endmodule
+
+module iir_filter (
+    input wire  clk,
+    input wire  rstn,
+
+    input wire          din_vld,
+    input wire[15:0]    din,    // S16.n fixed point
+    output wire         dout_vld,
+    output wire[15:0]   dout    // S16.n fixed point
+);
+    localparam ORDER = 4;
+
+    localparam[0:ORDER] COE_B = { // S16.12 fixed point
+        32, -63, 53, 0, -53, 63, -32
+    };
+
+    localparam[0:ORDER] COE_A = { // S16.12 fixed point
+        4096, -12395, 23231, -25916, 20413, -9566, 2778
+    };
+
+    // mul acc
+    wire        mul_acc_clr
+    mul_acc_iv, mul_acc_ov, mul_acc_a_sb;
+    reg[15:0]   mul_acc_a, // X,Y
+                mul_acc_b; // COE
+    wire[15:0]  mul_acc_s;
+    mul_acc mul_acc (
+        .clk (clk ),
+        .rstn(rstn),
+        .clr (mul_acc_clr),
+        .iv  (mul_acc_iv ),
+        .a   (mul_acc_a),
+        .b   (mul_acc_b),
+        .a_sb(mul_acc_a_sb),
+        .ov  (mul_acc_ov  ),
+        .s   (mul_acc_s   )
+    );
+
+    // state control
+    localparam  IDLE   = 0,
+                ADD_Z  = 1,
+                ADD_XB = 2,
+                SUB_YA = 3;
+
+    reg[7:0] state, next_state;
+    reg[7:0] order, next_order;
+    always @ (posedge clk) begin
+        if (~rstn) begin
+            state <= IDLE;
+            order <= 0;
+        end else begin
+            state <= next_state;
+            order <= next_order;
+        end
+    end
+
+    always @ (*) case (state)
+        default:
+            if (din_vld) begin
+                next_state = ADD_Z;
+                next_order = 0;
+            end else begin
+                next_state = IDLE;
+                next_order = 0;
+            end
+        ADD_Z:
+            if (mul_acc_ov) begin
+                next_state = ADD_XB;
+                next_order = order;
+            end else begin
+                next_state = ADD_Z;
+                next_order = order;
+            end
+        ADD_XB:
+            if (mul_acc_ov) begin
+                next_state = SUB_YA;
+                next_order = order;
+            end else begin
+                next_state = ADD_XB;
+                next_order = order;
+            end
+        SUB_YA:
+            if (mul_acc_ov) begin
+                if (order==ORDER) begin
+                    next_state = IDLE;
+                    next_order = 0;
+                end else begin
+                    next_state = ADD_Z;
+                    next_order = order+1;
+                end
+            end else begin
+                next_state = SUB_YA;
+                next_order = order;
+            end
+    endcase
+
+    // input buffering
+    wire[15:0]  din_kept;
+    dff #(
+        .WIDTH(16     ),
+        .VALID("async")
+    ) din_keeper (
+        .clk(clk),
+
+        .vld(din_vld && state==IDLE),
+
+        .in (din     ),
+        .out(din_kept)
+    );
+
+    // data flow
+    generate for (genvar i = 1; i <= ORDER; i = i + 1)
+        begin: STAGE
+            wire        iv; // input vld
+            wire[15:0]  zi, zo;
+            dff #(
+                .WIDTH(16    ),
+                .RESET("sync"),
+                .VALID("sync"),
+            ) z (
+                .clk (clk ),
+                .rstn(rstn),
+
+                .vld (iv),
+                .in  (zi),
+                .out (zo)
+            );
+
+            assign  iv = (order==i) && mul_acc_ov;
+            assign  zi = mul_acc_s;
+        end
+    endgenerate
+
+    always @ (*) case (next_state)
+        mul_acc_a =
+    end
+
+endmodule
+
+module mul_acc (
+    input wire  clk,
+    input wire  rstn,
+
+    input wire  clr, // sync
+
+    input wire          iv,
+    input wire[15:0]    a,
+    input wire[15:0]    b,
+    input wire          a_sb,
+
+    output wire         ov,
+    output wire[15:0]   s
+);
+    // not sure if Xilinx mul & acc are configured as fully pipelined
+    // so let's assume no
+
+    // state control
+    localparam  IDLE = 0,
+                MUL1 = 1,
+                MUL2 = 2,
+                MUL3 = 3,
+                ACC1 = 4,
+                ACC2 = 5;
+    reg[7:0]    state, next_state;
+    always @ (posedge clk) begin
+        if (~rstn)
+            state <= IDLE;
+        else
+            state <= next_state;
+    end
+
+    always @ (*) case (state)
+        default:
+            if (iv)
+                next_state = MUL1;
+            else
+                next_state = IDLE;
+        MUL1: next_state = MUL2;
+        MUL2: next_state = MUL3;
+        MUL3: next_state = ACC1;
+        ACC1: next_state = ACC2;
+        ACC2: next_state = IDLE;
+    endcase
+
+    wire    mul_acc_idle = state==IDLE;
+    wire    valid_clr = mul_acc_idle & clr;
+
+    // calculation
+    wire[15:0]  p;
+    mul mul ( // mul latency 3
+        .CLK(clk   ),
+        .A  (a),
+        .B  (b),
+        .P  (p)
+    );
+
+    wire    p_vld = state==MUL3;
+    acc acc ( // acc latency 2
+        .CLK   (clk      ),
+        .SCLR  (valid_clr),
+        .BYPASS(p_vld    ), // low active, equivalent to vld
+        .B     (p        ),
+        .ADD   (a_sb     ),
+        .Q     (s        )
+    );
+
+    assign  ov = state==ACC2;
+endmodule

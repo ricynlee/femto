@@ -8,9 +8,12 @@ BAUD = 256000
 ser = sopen(PORT, BAUD)
 f = open("record.snd", "wb")
 
-while True:
-    resp = ser.read(2)
-    f.write(resp)
+try:
+    while True:
+        resp = ser.read(2)
+        f.write(resp)
+except:
+    pass
 
 f.close()
 ser.close()
