@@ -61,7 +61,6 @@ ENTITY acc IS
     B : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
     CLK : IN STD_LOGIC;
     ADD : IN STD_LOGIC;
-    BYPASS : IN STD_LOGIC;
     SCLR : IN STD_LOGIC;
     Q : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
   );
@@ -112,8 +111,6 @@ ARCHITECTURE acc_arch OF acc IS
   ATTRIBUTE X_INTERFACE_INFO OF Q: SIGNAL IS "xilinx.com:signal:data:1.0 q_intf DATA";
   ATTRIBUTE X_INTERFACE_PARAMETER OF SCLR: SIGNAL IS "XIL_INTERFACENAME sclr_intf, POLARITY ACTIVE_HIGH";
   ATTRIBUTE X_INTERFACE_INFO OF SCLR: SIGNAL IS "xilinx.com:signal:reset:1.0 sclr_intf RST";
-  ATTRIBUTE X_INTERFACE_PARAMETER OF BYPASS: SIGNAL IS "XIL_INTERFACENAME bypass_intf, LAYERED_METADATA undef";
-  ATTRIBUTE X_INTERFACE_INFO OF BYPASS: SIGNAL IS "xilinx.com:signal:data:1.0 bypass_intf DATA";
   ATTRIBUTE X_INTERFACE_PARAMETER OF ADD: SIGNAL IS "XIL_INTERFACENAME add_intf, LAYERED_METADATA undef";
   ATTRIBUTE X_INTERFACE_INFO OF ADD: SIGNAL IS "xilinx.com:signal:data:1.0 add_intf DATA";
   ATTRIBUTE X_INTERFACE_PARAMETER OF CLK: SIGNAL IS "XIL_INTERFACENAME clk_intf, ASSOCIATED_BUSIF q_intf:sinit_intf:sset_intf:bypass_intf:c_in_intf:add_intf:b_intf, ASSOCIATED_RESET SCLR, ASSOCIATED_CLKEN CE, FREQ_HZ 100000000, PHASE 0.000";
@@ -133,13 +130,13 @@ BEGIN
       C_ADD_MODE => 2,
       C_HAS_C_IN => 0,
       C_HAS_CE => 0,
-      C_HAS_BYPASS => 1,
+      C_HAS_BYPASS => 0,
       C_HAS_SCLR => 1,
       C_LATENCY => 2,
       C_SCALE => 0,
       C_AINIT_VAL => "0",
       C_SINIT_VAL => "0",
-      C_BYPASS_LOW => 1,
+      C_BYPASS_LOW => 0,
       C_SCLR_OVERRIDES_SSET => 1,
       C_HAS_SSET => 0,
       C_HAS_SINIT => 0
@@ -150,7 +147,7 @@ BEGIN
       ADD => ADD,
       C_IN => '0',
       CE => '1',
-      BYPASS => BYPASS,
+      BYPASS => '0',
       SCLR => SCLR,
       SSET => '0',
       SINIT => '0',

@@ -78,7 +78,9 @@ endmodule
 
 // MSB-LSB, left-aligned
 module audacq # (
-    parameter   PRIMARY_DIV = 26
+    parameter   PRIMARY_DIV = 26,
+    parameter   BUILT_IN_FILTER = "yes", // yes, no
+    parameter   FILTER_INPUT_LSB = 0
 )(
     input wire  clk,
     input wire  rstn,
@@ -180,10 +182,26 @@ module audacq # (
     endcase
 
     assign lrs = 1'b0; // mono-channel, sample if ws is low
-    assign  sample = acq_r;
     assign  sck = (state==IDLE) || (count[0]);
     assign  ws = (state==IDLE) || (state==HIGH);
-    assign  arrive = (state==LOW && next_state==HIGH && trigger);
+
+    generate
+        if (BUILT_IN_FILTER=="yes") begin
+            wire    acq_r_vld = (state==LOW && next_state==HIGH && trigger);
+            iir_filter iir_filter (
+                .clk (clk ),
+                .rstn(rstn),
+                .din_vld (acq_r_vld                  ),
+                .din     (acq_r[FILTER_INPUT_LSB+:16]),
+                .dout_vld(arrive      ),
+                .dout    (sample[15:0])
+            );
+            assign  sample[23:16] = {8{sample[15]}};
+        end else if (BUILT_IN_FILTER=="no") begin
+            assign  sample = acq_r;
+            assign  arrive = (state==LOW && next_state==HIGH && trigger);
+        end
+    endgenerate
 endmodule
 
 module iir_filter (
@@ -195,29 +213,33 @@ module iir_filter (
     output wire         dout_vld,
     output wire[15:0]   dout    // S16.n fixed point
 );
-    localparam ORDER = 4;
+    localparam          ORDER = 6;
 
-    localparam[0:ORDER] COE_B = { // S16.12 fixed point
-        32, -63, 53, 0, -53, 63, -32
+    localparam[15:0]    COE_B[0:ORDER] = { // S16.12 fixed point
+        16'd32, -16'd63, 16'd53, 16'd0, -16'd53, 16'd63, -16'd32
     };
 
-    localparam[0:ORDER] COE_A = { // S16.12 fixed point
-        4096, -12395, 23231, -25916, 20413, -9566, 2778
+    localparam[15:0]    COE_A[0:ORDER] = { // S16.12 fixed point
+        16'd0 /*this has to be 0*/, -16'd12395, 16'd23231, -16'd25916, 16'd20413, -16'd9566, 16'd2778
     };
+
+    localparam  COE_1 = 4096; // S16.12 fixed point
 
     // mul acc
-    wire        mul_acc_clr
-    mul_acc_iv, mul_acc_ov, mul_acc_a_sb;
-    reg[15:0]   mul_acc_a, // X,Y
-                mul_acc_b; // COE
+    wire        mul_acc_clr,
+                mul_acc_iv;
+    reg         mul_acc_a_sb;
+    reg[15:0]   mul_acc_xyz, // X,Y,Z
+                mul_acc_coe; // COE
+    wire        mul_acc_ov;
     wire[15:0]  mul_acc_s;
     mul_acc mul_acc (
         .clk (clk ),
         .rstn(rstn),
-        .clr (mul_acc_clr),
-        .iv  (mul_acc_iv ),
-        .a   (mul_acc_a),
-        .b   (mul_acc_b),
+        .clr (mul_acc_clr ),
+        .iv  (mul_acc_iv  ),
+        .a   (mul_acc_xyz ),
+        .b   (mul_acc_coe ),
         .a_sb(mul_acc_a_sb),
         .ov  (mul_acc_ov  ),
         .s   (mul_acc_s   )
@@ -282,7 +304,7 @@ module iir_filter (
     endcase
 
     // input buffering
-    wire[15:0]  din_kept;
+    wire[15:0]  x;
     dff #(
         .WIDTH(16     ),
         .VALID("async")
@@ -291,36 +313,70 @@ module iir_filter (
 
         .vld(din_vld && state==IDLE),
 
-        .in (din     ),
-        .out(din_kept)
+        .in (din),
+        .out(x  )
     );
 
     // data flow
-    generate for (genvar i = 1; i <= ORDER; i = i + 1)
-        begin: STAGE
-            wire        iv; // input vld
-            wire[15:0]  zi, zo;
+    wire[15:0]  z[0:ORDER+1];
+    generate for (genvar i = 0; i <= ORDER; i = i + 1)
+        begin: Z
+            wire        v; // input vld
+            wire[15:0]  o;
             dff #(
                 .WIDTH(16    ),
                 .RESET("sync"),
-                .VALID("sync"),
-            ) z (
+                .VALID("sync")
+            ) z_dff (
                 .clk (clk ),
                 .rstn(rstn),
 
-                .vld (iv),
-                .in  (zi),
-                .out (zo)
+                .vld (v        ),
+                .in  (mul_acc_s),
+                .out (o        )
             );
 
-            assign  iv = (order==i) && mul_acc_ov;
-            assign  zi = mul_acc_s;
+            assign  v = (state==SUB_YA) && (order==i) && mul_acc_ov;
+            assign  z[i] = o;
         end
     endgenerate
+    wire[15:0]  y = z[0];
+    assign      z[ORDER+1] = 16'd0;
 
     always @ (*) case (next_state)
-        mul_acc_a =
-    end
+        ADD_Z:
+            begin
+                mul_acc_xyz = z[next_order+1];
+                mul_acc_coe = COE_1;
+                mul_acc_a_sb = 1;
+            end
+        ADD_XB:
+            begin
+                mul_acc_xyz = x;
+                mul_acc_coe = COE_B[order];
+                mul_acc_a_sb = 1;
+            end
+        SUB_YA:
+            begin
+                mul_acc_xyz = y;
+                mul_acc_coe = COE_A[order];
+                mul_acc_a_sb = 0;
+            end
+        default:
+            begin
+                mul_acc_xyz = 16'dx;
+                mul_acc_coe = 16'dx;
+                mul_acc_a_sb = 1'bx;
+            end
+    endcase
+
+    assign  mul_acc_iv = (next_state==ADD_Z && state!=ADD_Z) ||
+                         (next_state==ADD_XB && state!=ADD_XB) ||
+                         (next_state==SUB_YA && state!=SUB_YA);
+    assign  mul_acc_clr = (next_state==ADD_Z && state!=ADD_Z);
+
+    assign  dout_vld = (next_state==IDLE && state!=IDLE);
+    assign  dout = y;
 
 endmodule
 
@@ -357,7 +413,7 @@ module mul_acc (
     end
 
     always @ (*) case (state)
-        default:
+        default: // IDLE, ACC2
             if (iv)
                 next_state = MUL1;
             else
@@ -366,11 +422,10 @@ module mul_acc (
         MUL2: next_state = MUL3;
         MUL3: next_state = ACC1;
         ACC1: next_state = ACC2;
-        ACC2: next_state = IDLE;
     endcase
 
-    wire    mul_acc_idle = state==IDLE;
-    wire    valid_clr = mul_acc_idle & clr;
+    wire    valid_clr = (state==IDLE || next_state==MUL1) & clr;
+    assign  ov = state==ACC2;
 
     // calculation
     wire[15:0]  p;
@@ -383,13 +438,10 @@ module mul_acc (
 
     wire    p_vld = state==MUL3;
     acc acc ( // acc latency 2
-        .CLK   (clk      ),
-        .SCLR  (valid_clr),
-        .BYPASS(p_vld    ), // low active, equivalent to vld
-        .B     (p        ),
-        .ADD   (a_sb     ),
-        .Q     (s        )
+        .CLK   (clk              ),
+        .SCLR  (valid_clr        ),
+        .B     (p_vld ? p : 16'd0),
+        .ADD   (a_sb             ),
+        .Q     (s                )
     );
-
-    assign  ov = state==ACC2;
 endmodule

@@ -57,7 +57,6 @@ COMPONENT acc
     B : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
     CLK : IN STD_LOGIC;
     ADD : IN STD_LOGIC;
-    BYPASS : IN STD_LOGIC;
     SCLR : IN STD_LOGIC;
     Q : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
   );
@@ -73,7 +72,6 @@ your_instance_name : acc
     B => B,
     CLK => CLK,
     ADD => ADD,
-    BYPASS => BYPASS,
     SCLR => SCLR,
     Q => Q
   );
