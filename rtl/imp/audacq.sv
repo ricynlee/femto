@@ -28,7 +28,7 @@ module audacq_controller(
      *  SSR     | 0       | 4    | RO     | -
      *
      *  SSR
-     *   Status (31:24) | Sample (23:0)
+     *   Count (31:16) | Sample (15:0)
      */
 
     // fault generation
@@ -51,7 +51,7 @@ module audacq_controller(
 
     // audio data acquisition
     wire        arrive;
-    wire[23:0]  sample;
+    wire[15:0]  sample;
     audacq audacq (
         .clk (clk ),
         .rstn(rstn),
@@ -68,10 +68,8 @@ module audacq_controller(
         if (~rstn) begin
             rdata <= 32'd0;
         end else if (arrive) begin
-            rdata[23:0] <= sample;
-            rdata[31] <= 1'b1;
-        end else if (resp) begin
-            rdata[31] <= 1'b0;
+            rdata[15:0] <= sample;
+            rdata[31:16] <= rdata[31:16]+1;
         end
     end
 endmodule
@@ -79,14 +77,14 @@ endmodule
 // MSB-LSB, left-aligned
 module audacq # (
     parameter   PRIMARY_DIV = 26,
-    parameter   BUILT_IN_FILTER = "yes", // yes, no
-    parameter   FILTER_INPUT_LSB = 0
+    parameter   ACQUIRED_LSB = 0,
+    parameter   BUILT_IN_FILTER = "no" // yes, no
 )(
     input wire  clk,
     input wire  rstn,
 
     output wire         arrive,
-    output wire[23:0]   sample,
+    output wire[15:0]   sample,
 
     output wire sck,
     output wire ws,
@@ -191,14 +189,13 @@ module audacq # (
             iir_filter iir_filter (
                 .clk (clk ),
                 .rstn(rstn),
-                .din_vld (acq_r_vld                  ),
-                .din     (acq_r[FILTER_INPUT_LSB+:16]),
-                .dout_vld(arrive      ),
-                .dout    (sample[15:0])
+                .din_vld (acq_r_vld              ),
+                .din     (acq_r[ACQUIRED_LSB+:16]),
+                .dout_vld(arrive),
+                .dout    (sample)
             );
-            assign  sample[23:16] = {8{sample[15]}};
         end else if (BUILT_IN_FILTER=="no") begin
-            assign  sample = acq_r;
+            assign  sample = acq_r[ACQUIRED_LSB+:16];
             assign  arrive = (state==LOW && next_state==HIGH && trigger);
         end
     endgenerate

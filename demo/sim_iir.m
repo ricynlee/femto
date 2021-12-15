@@ -21,16 +21,25 @@ axis([0, 1, -0.5, 1.5]);
 title('1.Base band signal');
 
 %% Generate S16.10 Fixed Pointed Signal
-SNR=-6;
-
-X = awgn(0.5*cos(2*pi*fc*t).*BB, SNR, 'measured');
-X = round(X*2048);
+A = 0.5;
+X = A*cos(2*pi*fc*t).*BB;
 
 subplot(4,2,3);
 plot(t,X,'LineSmoothing','On');
 grid on;
+axis([0, 1, -1, 1]);
+title('2.Audio Signal');
+
+%% Add Noise
+SNR=-3;
+X = awgn(X, -db(0.5*A^2)+SNR);
+X = round(X*2048);
+
+subplot(4,2,5);
+plot(t,X,'LineSmoothing','On');
+grid on;
 axis([0, 1, -5000, 5000]);
-title(sprintf('2.Audio Signal w/ Noise, SNR=%ddB', SNR));
+title(sprintf('3.Audio Signal w/ Noise, SNR=%ddB', SNR));
 
 %% S12.9 Band-pass IIR Filter Coefficients
 B=[0.00791270139818323  -0.0153622509017829 0.0130375556788600  0   -0.0130375556788600 0.0153622509017829  -0.00791270139818323];
@@ -49,11 +58,11 @@ vldt(max(abs(B)));
 vldt(max(abs(A)));
 
 N=2048;
-subplot(4,2,5);
+subplot(4,2,7);
 plot(0:fs/N/2:(fs/2-fs/N/2), db(freqz(B/KB,A/KA,N)),'LineSmoothing','On');
 grid on;
 axis([0 fs/2 -60 10]);
-title('3.IIR filter');
+title('4.IIR filter');
 
 %% Filter
 Y=zeros(1,length(X));
@@ -69,51 +78,32 @@ for i=1:length(X)
             Z(n-1)=floor(X(i)*B(n)/KB)-floor(Y(i)*A(n)/KA);
             vldt( Y(i)*A(n)/KA );
             vldt( X(i)*B(n)/KB );
-            vldt( Z(n-1) );            
+            vldt( Z(n-1) );
         else
             Z(n-1)=Z(n)+floor(X(i)*B(n)/KB)-floor(Y(i)*A(n)/KA);
             vldt( Y(i)*A(n)/KA );
             vldt( X(i)*B(n)/KB );
-            vldt( Z(n-1) );            
+            vldt( Z(n-1) );
         end
-    end
-end
-
-subplot(4,2,7);
-plot(t,Y,'LineSmoothing','On');
-grid on;
-axis([0, 1, -3000, 3000]);
-title('4.Filtered signal');
-
-%% Differentiation (Phase shift)
-Yq = zeros(1, length(X));
-for i=1:length(X)
-    if i==1
-        Yq(i) = Y(i)-0;
-    else
-        Yq(i) = Y(i)-Y(i-1);
     end
 end
 
 subplot(4,2,2);
 plot(t,Y,'LineSmoothing','On');
-hold on;
-plot(t,Yq,'r','LineSmoothing','On');
-hold off;
 grid on;
 axis([0, 1, -3000, 3000]);
-title('5.Differentiated (Phase Shift)');
+title('5.Filtered signal');
 
 %% Rectification
 for i=1:length(X)
-    Y(i) = abs(Y(i))+abs(Yq(i));
+    Y(i) = abs(Y(i));
 end
 clear Yq;
 
 subplot(4,2,4);
 plot(t,Y,'LineSmoothing','On');
 grid on;
-axis([0, 1, -1000, 3500]);
+axis([0, 1, -1000, 2500]);
 title('6.Rectified');
 
 %% Envelope detection
@@ -125,6 +115,8 @@ for i=1:length(X)
         prev=Y(i-1);
     end
 
+    Y(i) = floor(mean([prev,Y(i)]));
+
     if Y(i)>prev+linear_envelope_detection_thresh
         Y(i) = prev+linear_envelope_detection_thresh;
     elseif Y(i)<prev-linear_envelope_detection_thresh
@@ -135,7 +127,7 @@ end
 subplot(4,2,6);
 plot(t,Y,'LineSmoothing','On');
 grid on;
-axis([0, 1, -1000, 2500]);
+axis([0, 1, -1000, 1500]);
 title('7.Envelope Detection');
 
 %% Decisioned
