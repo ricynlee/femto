@@ -25,8 +25,7 @@ module femto (
             gpio_fault,
             uart_fault,
             tmr_fault,
-            ada_fault,
-            rst_fault;
+            ada_fault;
 
     wire    fault;
 
@@ -78,16 +77,14 @@ module femto (
             gpio_req_sel    = (bus_addr & `GPIO_SEL_MASK)==`GPIO_ADDR,
             uart_req_sel    = (bus_addr & `UART_SEL_MASK)==`UART_ADDR,
             tmr_req_sel     = (bus_addr & `TMR_SEL_MASK)==`TMR_ADDR,
-            ada_req_sel     = (bus_addr & `RST_SEL_MASK)==`ADA_ADDR,
-            rst_req_sel     = (bus_addr & `RST_SEL_MASK)==`RST_ADDR;
+            ada_req_sel     = (bus_addr & `RST_SEL_MASK)==`ADA_ADDR;
 
     wire    rom_resp_sel ,
             tcm_resp_sel ,
             gpio_resp_sel,
             uart_resp_sel,
             tmr_resp_sel ,
-            ada_resp_sel ,
-            rst_resp_sel ;
+            ada_resp_sel ;
 
     dff # (
         .WIDTH(7     ),
@@ -95,12 +92,12 @@ module femto (
     ) bus_resp_sel_dff (
         .clk (clk    ),
         .vld (bus_req),
-        .in  ({rom_req_sel, tcm_req_sel, gpio_req_sel, uart_req_sel, tmr_req_sel, ada_req_sel, rst_req_sel}),
-        .out ({rom_resp_sel, tcm_resp_sel, gpio_resp_sel, uart_resp_sel, tmr_resp_sel, ada_resp_sel, rst_resp_sel})
+        .in  ({rom_req_sel, tcm_req_sel, gpio_req_sel, uart_req_sel, tmr_req_sel, ada_req_sel}),
+        .out ({rom_resp_sel, tcm_resp_sel, gpio_resp_sel, uart_resp_sel, tmr_resp_sel, ada_resp_sel})
     );
 
     // bus fault
-    assign bus_fault = bus_req & ~|{rom_req_sel, tcm_req_sel, gpio_req_sel, uart_req_sel, tmr_req_sel, ada_req_sel, rst_req_sel};
+    assign bus_fault = bus_req & ~|{rom_req_sel, tcm_req_sel, gpio_req_sel, uart_req_sel, tmr_req_sel, ada_req_sel};
 
     // req, resp and rdata
     wire    rom_req     = bus_req & rom_req_sel ,
@@ -108,33 +105,29 @@ module femto (
             gpio_req    = bus_req & gpio_req_sel,
             uart_req    = bus_req & uart_req_sel,
             tmr_req     = bus_req & tmr_req_sel ,
-            ada_req     = bus_req & ada_req_sel ,
-            rst_req     = bus_req & rst_req_sel ;
+            ada_req     = bus_req & ada_req_sel ;
 
     wire    rom_resp ,
             tcm_resp ,
             gpio_resp,
             uart_resp,
             tmr_resp ,
-            ada_resp ,
-            rst_resp ;
+            ada_resp ;
 
     wire[`BUS_WIDTH-1:0]    rom_rdata ,
                             tcm_rdata ,
                             gpio_rdata,
                             uart_rdata,
                             tmr_rdata ,
-                            ada_rdata ,
-                            rst_rdata ;
+                            ada_rdata ;
 
-    assign  bus_resp = fault ? 1'b0 : |{rom_resp, tcm_resp, gpio_resp, uart_resp, tmr_resp, ada_resp, rst_resp};
+    assign  bus_resp = fault ? 1'b0 : |{rom_resp, tcm_resp, gpio_resp, uart_resp, tmr_resp, ada_resp};
     assign  bus_rdata = rom_resp_sel     ? rom_rdata     :
                         tcm_resp_sel     ? tcm_rdata     :
                         gpio_resp_sel    ? gpio_rdata    :
                         uart_resp_sel    ? uart_rdata    :
                         tmr_resp_sel     ? tmr_rdata     :
-                        ada_resp_sel     ? ada_rdata     :
-                        rst_resp_sel     ? rst_rdata     : {`BUS_WIDTH{1'bx}};
+                        ada_resp_sel     ? ada_rdata     : {`BUS_WIDTH{1'bx}};
 
     // ioring
     wire[`GPIO_WIDTH-1:0]   ior_gpio_dir;
@@ -281,15 +274,6 @@ module femto (
         .clk (clk),
 
         .rst_ib(rstn  ),
-        .rst_ob(rstn_v),
-
-        .addr (bus_addr ),
-        .w_rb (bus_w_rb ),
-        .acc  (bus_acc  ),
-        .wdata(bus_wdata),
-        .rdata(rst_rdata),
-        .req  (rst_req  ),
-        .resp (rst_resp ),
-        .fault(rst_fault)
+        .rst_ob(rstn_v)
     );
 endmodule
