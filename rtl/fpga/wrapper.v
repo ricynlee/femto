@@ -81,7 +81,7 @@ module deglitcher (
     output wire out
 );
     (*asyc_reg="true"*) reg[2:0]    v = 3'b000;
-    reg[10:0] cnt;
+    reg[10:0] cnt = 0;
     always @ (posedge clk) begin
         cnt <= cnt+1;
 
@@ -89,5 +89,5 @@ module deglitcher (
             v <= {v[1:0], in};
     end
 
-    assign  out = (v==3'b000 || v==3'b001 || v==3'b010 || v==3'b100) ? 1'b0 : 1'b1;
+    assign  out = (v==3'b111);
 endmodule

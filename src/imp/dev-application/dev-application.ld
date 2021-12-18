@@ -2,6 +2,8 @@ OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv", "elf32-littleriscv")
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 
+
+
 MEMORY
 {
   tcm (wx) : ORIGIN = 0x10000000, LENGTH = 16K
@@ -42,7 +44,9 @@ SECTIONS
   } > tcm
   PROVIDE(__bss_size = . - __bss_begin);
 
-  .stack (NOLOAD):
+  /* heap should be here */
+
+  .stack (ORIGIN(tcm)+LENGTH(tcm)-$stack_size) (NOLOAD) :
   {
     . = $stack_size;
     . = ALIGN(128);

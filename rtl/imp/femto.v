@@ -67,7 +67,7 @@ module femto (
     ) req_acc_dff (
         .clk(clk    ),
         .vld(bus_req),
-        .in (|{core_fault, bus_fault, rom_fault, tcm_fault, gpio_fault, uart_fault, tmr_fault, ada_fault, rst_fault}),
+        .in (|{core_fault, bus_fault, rom_fault, tcm_fault, gpio_fault, uart_fault, tmr_fault, ada_fault}),
         .out(fault  )
     );
 
@@ -77,7 +77,7 @@ module femto (
             gpio_req_sel    = (bus_addr & `GPIO_SEL_MASK)==`GPIO_ADDR,
             uart_req_sel    = (bus_addr & `UART_SEL_MASK)==`UART_ADDR,
             tmr_req_sel     = (bus_addr & `TMR_SEL_MASK)==`TMR_ADDR,
-            ada_req_sel     = (bus_addr & `RST_SEL_MASK)==`ADA_ADDR;
+            ada_req_sel     = (bus_addr & `ADA_SEL_MASK)==`ADA_ADDR;
 
     wire    rom_resp_sel ,
             tcm_resp_sel ,

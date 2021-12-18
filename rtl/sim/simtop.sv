@@ -9,7 +9,7 @@ module simtop #(
     initial forever #41.667 clk<=~clk;
 
     reg rst = 1;
-    initial #8us @(negedge clk) rst = 0;
+    initial #200us @(negedge clk) rst = 0;
 
     wire [3:0] led;
     wire uart_rxd, uart_txd;
