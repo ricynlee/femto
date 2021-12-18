@@ -55,6 +55,7 @@
 // ADA - audio data acquisition
     typedef struct {
         const volatile int  ssr;
+        volatile int        cr;
     } femto_audacq_t;
 
     #define ADA ((femto_audacq_t*)0x80000000)
@@ -65,5 +66,13 @@
 
     #define ADA_STATUS_SHIFT    (24u)
     #define ADA_STATUS_WIDTH    (8u)
-    #define ADA_STATUS_MASK     ((MASK_WIDTH(ADA_STATUS_WIDTH)<<ADA_STATUS_SHIFT))
+    #define ADA_STATUS_MASK     (MASK_WIDTH(ADA_STATUS_WIDTH)<<ADA_STATUS_SHIFT)
+
+    #define ADA_TRUNC_SHIFT     (0u)
+    #define ADA_TRUNC_MASK      (MASK_WIDTH(4u)<<ADA_TRUNC_SHIFT)
+    #define ADA_TRUNC(v)        (((v)<<ADA_TRUNC_SHIFT) & ADA_TRUNC_MASK)
+
+    #define ADA_FILTEN_SHIFT    (31u)
+    #define ADA_FILTEN_MASK     (MASK_WIDTH(1u)<<ADA_FILTEN_SHIFT)
+    #define ADA_FILTEN(v)       (((v)<<ADA_FILTEN_SHIFT) & ADA_FILTEN_MASK)
 #endif // _FEMTO_H

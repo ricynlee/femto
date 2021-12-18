@@ -31,7 +31,7 @@
 `define ROM_SEL_MASK        (~`ROM_VA_MASK)
 
 `define TCM_ADDR            (32'h1000_0000)
-`define TCM_SIZE            (4*1024)        // 4KB, 2's exponent
+`define TCM_SIZE            (4*1024)        // 16KB, 2's exponent
 `define TCM_VA_MASK         ({{(32-$clog2(`TCM_SIZE)){1'b0}},{$clog2(`TCM_SIZE){1'b1}}})
 `define TCM_VA_WIDTH        ($clog2(`TCM_SIZE))
 `define TCM_SEL_MASK        (~`TCM_VA_MASK)
@@ -69,7 +69,7 @@
 `define TMR_SEL_MASK        (~`TMR_VA_MASK)
 
 `define ADA_ADDR            (32'h8000_0000) // system timer
-`define ADA_VA_MASK         (32'h0000_0003) // 4B valid address range
+`define ADA_VA_MASK         (32'h0000_0007) // 8B valid address range
 `define ADA_VA_WIDTH        ($clog2(`ADA_VA_MASK+1))
 `define ADA_SEL_MASK        (~`ADA_VA_MASK)
 

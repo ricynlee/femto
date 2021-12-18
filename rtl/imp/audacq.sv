@@ -26,15 +26,21 @@ module audacq_controller(
      * Register map
      *  Name    | Address | Size | Access | Note
      *  SSR     | 0       | 4    | RO     | -
+     *  CR      | 4       | 4    | WO     | -
      *
      *  SSR
      *   Count (31:16) | Sample (15:0)
+     *  CR
+     *   FEN(31) | (30:4) | Trunc(3:0)
      */
 
+     `define    FEN     31
+     `define    TRUNC   3:0
+
     // fault generation
-    wire invld_addr = (addr!=0);
+    wire invld_addr = (addr[1:0]!=0);
     wire invld_acc  = (acc!=`BUS_ACC_4B);
-    wire invld_wr   = w_rb;
+    wire invld_wr   = (w_rb ^ addr[2]);
     wire invld_d    = 0;
 
     wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
@@ -49,21 +55,51 @@ module audacq_controller(
         end
     end
 
+    // control register
+    reg         filter_en;
+    reg[3:0]    trunc_width;
+    always @ (posedge clk) begin
+        if (~rstn) begin
+            filter_en <= 0;
+            trunc_width <= 0;
+        end else if (req && ~invld && (addr==3'd4) && w_rb) begin
+            filter_en <= wdata[`FEN];
+            trunc_width <= wdata[`TRUNC];
+        end
+    end
+
     // audio data acquisition
-    wire        arrive;
-    wire[15:0]  sample;
+    wire        arrive_acq;
+    wire[23:0]  sample_raw;
     audacq audacq (
         .clk (clk ),
         .rstn(rstn),
-        .arrive(arrive),
-        .sample(sample),
+        .arrive(arrive_acq),
+        .sample(sample_raw),
         .sck(sck),
         .ws (ws ),
         .lrs(lrs),
         .sd (sd )
     );
 
-    // data
+    wire[31:0]  sample_raw_ext = {{8{sample_raw[23]}}, sample_raw};
+    wire[15:0]  sample_trunc = sample_raw_ext[trunc_width+:16];
+
+    wire        arrive_filter;
+    wire[15:0]  sample_filtered;
+    iir_filter iir_filter (
+        .clk (clk ),
+        .rstn(rstn),
+        .din_vld (arrive_acq  ),
+        .din     (sample_trunc),
+        .dout_vld(arrive_filter  ),
+        .dout    (sample_filtered)
+    );
+
+    wire        arrive = filter_en ? arrive_filter : arrive_acq;
+    wire[15:0]  sample = filter_en ? sample_trunc : sample_filtered;
+
+    // status and sample
     always @ (posedge clk) begin
         if (~rstn) begin
             rdata <= 32'd0;
@@ -76,15 +112,13 @@ endmodule
 
 // MSB-LSB, left-aligned
 module audacq # (
-    parameter   PRIMARY_DIV = 26,
-    parameter   ACQUIRED_LSB = 0,
-    parameter   BUILT_IN_FILTER = "no" // yes, no
+    parameter   PRIMARY_DIV = 26
 )(
     input wire  clk,
     input wire  rstn,
 
     output wire         arrive,
-    output wire[15:0]   sample,
+    output wire[23:0]   sample,
 
     output wire sck,
     output wire ws,
@@ -179,26 +213,12 @@ module audacq # (
         48: acq_r[0]  <= sd;
     endcase
 
+    assign  sample = acq_r;
+    assign  arrive = (state==LOW && next_state==HIGH && trigger);
+
     assign lrs = 1'b0; // mono-channel, sample if ws is low
     assign  sck = (state==IDLE) || (count[0]);
     assign  ws = (state==IDLE) || (state==HIGH);
-
-    generate
-        if (BUILT_IN_FILTER=="yes") begin
-            wire    acq_r_vld = (state==LOW && next_state==HIGH && trigger);
-            iir_filter iir_filter (
-                .clk (clk ),
-                .rstn(rstn),
-                .din_vld (acq_r_vld              ),
-                .din     (acq_r[ACQUIRED_LSB+:16]),
-                .dout_vld(arrive),
-                .dout    (sample)
-            );
-        end else if (BUILT_IN_FILTER=="no") begin
-            assign  sample = acq_r[ACQUIRED_LSB+:16];
-            assign  arrive = (state==LOW && next_state==HIGH && trigger);
-        end
-    endgenerate
 endmodule
 
 module iir_filter (

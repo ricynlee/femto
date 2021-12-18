@@ -42,5 +42,7 @@ typedef union {
     uint8_t data[sizeof(int32_t)];
 } ada_sample_t;
 
-bool ada_get_sample(ada_sample_t* const ptr_d);
+extern bool ada_get_sample(ada_sample_t* const ptr_d);
+extern void ada_configure(bool enable_filter, uint8_t trunc_width);
+
 #endif // _FEMTO_SDK_H

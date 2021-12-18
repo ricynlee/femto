@@ -31,7 +31,7 @@ axis([0, 1, -1, 1]);
 title('2.Audio Signal');
 
 %% Add Noise
-SNR=-3;
+SNR=0;
 X = awgn(X, -db(0.5*A^2)+SNR);
 X = round(X*2048);
 
@@ -107,7 +107,7 @@ axis([0, 1, -1000, 2500]);
 title('6.Rectified');
 
 %% Envelope detection
-linear_envelope_detection_thresh = 6;
+linear_envelope_detection_thresh = 12;
 for i=1:length(X)
     if i==1
         prev=0;
