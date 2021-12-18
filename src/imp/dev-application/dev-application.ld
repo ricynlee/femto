@@ -4,54 +4,48 @@ ENTRY(_start)
 
 MEMORY
 {
-  sram (wx) : ORIGIN = 0x20000000, LENGTH = 512K
+  tcm (wx) : ORIGIN = 0x10000000, LENGTH = 16K
 }
 
-$sram_begin = 0x20000000;
+$tcm_begin = 0x10000000;
 $stack_size = 512;
 $heap_size = 512;
 
 SECTIONS
 {
-  . = $sram_begin;
+  . = $tcm_begin;
   .text :
   {
     *(.text*)
     . = ALIGN(4);
-  } > sram
+  } > tcm
 
   .ro :
   {
     *(.rodata* .srodata* .eh_frame .rela*) /* WTF eh_frame rela */
     . = ALIGN(4);
-  } > sram
+  } > tcm
 
-  __data_vma_begin = .;
+  PROVIDE(__data_vma_begin = .);
   .data :
   {
     *(.data* .sdata*)
       . = ALIGN(4);
-  } > sram
+  } > tcm
   PROVIDE(__global_pointer = __data_vma_begin + 0x800);
-  _app_size = . - $sram_begin;
-  
+
+  PROVIDE(__bss_begin = .);
   .bss (NOLOAD):
   {
     *(.bss* .sbss*)
     . = ALIGN(4);
-  } > sram
+  } > tcm
+  PROVIDE(__bss_size = . - __bss_begin);
 
   .stack (NOLOAD):
   {
     . = $stack_size;
     . = ALIGN(128);
-  } > sram
+  } > tcm
   PROVIDE(__stack_pointer = .);
-  
-  PROVIDE(end = .); /* for malloc, etc. */
-  .heap (NOLOAD):
-  {
-    . = $heap_size;
-    . = ALIGN(4);
-  } > sram
 }

@@ -9,6 +9,6 @@ _start:
   la gp, __global_pointer
   .option pop
   la sp, __stack_pointer
-  call main
+  j main
   .cfi_endproc
   .end

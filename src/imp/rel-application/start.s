@@ -9,6 +9,8 @@ _start:
   la gp, __global_pointer
   .option pop
   la sp, __stack_pointer
-  call main
+  call init_bss
+  call init_data
+  j main
   .cfi_endproc
   .end
