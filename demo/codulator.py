@@ -11,7 +11,7 @@ from os import system as exec
 ## Parameters
 ################################################################################
 Fc = 1147.752 # Hz
-Fs = 10.0 # kHz
+Fs = 8.2 # kHz
 BIT_DUR = 100.0 # ms
 
 PREAMBLE = 1 # start symbol (bit in this case)
@@ -22,80 +22,70 @@ TMP_WAVFILE_NAME = r"tmp.wav"
 ENABLE_FILTER = False
 
 ################################################################################
-## Global object
+## Filter
 ################################################################################
-wavfile = None
 
-################################################################################
-## Band-pass filter
-################################################################################
-B = [-0.190837427318414, 0.0443717943399390, 0.272237333849104, 0.365927912163370, 0.272237333849104, 0.0443717943399390, -0.190837427318414]
-Z = [0 for i in range(7)]
-def filter(sig, reset=False):
-    if ENABLE_FILTER == False:
-        return sig
+## Band-pass
+B = [-0.0205037556810013, 0.0250754093892770, 0.0689831330047264, 0.0370893942662163, -0.0199304160356812, -0.0405403995881639, -0.0965125595244665, -0.150931250571262, -0.0138989704890338, 0.226374290324164, 0.226374290324164, -0.0138989704890338, -0.150931250571262, -0.0965125595244665, -0.0405403995881639, -0.0199304160356812, 0.0370893942662163, 0.0689831330047264, 0.0250754093892770, -0.0205037556810013]
+
+Z = [0 for i in range(len(B))]
+def filter(op=0):
+    if not ENABLE_FILTER:
+        return op
 
     global B, Z
+    if op == "reset":
+        Z = [0 for i in range(len(B))]
+        return
 
-    if reset:
-        Z = [0 for i in range(7)]
-
-    Z[0] = sig
-    S = sum([Z[i]*B[i] for i in range(7)])
-    Z.pop(6)
+    Z[0] = op
+    S = sum([Z[i]*B[i] for i in range(len(B))])
+    Z.pop(len(B)-1)
     Z.insert(0,0)
     return S
 
 ################################################################################
-## Modulator
+## Encoding, Modulation, Filtering and Transmission
 ################################################################################
-t = 0
-def modulate(sym):
-    global wavfile, t
-    if wavfile==None:
-        return
-
-    te = t+BIT_DUR/1000
-    if sym==0:
-        while t < te:
-            osc = filter(0*0.25*cos(2*pi*Fc*t))
-            q = int(round(osc*32768)) # quantized
-            wavfile.writeframes(bytes([(q>>0) & 0xff, (q>>8) & 0xff])) # little endian
-            t += 1.0/(Fs*1000)
-    elif sym==1:
-        while t < te:
-            osc = filter(0.25*cos(2*pi*Fc*t))
-            q = int(round(osc*32768)) # quantized
-            wavfile.writeframes(bytes([(q>>0) & 0xff, (q>>8) & 0xff])) # little endian
-            t += 1.0/(Fs*1000)
-
-################################################################################
-## Encoder
-################################################################################
-def encode(string):
-    global wavfile, t
+def codulate(string):
     wavfile = wopen(TMP_WAVFILE_NAME, "wb")
     wavfile.setnchannels(1)
     wavfile.setsampwidth(2)
     wavfile.setframerate(Fs*1000)
 
-    t = 0
-    filter(0, True)
-    for c in string:
-        modulate(PREAMBLE)
-        c = ord(c)
+    # text to symbols (bits in this case)
+    sym = []
+    for i in range(len(string)):
+        sym.append(1)
         for shift in range(8):
-            modulate(1 if ((c<<shift) & 0x80) else 0)
-        modulate(POSTAMBLE)
-    modulate(0) # trailing 0
+            sym.append((0x80 & (ord(string[i])<<shift)) >> 7)
+        sym.append(0)
+    sym.append(0)
 
+    # time axis
+    t = [i/(Fs*1000) for i in range(int((len(string)*10+1)*BIT_DUR*Fs))]
+
+    # base-band
+    bb = [0 for i in range(len(t))]
+    for i in range(len(t)):
+        bb[i] = sym[int(1000*t[i]/BIT_DUR)]
+
+    # modulation
+    filter("reset")
+    aud = [filter(bb[i]*0.25*sin(2*pi*Fc*t[i])) for i in range(len(t))]
+
+    # quantization
+    AUD = [int(round(aud[i]*32768)) for i in range(len(t))]
+
+    # generate wav file
+    W = [0 for i in range(2*len(t))]
+    for i in range(len(t)):
+        W[2*i+0] = (AUD[i]>>0) & 0xff
+        W[2*i+1] = (AUD[i]>>8) & 0xff
+    wavfile.writeframes(bytes(W))
     wavfile.close()
 
-################################################################################
-## Transmitter
-################################################################################
-def transmit(string):
-    encode(string)
+    # trasmission (play wav file)
     wplay(TMP_WAVFILE_NAME, SND_FILENAME)
     # exec(" ".join(["del",TMP_WAVFILE_NAME]))
 
@@ -109,4 +99,4 @@ while True:
     if not s:
         break
     else:
-        transmit(s)
+        codulate(s)
