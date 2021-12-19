@@ -54,6 +54,7 @@ module simtop #(
 
     sram sram();
     initial $readmemh({HEX_PATH, "sram-init.hex"}, sram.array);
+    initial $readmemh({HEX_PATH, "tcm-init.hex"}, top.femto.tcm_controller.array);
 
     logic   i2s_sd;
     wrapper top (

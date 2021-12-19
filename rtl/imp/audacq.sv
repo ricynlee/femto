@@ -29,13 +29,17 @@ module audacq_controller(
      *  CR      | 4       | 4    | WO     | -
      *
      *  SSR
-     *   Count (31:16) | Sample (15:0)
+     *   Fresh(31) | (30:24) | Count (23:16) | Sample (15:0)
      *  CR
      *   FEN(31) | (30:4) | Trunc(3:0)
      */
 
-     `define    FEN     31
-     `define    TRUNC   3:0
+    `define FRESH   31
+    `define COUNT   23:16
+    `define SAMPLE  15:0
+
+    `define FEN     31
+    `define TRUNC   3:0
 
     // fault generation
     wire invld_addr = (addr[1:0]!=0);
@@ -97,15 +101,18 @@ module audacq_controller(
     );
 
     wire        arrive = filter_en ? arrive_filter : arrive_acq;
-    wire[15:0]  sample = filter_en ? sample_trunc : sample_filtered;
+    wire[15:0]  sample = filter_en ? sample_filtered : sample_trunc ;
 
     // status and sample
     always @ (posedge clk) begin
         if (~rstn) begin
             rdata <= 32'd0;
         end else if (arrive) begin
-            rdata[15:0] <= sample;
-            rdata[31:16] <= rdata[31:16]+1;
+            rdata[`SAMPLE] <= sample;
+            rdata[`COUNT] <= rdata[`COUNT]+1;
+            rdata[`FRESH] <= 1;
+        end else if (resp) begin
+            rdata[`FRESH] <= 0;
         end
     end
 endmodule

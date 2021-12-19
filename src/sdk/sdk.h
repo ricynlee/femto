@@ -37,9 +37,11 @@ typedef union {
     int32_t ssr;
     struct {
         int16_t sample;
-        uint16_t count;
+        uint8_t count;
+        uint8_t :7;
+        uint8_t fresh:1;
     };
-    uint8_t data[sizeof(int32_t)];
+    uint8_t data[sizeof(int16_t)];
 } ada_sample_t;
 
 extern bool ada_get_sample(ada_sample_t* const ptr_d);

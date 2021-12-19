@@ -114,20 +114,13 @@ void timer_delay_us(uint32_t val) {
 
 // AUDACQ
 bool ada_get_sample(ada_sample_t* const ptr_d) {
-    static int16_t prev_count = 0;
-
     ptr_d->ssr = ADA->ssr;
 
-    bool status;
-
-    if (ptr_d->count == prev_count) {
-        status = false;
+    if (ptr_d->fresh) {
+        return true;
     } else {
-        prev_count = ptr_d->count;
-        status = false;
+        return false;
     }
-
-    return status;
 }
 
 void ada_configure(bool enable_filter, uint8_t trunc_width) {
