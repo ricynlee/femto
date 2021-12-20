@@ -72,7 +72,7 @@ def codulate(string):
 
     # modulation
     filter("reset")
-    aud = [filter(bb[i]*0.25*sin(2*pi*Fc*t[i])) for i in range(len(t))]
+    aud = [filter(bb[i]*0.25*cos(2*pi*Fc*t[i])) for i in range(len(t))]
 
     # quantization
     AUD = [int(round(aud[i]*32768)) for i in range(len(t))]
