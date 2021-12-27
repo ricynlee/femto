@@ -4,7 +4,7 @@ clc;
 clf;
 
 %% Read Audio Data
-[W Fs Nb] = wavread('A TEST.wav', 'native');
+[W Fs Nb] = wavread('sss.wav', 'native');
 
 t = (0:length(W)-1)/Fs;
 plot(t, W, 'LineSmooth', 'On');
@@ -14,6 +14,7 @@ grid on;
 %% Rectification
 Y = int32(abs(W));
 
+subplot(2,1,1);
 plot(t,Y,'.','LineSmoothing','On','MarkerSize',1);
 grid on;
 axis([0, (length(W)-1)/Fs, -6000, 6000]);
@@ -39,6 +40,7 @@ end
 hold on;
 plot(t,Y,'r.','LineSmoothing','On','MarkerSize',1);
 hold off;
+title('Envelope detection');
 
 %% Accumulation
 Nacc = 103;
@@ -51,8 +53,19 @@ end
 Y = Y(1:floor(length(Y)/Nacc));
 t = t(1:floor(length(t)/Nacc));
 
+subplot(2,1,2);
+plot(t,Y,'LineSmoothing','On');
+axis([0, (length(W)-1)/Fs, -10000, 80000]);
+grid on;
+
 %% Decode
-thresh = 1200*103;
+thresh = 250*103;
+
+hold on;
+plot([0, (length(W)-1)/Fs],[thresh, thresh], 'g--','LineSmoothing','On');
+hold off;
+title('Decisioned');
+
 Y = 2*(Y>thresh).*thresh;
 
 i=0;

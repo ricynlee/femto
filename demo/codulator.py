@@ -19,7 +19,7 @@ POSTAMBLE = 0 # stop symbol (bit in this case)
 
 TMP_WAVFILE_NAME = r"tmp.wav"
 
-ENABLE_FILTER = False
+ENABLE_FILTER = True
 
 ################################################################################
 ## Filter
@@ -94,7 +94,7 @@ def codulate(string):
 ################################################################################
 print("Input text to transmit")
 while True:
-    s = input("> ").upper()
+    s = input("> ")
 
     if not s:
         break
