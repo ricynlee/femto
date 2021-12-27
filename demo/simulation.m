@@ -31,8 +31,8 @@ axis([0, 1, -1, 1]);
 title('2.Audio Signal');
 
 %% Add Noise
-SNR=0;
-X = awgn(X, -db(0.5*A^2)+SNR);
+SNR=-9;
+X = awgn(X, SNR-db(0.5*A^2));
 X = round(X*2048);
 
 subplot(4,2,5);
@@ -125,14 +125,29 @@ for i=1:length(X)
 end
 
 subplot(4,2,6);
-plot(t,Y,'LineSmoothing','On');
+plot(t,Y,'LineSmoothing','On','Color',[0.6,0.6,1]);
 grid on;
 axis([0, 1, -1000, 1500]);
 title('7.Envelope Detection');
 
+%% Accumulation
+for i=1:floor(length(Y)/100)
+    Y(i) = sum(Y((i*100-99):(i*100)))/100;
+    t(i) = t(i*100-99);
+end
+
+Y = Y(1:floor(length(Y)/100));
+t = t(1:floor(length(t)/100));
+
+subplot(4,2,6);
+hold on;
+plot(t, Y, 'g.-');
+hold off;
+title('7.Envelope Detection & Accumulation');
+
 %% Decisioned
-max_env = max(Y(round(length(X)/5):length(X)));
-min_env = min(Y(round(length(X)/5):length(X)));
+max_env = max(Y(round(length(Y)/5):length(Y)));
+min_env = min(Y(round(length(Y)/5):length(Y)));
 decision_thresh = (min_env+max_env)/2;
 
 min_env = min_env/max_env;

@@ -1,4 +1,4 @@
-    assign array[0] = 32'h10004117;
+    assign array[0] = 32'h10001117;
     assign array[1] = 32'h00010113;
     assign array[2] = 32'h06a0006f;
     assign array[3] = 32'hc2221151;

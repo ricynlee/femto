@@ -6,7 +6,7 @@ ENTRY(_start)
 
 MEMORY
 {
-  tcm (wx) : ORIGIN = 0x10000000, LENGTH = 16K
+  tcm (wx) : ORIGIN = 0x10000000, LENGTH = 4K
 }
 
 $tcm_begin = 0x10000000;

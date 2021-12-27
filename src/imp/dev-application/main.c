@@ -1,56 +1,107 @@
+#include <stdlib.h> // int abs
 #include "bsdk.h"
 
-void main(void) {
-    // ADA是I2S单声道声音采样IP(ADA/Audacq = audio data acquisitor)
-    ada_sample_t sample;
+#define ENVELOPE_THRESH 64
 
-    // 初始化LED/板载BTN1
-    gpio_init();
+int demodulate(void) {
+    static int prev_raw = 0;
 
-    // ADA配置
-    //   参数1决定ADA内建滤波器是否生效
-    //   参数2定义采样信号截位宽度
-    //     外部音量过大时可以增大截位(防止饱和/溢出),外部音量过小时可以减小截位(提升分辨率)
-    ada_configure(false, 4u);
+    int acc = 0;
 
-    recording_stopped:
+    for (int i=0; i<103; i++) {
+        ada_sample_t sample;
 
-    // 呼吸灯:Stand by
-    // 收到串口数据退出呼吸,开始声音采样
-    uart_clear_rxq();
-    while (true)
-        for (int t=0; t<2; t++) {
-            for (int dc=0; dc<64; dc++) {
-                for (int c=0; c<64; c++) {
-                    timer_set(256u);
-                    while (timer_get())
-                        if (uart_rx_ready())
-                            goto recording_started;
-                    light_leds((t & 0x1u) ? (c>dc) : (c<=dc), false, false);
-                }
-            }
-
-            if (t & 0x1u) {
-                timer_set(768u*256u);
-                while (timer_get())
-                    if (uart_rx_ready())
-                        goto recording_started;
-            }
-        }
-
-    recording_started:
-    // 防止LED出现窄脉冲闪烁
-    timer_delay_us(8u);
-    light_leds(false, false, false);
-
-    uart_clear_rxq();
-    // 持续接收声音信号: Busy
-    // 声音信号样本会从串口持续发出
-    // 收到串口数据退出接收,返回呼吸灯
-    while (!uart_rx_ready()) {
+        // Sampling & Band-pass Filtering
         while(!ada_get_sample(&sample));
-        uart_send_data(sample.data, 2u);
+        int raw = sample.value;
+
+        // Recitification
+        raw = abs(raw);
+
+        // Envelop Detection
+        raw = (prev_raw+raw)/2;
+        if (raw>prev_raw+ENVELOPE_THRESH)
+            raw = prev_raw+ENVELOPE_THRESH;
+        else if (raw<prev_raw-ENVELOPE_THRESH)
+            raw = prev_raw-ENVELOPE_THRESH;
+        prev_raw = raw;
+
+        // Accumulation
+        acc += raw;
     }
 
-    goto recording_stopped;
+    return acc;
+}
+
+int get_noise_level(void) {
+    int noise_level = 0;
+    for (int i=0; i<16; i++) {
+        noise_level += demodulate();
+    }
+    return noise_level/16;
+}
+
+uint8_t decode(int thresh) {
+    uint8_t byte = 0;
+    bool bin_level;
+    int sum;
+
+    while (true) {
+        // Start symbol detection
+        do {
+            bin_level = (bool)(demodulate()>thresh);
+        } while (!bin_level);
+        sum = 0;
+        for (int i=1; i<7; i++) {
+            bin_level = (bool)(demodulate()>thresh);
+            sum += (int)(!bin_level);
+            if (sum>3)
+                break;
+        }
+        if (sum>3)
+            continue; // Start symbol not detected
+
+        // Decode
+        for (int bit=7; bit>=0; bit--) {
+            sum = 0;
+            for (int i=0; i<7; i++) {
+                bin_level = (bool)(demodulate()>thresh);
+                sum += (int)bin_level;
+            }
+            byte |= ((uint8_t)(sum>3))<<bit;
+        }
+
+        // Stop symbol confirmation
+        sum = 0;
+        for (int i=0; i<7; i++) {
+            bin_level = (bool)(demodulate()>thresh);
+            sum += (int)bin_level;
+            if (sum>3)
+                break;
+        }
+        if (sum>3)
+            continue; // Stop symbol not detected
+
+        break;
+    }
+
+    return byte;
+}
+
+void main(void) {
+    gpio_init();
+    ada_configure(true, 4u);
+
+    timer_delay_us(1000000u);
+    int noise_level = get_noise_level();
+
+    int thresh = noise_level + 2000;
+
+    bool red = true;
+
+    while (true) {
+        uart_write_txq(decode(thresh));
+        light_leds(red, false, false);
+        red = !red;
+    }
 }

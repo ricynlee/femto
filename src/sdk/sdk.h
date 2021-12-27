@@ -36,7 +36,7 @@ extern void timer_delay_us(uint32_t val);
 typedef union {
     int32_t ssr;
     struct {
-        int16_t sample;
+        int16_t value;
         uint8_t count;
         uint8_t :7;
         uint8_t fresh:1;

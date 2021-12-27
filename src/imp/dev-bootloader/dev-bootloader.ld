@@ -5,7 +5,7 @@ ENTRY(_start)
 MEMORY
 {
   rom (rx) : ORIGIN = 0x00000000, LENGTH = 4K
-  tcm (wx) : ORIGIN = (0x10000000+15*0x400+512), LENGTH = 512
+  tcm (wx) : ORIGIN = (0x10000000+3*0x400+512), LENGTH = 512
 }
 
 $rom_begin = 0;
