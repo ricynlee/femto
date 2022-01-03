@@ -12,7 +12,7 @@
 					<label>T</label>
 					<fg>#FFFF00</fg>
 					<font>
-						<size>512</size>
+						<size>256</size>
 						<style>normal</style>
 						<weight>normal</weight>
 						<underlined>0</underlined>

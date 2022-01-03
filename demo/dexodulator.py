@@ -30,9 +30,9 @@ if "--boot" in argv:
 ################################################################################
 while True:
     try:
-        B=ser.read(1).decode("ascii")
-        if B.isprintable():
-            system(' '.join(["start", "disp", B]))
+        B=ser.read(1)
+        if len(B)==1: B=B.decode("ascii")
+        if B.isprintable(): system(' '.join(["start", "disp", B]))
     except:
         pass
 

@@ -64,7 +64,7 @@ testDialog::testDialog(wxWindow* parent,wxWindowID id)
     BoxSizer1 = new wxBoxSizer(wxHORIZONTAL);
     StaticText1 = new wxStaticText(this, ID_STATICTEXT1, _(caption), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT1"));
     StaticText1->SetForegroundColour(wxColour(255,255,0));
-    wxFont StaticText1Font(512,wxFONTFAMILY_SWISS,wxFONTSTYLE_NORMAL,wxFONTWEIGHT_NORMAL,false,_T("Tahoma"),wxFONTENCODING_DEFAULT);
+    wxFont StaticText1Font(256,wxFONTFAMILY_SWISS,wxFONTSTYLE_NORMAL,wxFONTWEIGHT_NORMAL,false,_T("Tahoma"),wxFONTENCODING_DEFAULT);
     StaticText1->SetFont(StaticText1Font);
     BoxSizer1->Add(StaticText1, 1, wxALL|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 10);
     SetSizer(BoxSizer1);

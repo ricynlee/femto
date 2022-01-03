@@ -1,7 +1,7 @@
 #include <stdlib.h> // int abs
 #include "bsdk.h"
 
-#define THRESH  6000
+#define THRESH  7*480
 
 bool decision(void) {
     int sum = 0;
@@ -66,7 +66,7 @@ uint8_t decode(void) {
 
 void main(void) {
     gpio_init();
-    ada_configure(true, 4u);
+    ada_configure(true, 1u);
 
     timer_delay_us(1000000u);
 
