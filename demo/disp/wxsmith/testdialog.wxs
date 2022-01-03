@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<wxsmith>
+	<object class="wxDialog" name="testDialog">
+		<pos>-1,-1</pos>
+		<bg>#808080</bg>
+		<style>wxSTAY_ON_TOP|wxDIALOG_NO_PARENT|wxNO_BORDER</style>
+		<exstyle>wxWS_EX_BLOCK_EVENTS</exstyle>
+		<handler function="OnInit" entry="EVT_INIT_DIALOG" />
+		<object class="wxBoxSizer" variable="BoxSizer1" member="yes">
+			<object class="sizeritem">
+				<object class="wxStaticText" name="ID_STATICTEXT1" variable="StaticText1" member="yes">
+					<label>T</label>
+					<fg>#FFFF00</fg>
+					<font>
+						<size>512</size>
+						<style>normal</style>
+						<weight>normal</weight>
+						<underlined>0</underlined>
+						<family>swiss</family>
+						<face>Tahoma</face>
+					</font>
+				</object>
+				<flag>wxALL|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL</flag>
+				<border>10</border>
+				<option>1</option>
+			</object>
+		</object>
+		<object class="wxTimer" name="ID_TIMER1" variable="Timer1" member="yes">
+			<interval>20</interval>
+			<handler function="OnTimer1Trigger" entry="EVT_TIMER" />
+		</object>
+	</object>
+</wxsmith>

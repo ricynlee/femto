@@ -27,7 +27,7 @@ state = 0 # 0: idle, 1: busy, -1: end
 ################################################################################
 ## Open objects
 ################################################################################
-ser = sopen(PORT, BAUD, timeout=0)
+ser = sopen(PORT, BAUD, timeout=0) # non-blocking mode to end record thread normally
 f = open(REC_RAW, "wb")
 
 ################################################################################
@@ -37,6 +37,7 @@ if "--boot" in argv:
     print("Loading app...",end='',flush=True)
     with open(APP, "rb") as b:
         ser.write(b.read())
+    sleep(3)
     print("Done")
 
 ################################################################################

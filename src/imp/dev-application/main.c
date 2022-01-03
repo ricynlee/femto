@@ -1,7 +1,7 @@
 #include <stdlib.h> // int abs
 #include "bsdk.h"
 
-#define THRESH  7000
+#define THRESH  6000
 
 bool decision(void) {
     int sum = 0;
@@ -15,6 +15,8 @@ bool decision(void) {
     return (bool)(sum>7000);
 }
 
+#define INTERVAL    (25*960)
+
 uint8_t decode(void) {
     bool    level[3];
     uint8_t byte;
@@ -23,13 +25,13 @@ uint8_t decode(void) {
         // start symbol detection
         while (!decision());
         for (int i=0; i<3; i++) {
-            timer_delay_us(25*1200);
+            timer_delay_us(INTERVAL);
             level[i] = decision();
             light_leds(level[i], false, false);
         }
 
         if ((level[0] && level[1]) || (level[1] && level[2]) || (level[2] && level[0]))
-            timer_delay_us(25*1200);
+            timer_delay_us(INTERVAL);
         else
             continue;
 
@@ -37,18 +39,17 @@ uint8_t decode(void) {
         byte = 0;
         for (int b=7; b>=0; b--) {
             for (int i=0; i<3; i++) {
-                timer_delay_us(25*1200);
+                timer_delay_us(INTERVAL);
                 level[i] = decision();
                 light_leds(level[i], false, false);
             }
             byte |= (((level[0] && level[1]) || (level[1] && level[2]) || (level[2] && level[0]))<<b);
+            timer_delay_us(INTERVAL);
         }
-
-        timer_delay_us(25*1200);
 
         // stop symbol confirmation
         for (int i=0; i<3; i++) {
-            timer_delay_us(25*1200);
+            timer_delay_us(INTERVAL);
             level[i] = decision();
             light_leds(level[i], false, false);
         }
@@ -56,7 +57,7 @@ uint8_t decode(void) {
         if ((level[0] && level[1]) || (level[1] && level[2]) || (level[2] && level[0]))
             continue;
         else
-            timer_delay_us(25*600);
+            timer_delay_us(INTERVAL/2);
 
         break;
     }
@@ -71,6 +72,5 @@ void main(void) {
 
     while (true) {
         uart_write_txq(decode());
-        // decode();
     }
 }
