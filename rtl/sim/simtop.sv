@@ -73,7 +73,7 @@ module simtop #(
         if (top.ada_ws) begin
             i2s_sd <= 1'bx;
         end else begin
-            i2s_sd <= $urandom % 1;
+            i2s_sd <= $urandom & 1;
         end
     end
 

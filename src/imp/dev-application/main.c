@@ -1,90 +1,65 @@
 #include <stdlib.h> // int abs
 #include "bsdk.h"
 
-#define ENVELOPE_THRESH 64
+#define THRESH  7000
 
-int demodulate(void) {
-    static int prev_raw = 0;
+bool decision(void) {
+    int sum = 0;
+    ada_sample_t sample;
 
-    int acc = 0;
-
-    for (int i=0; i<103; i++) {
-        ada_sample_t sample;
-
-        // Sampling & Band-pass Filtering
+    for (int i=0; i<7; i++) {
         while(!ada_get_sample(&sample));
-        int raw = sample.value;
-
-        // Recitification
-        raw = abs(raw);
-
-        // Envelop Detection
-        raw = (prev_raw+raw)/2;
-        if (raw>prev_raw+ENVELOPE_THRESH)
-            raw = prev_raw+ENVELOPE_THRESH;
-        else if (raw<prev_raw-ENVELOPE_THRESH)
-            raw = prev_raw-ENVELOPE_THRESH;
-        prev_raw = raw;
-
-        // Accumulation
-        acc += raw;
+        sum += (int)sample.value;
     }
 
-    return acc;
+    return (bool)(sum>7000);
 }
 
-int get_noise_level(void) {
-    int noise_level = 0;
-    for (int i=0; i<16; i++) {
-        noise_level += demodulate();
-    }
-    return noise_level/16;
-}
-
-uint8_t decode(int thresh) {
-    uint8_t byte = 0;
-    bool bin_level;
-    int sum;
+uint8_t decode(void) {
+    bool    level[3];
+    uint8_t byte;
 
     while (true) {
-        // Start symbol detection
-        do {
-            bin_level = (bool)(demodulate()>thresh);
-        } while (!bin_level);
-        sum = 0;
-        for (int i=1; i<7; i++) {
-            bin_level = (bool)(demodulate()>thresh);
-            sum += (int)(!bin_level);
-            if (sum>3)
-                break;
+        // start symbol detection
+        while (!decision());
+        for (int i=0; i<3; i++) {
+            timer_delay_us(25*1200);
+            level[i] = decision();
+            light_leds(level[i], false, false);
         }
-        if (sum>3)
-            continue; // Start symbol not detected
 
-        // Decode
-        for (int bit=7; bit>=0; bit--) {
-            sum = 0;
-            for (int i=0; i<7; i++) {
-                bin_level = (bool)(demodulate()>thresh);
-                sum += (int)bin_level;
+        if ((level[0] && level[1]) || (level[1] && level[2]) || (level[2] && level[0]))
+            timer_delay_us(25*1200);
+        else
+            continue;
+
+        // decoding
+        byte = 0;
+        for (int b=7; b>=0; b--) {
+            for (int i=0; i<3; i++) {
+                timer_delay_us(25*1200);
+                level[i] = decision();
+                light_leds(level[i], false, false);
             }
-            byte |= ((uint8_t)(sum>3))<<bit;
+            byte |= (((level[0] && level[1]) || (level[1] && level[2]) || (level[2] && level[0]))<<b);
         }
 
-        // Stop symbol confirmation
-        sum = 0;
-        for (int i=0; i<7; i++) {
-            bin_level = (bool)(demodulate()>thresh);
-            sum += (int)bin_level;
-            if (sum>3)
-                break;
+        timer_delay_us(25*1200);
+
+        // stop symbol confirmation
+        for (int i=0; i<3; i++) {
+            timer_delay_us(25*1200);
+            level[i] = decision();
+            light_leds(level[i], false, false);
         }
-        if (sum>3)
-            continue; // Stop symbol not detected
+
+        if ((level[0] && level[1]) || (level[1] && level[2]) || (level[2] && level[0]))
+            continue;
+        else
+            timer_delay_us(25*600);
 
         break;
     }
-
     return byte;
 }
 
@@ -93,15 +68,9 @@ void main(void) {
     ada_configure(true, 4u);
 
     timer_delay_us(1000000u);
-    int noise_level = get_noise_level();
-
-    int thresh = noise_level + 2000;
-
-    bool red = true;
 
     while (true) {
-        uart_write_txq(decode(thresh));
-        light_leds(red, false, false);
-        red = !red;
+        uart_write_txq(decode());
+        // decode();
     }
 }

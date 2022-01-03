@@ -60,7 +60,7 @@ def record():
 aux = thread(target=record)
 aux.start()
 
-sleep(1.5)
+sleep(3)
 
 got_start = lambda c: c in ("START", "BEGIN", "RECORD")
 got_stop = lambda c: c in ("STOP", "PAUSE")

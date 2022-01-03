@@ -60,25 +60,25 @@ module audacq_controller(
     end
 
     // control register
-    reg         filter_en;
+    reg         demod_en;
     reg[3:0]    trunc_width;
     always @ (posedge clk) begin
         if (~rstn) begin
-            filter_en <= 0;
+            demod_en <= 0;
             trunc_width <= 0;
         end else if (req && ~invld && (addr==3'd4) && w_rb) begin
-            filter_en <= wdata[`FEN];
+            demod_en <= wdata[`FEN];
             trunc_width <= wdata[`TRUNC];
         end
     end
 
     // audio data acquisition
-    wire        arrive_acq;
+    wire        arrive_raw;
     wire[23:0]  sample_raw;
     audacq audacq (
         .clk (clk ),
         .rstn(rstn),
-        .arrive(arrive_acq),
+        .arrive(arrive_raw),
         .sample(sample_raw),
         .sck(sck),
         .ws (ws ),
@@ -89,19 +89,30 @@ module audacq_controller(
     wire[31:0]  sample_raw_ext = {{8{sample_raw[23]}}, sample_raw};
     wire[15:0]  sample_trunc = sample_raw_ext[trunc_width+:16];
 
-    wire        arrive_filter;
+    wire        arrive_filtered;
     wire[15:0]  sample_filtered;
     iir_filter iir_filter (
         .clk (clk ),
         .rstn(rstn),
-        .din_vld (arrive_acq  ),
+        .din_vld (arrive_raw  ),
         .din     (sample_trunc),
-        .dout_vld(arrive_filter  ),
+        .dout_vld(arrive_filtered),
         .dout    (sample_filtered)
     );
 
-    wire        arrive = filter_en ? arrive_filter : arrive_acq;
-    wire[15:0]  sample = filter_en ? sample_filtered : sample_trunc ;
+    wire        arrive_demod;
+    wire[15:0]  sample_demod;
+    demod demod (
+        .clk (clk ),
+        .rstn(rstn),
+        .din_vld (arrive_filtered),
+        .din     (sample_filtered),
+        .dout_vld(arrive_demod),
+        .dout    (sample_demod)
+    );
+
+    wire        arrive = demod_en ? arrive_demod : arrive_raw;
+    wire[15:0]  sample = demod_en ? sample_demod : sample_trunc ;
 
     // status and sample
     always @ (posedge clk) begin
@@ -468,4 +479,68 @@ module mul_acc (
         .ADD   (a_sb             ),
         .Q     (s                )
     );
+endmodule
+
+module demod # (
+    parameter   ENVELOPE_THRESH = $signed(16'd64)
+)(
+    input wire  clk,
+    input wire  rstn,
+
+    input wire          din_vld,
+    input wire[15:0]    din,    // S16.n fixed point
+    output wire         dout_vld,
+    output wire[15:0]   dout    // S16.n fixed point
+);
+    // state control
+    localparam  IDLE    = 0,
+                ABS     = 1,
+                LPF     = 2,
+                ENV     = 3;
+    reg[7:0]    state, next_state;
+    always @ (posedge clk) begin
+        if (~rstn)
+            state <= IDLE;
+        else
+            state <= next_state;
+    end
+
+    always @ (*) case (state)
+        default:
+            if (din_vld)
+                next_state = ABS;
+            else
+                next_state = IDLE;
+        ABS:
+            next_state = LPF;
+        LPF:
+            next_state = ENV;
+        ENV:
+            next_state = IDLE;
+    endcase
+
+    // calculation
+    reg signed[15:0]    val, prev_abs;
+
+    wire signed[15:0]   abs = din[15] ? (~din+1) : din; // note din is assured constant between din_vld's
+    wire signed[16:0]   lpf = val + prev_abs;
+    wire signed[15:0]   ulim = prev_abs + ENVELOPE_THRESH;
+    wire signed[15:0]   llim = prev_abs - ENVELOPE_THRESH;
+    wire signed[15:0]   env = val>ulim ? ulim : val<llim ? llim : val;
+
+    always @ (posedge clk) case (next_state)
+        ABS: val <= abs;
+        LPF: val <= lpf[16:1];
+        ENV: val <= env;
+    endcase
+
+    always @ (posedge clk) begin
+        if (~rstn)
+            prev_abs <= 0;
+        else if (state==ENV)
+            prev_abs <= env;
+    end
+
+    assign  dout_vld = state==ENV;
+    assign  dout = val;
 endmodule

@@ -123,6 +123,6 @@ bool ada_get_sample(ada_sample_t* const ptr_d) {
     }
 }
 
-void ada_configure(bool enable_filter, uint8_t trunc_width) {
-    ADA->cr = ADA_FILTEN(enable_filter) | ADA_TRUNC(trunc_width);
+void ada_configure(bool enable_demod, uint8_t trunc_width) {
+    ADA->cr = ADA_DEMODEN(enable_demod) | ADA_TRUNC(trunc_width);
 }

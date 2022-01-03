@@ -72,7 +72,7 @@
     #define ADA_TRUNC_MASK      (MASK_WIDTH(4u)<<ADA_TRUNC_SHIFT)
     #define ADA_TRUNC(v)        (((v)<<ADA_TRUNC_SHIFT) & ADA_TRUNC_MASK)
 
-    #define ADA_FILTEN_SHIFT    (31u)
-    #define ADA_FILTEN_MASK     (MASK_WIDTH(1u)<<ADA_FILTEN_SHIFT)
-    #define ADA_FILTEN(v)       (((v)<<ADA_FILTEN_SHIFT) & ADA_FILTEN_MASK)
+    #define ADA_DEMODEN_SHIFT   (31u)
+    #define ADA_DEMODEN_MASK    (MASK_WIDTH(1u)<<ADA_DEMODEN_SHIFT)
+    #define ADA_DEMODEN(v)      (((v)<<ADA_DEMODEN_SHIFT) & ADA_DEMODEN_MASK)
 #endif // _FEMTO_H
