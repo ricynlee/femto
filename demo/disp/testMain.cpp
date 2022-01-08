@@ -101,7 +101,7 @@ void testDialog::OnTimer1Trigger(wxTimerEvent& event)
 {
     int x, y;
     wxWindow::GetPosition(&x, &y);
-    x-=16;
+    x-=12;
     wxWindow::Move(x, y);
 
     if (x<-wh) {
