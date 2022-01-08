@@ -1,3 +1,4 @@
+# -*- encoding:utf8 -*-
 from sys import argv
 from serial import Serial as sopen
 from time import sleep
@@ -31,8 +32,12 @@ if "--boot" in argv:
 while True:
     try:
         B=ser.read(1)
-        if len(B)==1: B=B.decode("ascii")
-        if B.isprintable(): system(' '.join(["start", "disp", B]))
+        if len(B)<1: continue
+        B=B.decode("ascii")
+        if B.isprintable():
+            system(' '.join(["start", "disp", B]))
+        else:
+            system(' '.join(["start", "disp", "啥"]))
     except:
         pass
 

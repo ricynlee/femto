@@ -112,4 +112,4 @@ while True:
         break
     else:
         sleep(0.5)
-        codulate(s+'\n')
+        codulate(s)

@@ -1,7 +1,7 @@
 #include <stdlib.h> // int abs
 #include "bsdk.h"
 
-#define THRESH  7*480
+#define THRESH  7*384
 
 bool decision(void) {
     int sum = 0;
@@ -12,7 +12,7 @@ bool decision(void) {
         sum += (int)sample.value;
     }
 
-    return (bool)(sum>7000);
+    return (bool)(sum>THRESH);
 }
 
 #define INTERVAL    (25*960)
@@ -66,7 +66,7 @@ uint8_t decode(void) {
 
 void main(void) {
     gpio_init();
-    ada_configure(true, 1u);
+    ada_configure(true, 2u);
 
     timer_delay_us(1000000u);
 
