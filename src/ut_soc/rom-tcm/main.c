@@ -1,13 +1,16 @@
 #include "femto.h"
 #include "ut.h"
 
-int main(){
-    int a = 5;
+void f(void) __attribute__((aligned(4))) __attribute__((interrupt("machine")));
 
-    if (a==5)
-        trigger_pass();
-    else
-        trigger_fail();
+int main(){
+    while(1);
 
     return 0;
+}
+
+void f(void) {
+    volatile int a = 3;
+    a++;
+    // while(1);
 }

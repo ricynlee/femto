@@ -33,8 +33,7 @@ module core (
     /**********************************************************************************************************************/
     // pipeline flow control
     wire jmp, hld;
-    wire[`XLEN-1:0] jump_addr;
-    wire jump_triggered; // jump req sent to bus, no resp yet
+    wire[`XLEN-1:0] jmp_addr;
 
     // data access
     wire d_req;
@@ -51,15 +50,15 @@ module core (
     wire[`BUS_WIDTH-1:0] d_resp_data;
 
     // instruction access
-    wire pf_req;
-    wire[`XLEN-1:0] pf_req_addr;
-    wire[$clog2(`BUS_ACC_CNT)-1:0] pf_req_acc;
+    wire i_req;
+    wire[`XLEN-1:0] i_req_addr;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] i_req_acc;
 
-    wire pf_req_launched;
+    wire i_req_launched;
 
-    wire pf_resp_latched;
-    wire[$clog2(`BUS_ACC_CNT)-1:0] pf_resp_acc;
-    wire[`ILEN-1:0] pf_resp_data;
+    wire i_resp_latched;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] i_resp_acc;
+    wire[`ILEN-1:0] i_resp_data;
 
     // pipeline stages
     wire if_vld;
@@ -86,12 +85,16 @@ module core (
     wire [`XLEN-1:0] s1_alu_a, s1_alu_b;
     wire [7:0] s1_alu_op; // alu operation
     wire [7:0] s1_op; // instruction operation
-    wire s1_jump, s1_d_req;
+
+    wire s1_j_req;
+    wire [`XLEN-1:0] s1_j_lr; // jump link register/return address
+    wire s1_d_req;
 
     wire [3:0] s2_rd; // dest reg index
     wire [`XLEN-1:0] s2_alu_a, s2_alu_b;
     wire [7:0] s2_alu_op; // alu operation
     wire [7:0] s2_op; // instruction operation
+    wire [`XLEN-1:0] s2_j_lr; // jump link register/return address
 
     // fault indicators
     wire undef_instr, overshift;
@@ -125,20 +128,20 @@ module core (
         );
         assign dbus_busy = ~dbus_resp & dbus_busy_post;
 
-        assign ibus_req  = pf_req & ~ibus_busy;
-        assign ibus_addr = pf_req_addr;
-        assign ibus_w_rb = 1'b0;
-        assign ibus_acc  = pf_req_acc;
-        assign ibus_wdata = 32'dx;
+        assign ibus_req   = i_req & ~ibus_busy;
+        assign ibus_addr  = i_req_addr;
+        assign ibus_w_rb  = 1'b0;
+        assign ibus_acc   = i_req_acc;
+        assign ibus_wdata = 32'dx; // for error detection in simulation
 
-        assign dbus_req  = d_req & ~dbus_busy;
-        assign dbus_addr = d_req_addr;
-        assign dbus_w_rb = d_req_w_rb;
-        assign dbus_acc  = d_req_acc;
+        assign dbus_req   = d_req & ~dbus_busy;
+        assign dbus_addr  = d_req_addr;
+        assign dbus_w_rb  = d_req_w_rb;
+        assign dbus_acc   = d_req_acc;
         assign dbus_wdata = d_req_wdata;
 
-        assign pf_req_launched = ibus_req;
-        assign d_req_launched  = dbus_req;
+        assign i_req_launched = ibus_req;
+        assign d_req_launched = dbus_req;
      end
 
     /**********************************************************************************************************************/
@@ -146,17 +149,17 @@ module core (
         wire    ibus_resp_w_rb, dbus_resp_w_rb;
         wire[$clog2(`BUS_ACC_CNT)-1:0]  ibus_resp_acc, dbus_resp_acc;
 
-        wire    pf_req_not_cacelled;
+        wire    i_req_not_cancelled;
         dff #(
             .WIDTH($clog2(`BUS_ACC_CNT) + 1),
             .VALID("sync"),
-            .CLEAR("sync") // so as to cancel pf_req
+            .CLEAR("sync") // so as to cancel i_req
         ) ibus_resp_dff (
             .clk(clk                                 ),
             .clr(jmp                                 ),
             .vld(ibus_req                            ),
             .in ({ibus_acc, 1'b1}                    ),
-            .out({ibus_resp_acc, pf_req_not_cacelled})
+            .out({ibus_resp_acc, i_req_not_cancelled})
         );
         assign ibus_resp_w_rb = 1'b0; // Always read access
 
@@ -171,9 +174,9 @@ module core (
             .out({dbus_resp_acc, dbus_resp_w_rb})
         );
 
-        assign pf_resp_latched = ibus_resp & pf_req_not_cacelled;
-        assign pf_resp_acc = ibus_resp_acc;
-        assign pf_resp_data = ibus_rdata;
+        assign i_resp_latched = ibus_resp & i_req_not_cancelled;
+        assign i_resp_acc = ibus_resp_acc;
+        assign i_resp_data = ibus_rdata;
 
         assign d_resp_latched = dbus_resp;
         assign d_resp_acc = dbus_resp_acc;
@@ -183,24 +186,24 @@ module core (
 
     /**********************************************************************************************************************/
     begin:PREFETCHER
-        wire[`XLEN-1:0] pf_next_req_addr = jmp ? jump_addr : (pf_req_acc==`BUS_ACC_2B) ? (pf_req_addr+2) : (pf_req_addr+4);
+        wire[`XLEN-1:0] pf_next_req_addr = jmp ? jmp_addr : (i_req_acc==`BUS_ACC_2B) ? (i_req_addr+2) : (i_req_addr+4);
         dff #(
             .WIDTH      (`XLEN    ),
             .INITIALIZER(`RESET_PC),
             .RESET      ("sync"   ),
             .VALID      ("sync"   )
-        ) pf_req_addr_dff ( // note that pf_req_addr is not subject to PF Q's in_req, but pf_req & pf_req_acc are
-            .clk (clk                  ),
-            .rstn(rstn                 ),
-            .vld (jmp | pf_req_launched),
-            .in  (pf_next_req_addr     ),
-            .out (pf_req_addr          )
+        ) pf_req_addr_dff ( // note that i_req_addr is not subject to PF Q's in_req, but i_req & i_req_acc are
+            .clk (clk                 ),
+            .rstn(rstn                ),
+            .vld (jmp | i_req_launched),
+            .in  (pf_next_req_addr    ),
+            .out (i_req_addr          )
         );
 
-        wire pf_resp_16_32b = (pf_resp_acc==`BUS_ACC_2B);
+        wire i_resp_16_32b = (i_resp_acc==`BUS_ACC_2B);
         wire[1:0] pf_vacant_entry16, pf_filled_entry16;
-        assign pf_req = (pf_vacant_entry16!=2'd0);
-        assign pf_req_acc = (pf_req_addr[1] || pf_filled_entry16!=2'd0) ? `BUS_ACC_2B : `BUS_ACC_4B;
+        assign i_req = (pf_vacant_entry16!=2'd0);
+        assign i_req_acc = (i_req_addr[1] || pf_filled_entry16!=2'd0) ? `BUS_ACC_2B : `BUS_ACC_4B;
 
         wire[`ILEN-1:0] if_ir_raw;
         prefetch_queue prefetch_queue(
@@ -208,9 +211,9 @@ module core (
             .rstn            (rstn             ),
             .clr             (jmp              ),
 
-            .in_req          (pf_resp_latched  ),
-            .in_req_16_32bar (pf_resp_16_32b   ),
-            .in              (pf_resp_data     ),
+            .in_req          (i_resp_latched   ),
+            .in_req_16_32bar (i_resp_16_32b    ),
+            .in              (i_resp_data      ),
             .vacant_entry16  (pf_vacant_entry16),
 
             .out_req         (if_vld           ),
@@ -227,7 +230,7 @@ module core (
             .out_c    (if_c     )
         );
 
-        wire[`XLEN-1:0] if_next_pc = jmp ? jump_addr : if_c ? (if_pc+2) : (if_pc+4);
+        wire[`XLEN-1:0] if_next_pc = jmp ? jmp_addr : (if_pc + (if_c ? 2 : 4));
         dff #(
             .WIDTH      (`XLEN    ),
             .INITIALIZER(`RESET_PC),
@@ -287,7 +290,7 @@ module core (
 
         always @ (*) case(state)
             PLC_NORMAL:
-                if (s1_vld & s1_jump)
+                if (s1_vld & s1_j_req)
                     next_state = PLC_JUMP_P;
                 else if (s1_vld & s1_d_req)
                     next_state = PLC_DATA_I;
@@ -296,13 +299,13 @@ module core (
             PLC_JUMP_P:
                 next_state = PLC_JUMP_I;
             PLC_JUMP_I:
-                if (pf_req_launched)
+                if (i_req_launched)
                     next_state = PLC_JUMP_E;
                 else
                     next_state = PLC_JUMP_I;
             PLC_JUMP_E:
-                if (pf_resp_latched) begin
-                    if (s1_vld & s1_jump)
+                if (i_resp_latched) begin
+                    if (s1_vld & s1_j_req)
                         next_state = PLC_JUMP_P;
                     else if (s1_vld & s1_d_req)
                         next_state = PLC_DATA_I;
@@ -317,7 +320,7 @@ module core (
                     next_state = PLC_DATA_I;
             PLC_DATA_E:
                 if (d_resp_latched) begin
-                    if (s1_vld & s1_jump)
+                    if (s1_vld & s1_j_req)
                         next_state = PLC_JUMP_P;
                     else if (s1_vld & s1_d_req)
                         next_state = PLC_DATA_I;
@@ -329,14 +332,14 @@ module core (
                 next_state = PLC_NORMAL;
         endcase
 
-        assign jump_triggered = state==PLC_JUMP_E;
         assign jmp = state==PLC_JUMP_P;
         assign hld = (state==PLC_JUMP_P || state==PLC_JUMP_I || state==PLC_DATA_I) ||
-                     (state==PLC_JUMP_E && ~pf_resp_latched) ||
+                     (state==PLC_JUMP_E && ~i_resp_latched) ||
                      (state==PLC_DATA_E && ~d_resp_latched);
     end // PIPELINE
 
     /**********************************************************************************************************************/
+    wire trap = 1'b0;
     begin:STAGE1 // instruction expansion & decoding
         // regfile
         wire [`XLEN-1:0] x[0:15];
@@ -375,9 +378,9 @@ module core (
             wire [31:0] j_type_imm = {{11{s1_ir[31]}}, s1_ir[31], s1_ir[19:12], s1_ir[20], s1_ir[30:21], 1'b0};
             wire [6:0]  funct7 = s1_ir[31:25];
             wire [2:0]  funct3 = s1_ir[14:12];
-            wire [4:0]  rs2   = s1_ir[24:20];
-            wire [4:0]  rs1   = s1_ir[19:15];
-            wire [4:0]  rd    = s1_ir[11:7];
+            wire [4:0]  rs2 = s1_ir[24:20];
+            wire [4:0]  rs1 = s1_ir[19:15];
+            wire [4:0]  rd = s1_ir[11:7];
             wire [31:0] shamt = {27'd0, rs2};
             wire [6:0]  opcode = s1_ir[6:0];
 
@@ -408,32 +411,40 @@ module core (
                 (opcode==OPCODE_STORE) ?
                     s_type_imm :
                 (opcode==OPCODE_FENCE) ?
-                    4 : /* 4 for FENCE.I, do-not-care for FENCE */
+                    32'd4 : /* 4 for FENCE.I, do-not-care for FENCE */
                 /* otherwise */
                     shamt;
 
             // signals for wider use
             assign s1_rd =
+                trap ?
+                    4'd0 /* trap seen as an instruction where rd=0 */ :
                 (opcode==OPCODE_BRANCH || opcode==OPCODE_STORE || opcode==OPCODE_FENCE) /* rd not available */ ?
                     4'd0 /* available yet should not be used for FENCE.I/FENCE */ :
                 /* rd available */
                     rd[3:0];
 
             assign s1_alu_a =
+                trap ?
+                    32'h00000084 /* TODO: this should be value of mtvec */ :
                 (opcode==OPCODE_LUI) ?
-                    0 :
+                    {`XLEN{0}} :
                 (opcode==OPCODE_AUIPC || opcode==OPCODE_JAL || opcode==OPCODE_BRANCH || opcode==OPCODE_FENCE) ?
                     s1_pc /* do-not-care for FENCE. used for FENCE.I */ :
                 /* otherwise */
                     rs1_val;
 
             assign s1_alu_b =
+                trap ?
+                    {`XLEN{0}} :
                 (opcode==OPCODE_CAL) ?
                     rs2_val :
                 /* otherwise */
                     imm_val;
 
             assign s1_alu_op =
+                trap ?
+                    ALU_OR /* upon trap, alu calc (mtvec | 0) as jmp dst */ :
                 (opcode==OPCODE_CAL || opcode==OPCODE_IMMCAL) ?
                 (
                     funct3==3'd1 ?
@@ -467,6 +478,8 @@ module core (
                     ALU_ADD;
 
             assign s1_op =
+                trap ?
+                    OP_TRAP /* trap jump operation, not a real instruction */ :
                 (opcode==OPCODE_LOAD) ?
                 (
                     (funct3==3'd4 || funct3==3'd5) ?
@@ -483,7 +496,7 @@ module core (
                 /* otherwise */
                     OP_STD;
 
-            assign s1_jump =
+            assign s1_j_req =
             (
                 opcode==OPCODE_BRANCH && (
                     funct3[2:1]==2'd2 ?
@@ -499,15 +512,23 @@ module core (
                 opcode==OPCODE_JAL
             ) || (
                 opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */
+            ) || (
+                trap /* always jump if trap detected */
             );
+
+            assign s1_j_lr =
+                ((opcode==OPCODE_JALR) || (opcode==OPCODE_JAL)) ?
+                    (s1_pc + (s1_c ? 2 : 4)) :
+                /* trap, or no jump at all */
+                    s1_pc;
 
             assign s1_d_req = opcode==OPCODE_LOAD || opcode==OPCODE_STORE;
             assign s1_d_req_acc = (funct3[1:0]==2'd0 ? `BUS_ACC_1B : funct3[1:0]==2'd1 ? `BUS_ACC_2B : `BUS_ACC_4B);
             assign s1_d_req_w_rb = (opcode==OPCODE_STORE);
             assign s1_d_req_wdata = rs2_val;
 
-            assign undef_instr =
-                s1_vld && (
+            assign undef_instr = /* not triggerd upon trap */
+                (~trap & s1_vld) && (
                     (opcode==OPCODE_LUI || opcode==OPCODE_AUIPC || opcode==OPCODE_JAL) ?
                         rd[4] :
                     (opcode==OPCODE_JALR) ?
@@ -556,29 +577,28 @@ module core (
     /**********************************************************************************************************************/
     begin:STAGE2 // executing, mem access & write back
         dff #(
-            .WIDTH(4+`XLEN+`XLEN+8+8),
+            .WIDTH(4+`XLEN+`XLEN+8+8+`XLEN),
             .VALID("sync")
         ) s2_op_dff (
-            .clk (clk),
-            .vld (s1_vld),
-            .in  ({s1_rd,s1_alu_a,s1_alu_b,s1_alu_op,s1_op}),
-            .out ({s2_rd,s2_alu_a,s2_alu_b,s2_alu_op,s2_op})
+            .clk(clk),
+            .vld(s1_vld),
+            .in ({s1_rd,s1_alu_a,s1_alu_b,s1_alu_op,s1_op,s1_j_lr}),
+            .out({s2_rd,s2_alu_a,s2_alu_b,s2_alu_op,s2_op,s2_j_lr})
         );
 
         // ALU
-        // jump_triggered functions as alu mux control: return addr can be calculated
-        wire[7:0]       alu_op = jump_triggered ? ALU_ADD        : s2_alu_op;
-        wire[`XLEN-1:0] alu_a  = jump_triggered ? s2_pc          : s2_alu_a ;
-        wire[`XLEN-1:0] alu_b  = jump_triggered ? (s2_c ? 2 : 4) : s2_alu_b ;
+        wire[7:0]       alu_op = s2_alu_op;
+        wire[`XLEN-1:0] alu_a  = s2_alu_a ;
+        wire[`XLEN-1:0] alu_b  = s2_alu_b ;
         wire[`XLEN-1:0] alu_r;
         alu alu(
             .op(alu_op),
             .a (alu_a ),
             .b (alu_b ),
-            .r (alu_r )
+            .r (alu_r ) // for OP_JAL/OP_JALR/OP_TRAP(jal,mret,jalr,"trap") alu_r is jmp dst
         );
 
-        assign jump_addr = s2_op==OP_JALR ? {alu_r[`XLEN-1:1], 1'b0} : alu_r;
+        assign jmp_addr = {alu_r[`XLEN-1:1], ((s2_op==OP_JALR) ? 1'b0 : alu_r[0])}; // jmp_addr[0] clamped 1'b0 upon JALR
         assign d_req_addr = alu_r;
 
         // Regfile W access
@@ -593,14 +613,20 @@ module core (
                 /*otherwise*/
                     d_resp_data
             ) :
-            ((s2_op==OP_LDU)) ? (
+            (s2_op==OP_LDU) ? (
                 (d_resp_acc==`BUS_ACC_1B) ?
                     {24'd0, d_resp_data[7:0]} :
                 /*d_resp_acc==`BUS_ACC_2B*/
                     {16'd0, d_resp_data[15:0]}
             ) :
+            ((s2_op==OP_JAL) || (s2_op==OP_JALR)) ? (
+                s2_j_lr
+            ) :
             /* otherwise treated as OP_STD */
                 alu_r;
+
+        // CSR write operation upon trap
+        // write mepc if s2_op==OP_TRAP
 
         // Fault signal
         assign overshift = s2_vld && (s2_alu_op==ALU_SL || s2_alu_op==ALU_SRL || s2_alu_op==ALU_SRA) && s2_alu_b[`XLEN-1:5];

@@ -1,12 +1,15 @@
-// ex/wb op
+// ex/wb stage opcode
 localparam  OP_UNDEF = 8'd0,
             OP_STD   = 8'd1, // Write regfile only
             OP_JAL   = 8'd2,
             OP_JALR  = 8'd3,
             OP_LD    = 8'd4, // load
             OP_LDU   = 8'd5, // load unsigned
-            OP_SD    = 8'd6; // store
+            OP_SD    = 8'd6, // store
 
+            OP_TRAP  = 8'd7; // trap jump, not a real instruction
+
+// ex/wb alu opcode
 localparam  ALU_ADD  = 8'h1,
             ALU_SUB  = 8'h2,
             ALU_AND  = 8'h3,
@@ -19,6 +22,7 @@ localparam  ALU_ADD  = 8'h1,
             ALU_SL   = 8'ha,
             ALU_NOP  = 8'h0;
 
+// id opcode
 localparam  OPCODE_C0 = 2'b00,
             OPCODE_C1 = 2'b01,
             OPCODE_C2 = 2'b10,
