@@ -2,30 +2,35 @@
 `include "femto.vh"
 
 module core (
-    input wire  clk,
-    input wire  rstn,
+    input wire clk,
+    input wire rstn,
 
     // fault
-    output reg              core_fault,
-    output reg[`XLEN-1:0]   core_fault_pc,
+    output reg            core_fault,
+    output reg[`XLEN-1:0] core_fault_pc,
+
+    // external interrupt
+    input wire      ext_int_pending,
+    input wire[7:0] ext_int_info,
+    output wire     ext_int_processed,
 
     // data bus interface
-    output wire[`XLEN-1:0]                  dbus_addr, // byte addr
-    output wire                             dbus_w_rb,
-    output wire[$clog2(`BUS_ACC_CNT)-1:0]   dbus_acc,
-    input wire[`BUS_WIDTH-1:0]              dbus_rdata,
-    output wire[`BUS_WIDTH-1:0]             dbus_wdata,
-    output wire                             dbus_req,
-    input wire                              dbus_resp,
+    output wire[`XLEN-1:0]                dbus_addr, // byte addr
+    output wire                           dbus_w_rb,
+    output wire[$clog2(`BUS_ACC_CNT)-1:0] dbus_acc,
+    input wire[`BUS_WIDTH-1:0]            dbus_rdata,
+    output wire[`BUS_WIDTH-1:0]           dbus_wdata,
+    output wire                           dbus_req,
+    input wire                            dbus_resp,
 
     // instruction bus interface
-    output wire[`XLEN-1:0]                  ibus_addr, // byte addr
-    output wire                             ibus_w_rb,
-    output wire[$clog2(`BUS_ACC_CNT)-1:0]   ibus_acc,
-    input wire[`BUS_WIDTH-1:0]              ibus_rdata,
-    output wire[`BUS_WIDTH-1:0]             ibus_wdata,
-    output wire                             ibus_req,
-    input wire                              ibus_resp
+    output wire[`XLEN-1:0]                ibus_addr, // byte addr
+    output wire                           ibus_w_rb,
+    output wire[$clog2(`BUS_ACC_CNT)-1:0] ibus_acc,
+    input wire[`BUS_WIDTH-1:0]            ibus_rdata,
+    output wire[`BUS_WIDTH-1:0]           ibus_wdata,
+    output wire                           ibus_req,
+    input wire                            ibus_resp
 );
 
     `include "core.vh"
@@ -76,25 +81,29 @@ module core (
     wire[`ILEN-1:0] s2_ir;
     wire[`XLEN-1:0] s2_pc;
 
-    // other global signals
+    // cross stage signals (of pipeline)
     wire regfile_wreq;
-    wire [3:0] regfile_windex;
-    wire [`XLEN-1:0] regfile_wdata;
+    wire[3:0] regfile_windex;
+    wire[`XLEN-1:0] regfile_wdata;
 
-    wire [3:0] s1_rd; // dest reg index
-    wire [`XLEN-1:0] s1_alu_a, s1_alu_b;
-    wire [7:0] s1_alu_op; // alu operation
-    wire [7:0] s1_op; // instruction operation
+    wire[3:0] s1_rd; // dest reg index
+    wire[`XLEN-1:0] s1_alu_a, s1_alu_b;
+    wire[7:0] s1_alu_op; // alu operation
+    wire[7:0] s1_op; // instruction operation
 
     wire s1_j_req;
-    wire [`XLEN-1:0] s1_j_lr; // jump link register/return address
+    wire[`XLEN-1:0] s1_j_lr; // jump link register/return address
     wire s1_d_req;
 
-    wire [3:0] s2_rd; // dest reg index
-    wire [`XLEN-1:0] s2_alu_a, s2_alu_b;
-    wire [7:0] s2_alu_op; // alu operation
-    wire [7:0] s2_op; // instruction operation
-    wire [`XLEN-1:0] s2_j_lr; // jump link register/return address
+    wire[3:0] s2_rd; // dest reg index
+    wire[`XLEN-1:0] s2_alu_a, s2_alu_b;
+    wire[7:0] s2_alu_op; // alu operation
+    wire[7:0] s2_op; // instruction operation
+    wire[`XLEN-1:0] s2_j_lr; // jump link register/return address
+
+    // trap control signals
+    wire trap;
+    wire[`XLEN-1:0] csr_mtvec;
 
     // fault indicators
     wire undef_instr, overshift;
@@ -149,7 +158,7 @@ module core (
         wire    ibus_resp_w_rb, dbus_resp_w_rb;
         wire[$clog2(`BUS_ACC_CNT)-1:0]  ibus_resp_acc, dbus_resp_acc;
 
-        wire    i_req_not_cancelled;
+        wire    i_req_not_cancelled; // jmp ignores the matching i_resp, so as to cancel i_req
         dff #(
             .WIDTH($clog2(`BUS_ACC_CNT) + 1),
             .VALID("sync"),
@@ -339,10 +348,47 @@ module core (
     end // PIPELINE
 
     /**********************************************************************************************************************/
-    wire trap = 1'b0;
+    begin:TCTRL // trap control
+        reg[`XLEN-1:0] mstatus; // mie & mpie function, other are WPRI fields
+                                // mie is hw cleared upon traps, and works only on interrupts
+
+        reg[`XLEN-1:0] mtvec;   // trap jmp dst pc
+
+        reg[`XLEN-1:0] mepc;    // erroneous instruction addr(s2_pc) for exception
+                                // unexecuted instruction(s1_pc) addr for interrupt
+                                // works for both exceptions and interrupts
+
+        reg[`XLEN-1:0] mcause;  // distinguishes exceptions/interrupts
+
+        reg[`XLEN-1:0] mtval;   // extra info of a trap
+
+        reg[`XLEN-1:0] mie;     // works on interrupts only
+
+        reg[`XLEN-1:0] mip;     // works on interrupts only
+
+        /*
+         * Talking about a RISCV MCU (M-mode only core):
+         *
+         * Nested exception can be a nightmare - imagine you have an error in an exception handler. In this case, I would
+         * rather halt the SoC or trigger a reset.
+         *
+         * So far (early 2022) I feel RISCV is not encouraging nested traps. I haven't thought about it seriously but I
+         * guess it could be useful from time to time, e.g. dbg-probe-inserted break point exception inside an interrupt
+         * handler?
+         *
+         * If software is to handle nested traps properly, the compiler needs to protect handler context
+         *  - mstatus (MPIE matters)
+         *  - mepc
+         *  - mcause
+         *  - mtval
+         *  - mie
+         */
+    end // TCTRL
+
+    /**********************************************************************************************************************/
     begin:STAGE1 // instruction expansion & decoding
         // regfile
-        wire [`XLEN-1:0] x[0:15];
+        wire[`XLEN-1:0] x[0:15];
         regfile regfile(
             .clk   (clk           ),
             .wreq  (regfile_wreq  ),
@@ -371,21 +417,21 @@ module core (
         wire[`BUS_WIDTH-1:0] s1_d_req_wdata;
         begin:DECODE
             // decoder
-            wire [31:0] i_type_imm = {{20{s1_ir[31]}}, s1_ir[31:20]};
-            wire [31:0] s_type_imm = {{20{s1_ir[31]}}, s1_ir[31:25], s1_ir[11:7]};
-            wire [31:0] b_type_imm = {{20{s1_ir[31]}}, s1_ir[7], s1_ir[30:25], s1_ir[11:8], 1'b0};
-            wire [31:0] u_type_imm = {s1_ir[31:12], 12'd0};
-            wire [31:0] j_type_imm = {{11{s1_ir[31]}}, s1_ir[31], s1_ir[19:12], s1_ir[20], s1_ir[30:21], 1'b0};
-            wire [6:0]  funct7 = s1_ir[31:25];
-            wire [2:0]  funct3 = s1_ir[14:12];
-            wire [4:0]  rs2 = s1_ir[24:20];
-            wire [4:0]  rs1 = s1_ir[19:15];
-            wire [4:0]  rd = s1_ir[11:7];
-            wire [31:0] shamt = {27'd0, rs2};
-            wire [6:0]  opcode = s1_ir[6:0];
+            wire[31:0] i_type_imm = {{20{s1_ir[31]}}, s1_ir[31:20]};
+            wire[31:0] s_type_imm = {{20{s1_ir[31]}}, s1_ir[31:25], s1_ir[11:7]};
+            wire[31:0] b_type_imm = {{20{s1_ir[31]}}, s1_ir[7], s1_ir[30:25], s1_ir[11:8], 1'b0};
+            wire[31:0] u_type_imm = {s1_ir[31:12], 12'd0};
+            wire[31:0] j_type_imm = {{11{s1_ir[31]}}, s1_ir[31], s1_ir[19:12], s1_ir[20], s1_ir[30:21], 1'b0};
+            wire[6:0]  funct7 = s1_ir[31:25];
+            wire[2:0]  funct3 = s1_ir[14:12];
+            wire[4:0]  rs2 = s1_ir[24:20];
+            wire[4:0]  rs1 = s1_ir[19:15];
+            wire[4:0]  rd = s1_ir[11:7];
+            wire[31:0] shamt = {27'd0, rs2};
+            wire[6:0]  opcode = s1_ir[6:0];
 
-            wire [`XLEN-1:0] rs1_val, rs2_val;
-            wire [`XLEN-1:0] imm_val;
+            wire[`XLEN-1:0] rs1_val, rs2_val;
+            wire[`XLEN-1:0] imm_val;
 
             assign rs1_val =
                 (regfile_wreq && rs1[3:0]==regfile_windex) ?
@@ -426,7 +472,7 @@ module core (
 
             assign s1_alu_a =
                 trap ?
-                    32'h00000084 /* TODO: this should be value of mtvec */ :
+                    csr_mtvec /* upon trap, alu calc (mtvec | 0) as jmp dst */ :
                 (opcode==OPCODE_LUI) ?
                     {`XLEN{0}} :
                 (opcode==OPCODE_AUIPC || opcode==OPCODE_JAL || opcode==OPCODE_BRANCH || opcode==OPCODE_FENCE) ?
@@ -436,7 +482,7 @@ module core (
 
             assign s1_alu_b =
                 trap ?
-                    {`XLEN{0}} :
+                    {`XLEN{0}} /* upon trap, alu calc (mtvec | 0) as jmp dst */ :
                 (opcode==OPCODE_CAL) ?
                     rs2_val :
                 /* otherwise */
@@ -519,8 +565,8 @@ module core (
             assign s1_j_lr =
                 ((opcode==OPCODE_JALR) || (opcode==OPCODE_JAL)) ?
                     (s1_pc + (s1_c ? 2 : 4)) :
-                /* trap, or no jump at all */
-                    s1_pc;
+                /* trap */
+                    s1_pc; // TODO: s1_pc for interrupt, s2_pc for exception
 
             assign s1_d_req = opcode==OPCODE_LOAD || opcode==OPCODE_STORE;
             assign s1_d_req_acc = (funct3[1:0]==2'd0 ? `BUS_ACC_1B : funct3[1:0]==2'd1 ? `BUS_ACC_2B : `BUS_ACC_4B);
@@ -625,8 +671,8 @@ module core (
             /* otherwise treated as OP_STD */
                 alu_r;
 
-        // CSR write operation upon trap
-        // write mepc if s2_op==OP_TRAP
+        // write mepc upon a trap
+        // TODO: write mepc if s2_op==OP_TRAP
 
         // Fault signal
         assign overshift = s2_vld && (s2_alu_op==ALU_SL || s2_alu_op==ALU_SRL || s2_alu_op==ALU_SRA) && s2_alu_b[`XLEN-1:5];
@@ -650,13 +696,13 @@ endmodule
 
 /**********************************************************************************************************************/
 module alu(
-    input wire [7:0]       op,
-    input wire [`XLEN-1:0]  a,
-    input wire [`XLEN-1:0]  b,
-    output wire [`XLEN-1:0] r
+    input wire[7:0]        op,
+    input wire[`XLEN-1:0]  a,
+    input wire[`XLEN-1:0]  b,
+    output wire[`XLEN-1:0] r
 );
-    wire [`XLEN-1:0] sra_r = $signed(a)>>>b,
-                     lt_r  = $signed(a)<$signed(b);
+    wire[`XLEN-1:0] sra_r = $signed(a)>>>b,
+                    lt_r  = $signed(a)<$signed(b);
 
     `include "core.vh"
 
@@ -678,29 +724,29 @@ endmodule
 module regfile(
     input wire              clk,
 
-    input wire              wreq,
-    input wire [3:0]        windex,
-    input wire [`XLEN-1:0]  wdata,
+    input wire             wreq,
+    input wire[3:0]        windex,
+    input wire[`XLEN-1:0]  wdata,
 
-    output wire [`XLEN-1:0] x0,
-    output wire [`XLEN-1:0] x1,
-    output wire [`XLEN-1:0] x2,
-    output wire [`XLEN-1:0] x3,
-    output wire [`XLEN-1:0] x4,
-    output wire [`XLEN-1:0] x5,
-    output wire [`XLEN-1:0] x6,
-    output wire [`XLEN-1:0] x7,
-    output wire [`XLEN-1:0] x8,
-    output wire [`XLEN-1:0] x9,
-    output wire [`XLEN-1:0] x10,
-    output wire [`XLEN-1:0] x11,
-    output wire [`XLEN-1:0] x12,
-    output wire [`XLEN-1:0] x13,
-    output wire [`XLEN-1:0] x14,
-    output wire [`XLEN-1:0] x15
+    output wire[`XLEN-1:0] x0,
+    output wire[`XLEN-1:0] x1,
+    output wire[`XLEN-1:0] x2,
+    output wire[`XLEN-1:0] x3,
+    output wire[`XLEN-1:0] x4,
+    output wire[`XLEN-1:0] x5,
+    output wire[`XLEN-1:0] x6,
+    output wire[`XLEN-1:0] x7,
+    output wire[`XLEN-1:0] x8,
+    output wire[`XLEN-1:0] x9,
+    output wire[`XLEN-1:0] x10,
+    output wire[`XLEN-1:0] x11,
+    output wire[`XLEN-1:0] x12,
+    output wire[`XLEN-1:0] x13,
+    output wire[`XLEN-1:0] x14,
+    output wire[`XLEN-1:0] x15
 );
 
-    reg [`XLEN-1:0] xreg[1:15];
+    reg[`XLEN-1:0] xreg[1:15];
     assign x0  = 0;
     assign x1  = xreg[1 ];
     assign x2  = xreg[2 ];
@@ -748,7 +794,7 @@ module prefetch_queue (
             wire w, r;
             wire full, empty;
             wire almost_full, almost_empty;
-            wire [15:0] din, dout;
+            wire[15:0] din, dout;
             fifo #(
                 .WIDTH(16    ),
                 .DEPTH(2     ),
