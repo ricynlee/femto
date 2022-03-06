@@ -10,9 +10,9 @@ module core (
     output reg[`XLEN-1:0] core_fault_pc,
 
     // external interrupt
-    input wire      ext_int_pending,
+    input wire      ext_int_trigger,
     input wire[7:0] ext_int_info,
-    output wire     ext_int_processed,
+    output wire     ext_int_handled,
 
     // data bus interface
     output wire[`XLEN-1:0]                dbus_addr, // byte addr
@@ -102,11 +102,11 @@ module core (
     wire[`XLEN-1:0] s2_j_lr; // jump link register/return address
 
     // trap control signals
-    wire trap;
+    wire interrupt;
     wire[`XLEN-1:0] csr_mtvec;
 
-    // fault indicators
-    wire undef_instr, overshift;
+    // fault indicator
+    wire illegal_instr;
 
     /**********************************************************************************************************************/
     begin:BUS_REQ_CTRL
@@ -349,40 +349,104 @@ module core (
 
     /**********************************************************************************************************************/
     begin:TCTRL // trap control
+        // 0x300
         reg[`XLEN-1:0] mstatus; // mie & mpie function, other are WPRI fields
                                 // mie is hw cleared upon traps, and works only on interrupts
 
+        // 0x305
         reg[`XLEN-1:0] mtvec;   // trap jmp dst pc
 
+        // 0x341
         reg[`XLEN-1:0] mepc;    // erroneous instruction addr(s2_pc) for exception
                                 // unexecuted instruction(s1_pc) addr for interrupt
                                 // works for both exceptions and interrupts
 
+        // 0x342
         reg[`XLEN-1:0] mcause;  // distinguishes exceptions/interrupts
 
+        // 0x343
         reg[`XLEN-1:0] mtval;   // extra info of a trap
 
+        // 0x304
         reg[`XLEN-1:0] mie;     // works on interrupts only
 
+        // 0x344
         reg[`XLEN-1:0] mip;     // works on interrupts only
 
         /*
          * Talking about a RISCV MCU (M-mode only core):
-         *
-         * Nested exception can be a nightmare - imagine you have an error in an exception handler. In this case, I would
-         * rather halt the SoC or trigger a reset.
-         *
-         * So far (early 2022) I feel RISCV is not encouraging nested traps. I haven't thought about it seriously but I
-         * guess it could be useful from time to time, e.g. dbg-probe-inserted break point exception inside an interrupt
-         * handler?
-         *
-         * If software is to handle nested traps properly, the compiler needs to protect handler context
+         * If software is to handle nested interrupts properly, the compiler needs to protect handler context
          *  - mstatus (MPIE matters)
          *  - mepc
          *  - mcause
          *  - mtval
          *  - mie
+         * Only external interrupts are implemented among all kind of traps.
+         * Nested exceptions, esp. w/ priority arbitration can be a headache, so exceptions are treated as fatal faults.
          */
+
+        `define MIE  3  // mstatus.MIE - global int enable
+        `define MPIE 7  // mstatus.MPIE - prev MIE
+        `define MEIE 11 // mie.MEIE - ext int enable
+        `define MEIP 11 // mip.MEIP - ext int pending
+
+        assign interrupt = mstatus[`MIE] & (mie[`MEIE] & mip[`MEIP]);
+        wire int_handled = s1_vld & interrupt;
+
+        always @ (posedge clk) begin
+            if (~rstn) begin
+                // mstatus <= {`XLEN{1'b0}};
+                mstatus[`MIE] <= 1'b1;
+            end else if (int_handled) begin
+                mstatus[`MPIE] <= mstatus[`MIE];
+                mstatus[`MIE] <= 1'b0;
+            end
+        end
+
+        always @ (posedge clk) begin
+            if (~rstn) begin
+                mtvec <= {`XLEN{1'b0}};
+            end
+        end
+
+        always @ (posedge clk) begin
+            // if (~rstn) begin
+            //     mepc <= {`XLEN{1'b0}};
+            // end
+        end
+
+        always @ (posedge clk) begin
+            // if (~rstn) begin
+            //     mcause <= {`XLEN{1'b0}};
+            // end
+        end
+
+        always @ (posedge clk) begin
+            // if (~rstn) begin
+            //     mtval <= {`XLEN{1'b0}};
+            // end
+        end
+
+        always @ (posedge clk) begin
+            if (~rstn) begin
+                // mie <= {`XLEN{1'b0}};
+                mie[`MEIE] <= 1'b1;
+            end
+        end
+
+        always @ (posedge clk) begin
+            if (~rstn) begin
+                mip <= {`XLEN{1'b0}};
+            end else if(int_handled) begin // must come before ext_int_trigger
+                mip[`MEIP] <= 1'b0;
+            end else if(ext_int_trigger) begin
+                mip[`MEIP] <= 1'b1;
+            end
+        end
+
+        assign ext_int_handled = int_handled;
+
+        assign csr_mtvec = mtvec;
     end // TCTRL
 
     /**********************************************************************************************************************/
@@ -463,16 +527,16 @@ module core (
 
             // signals for wider use
             assign s1_rd =
-                trap ?
-                    4'd0 /* trap seen as an instruction where rd=0 */ :
+                interrupt ?
+                    4'd0 /* interrupt seen as an instruction where rd=0 */ :
                 (opcode==OPCODE_BRANCH || opcode==OPCODE_STORE || opcode==OPCODE_FENCE) /* rd not available */ ?
                     4'd0 /* available yet should not be used for FENCE.I/FENCE */ :
                 /* rd available */
                     rd[3:0];
 
             assign s1_alu_a =
-                trap ?
-                    csr_mtvec /* upon trap, alu calc (mtvec | 0) as jmp dst */ :
+                interrupt ?
+                    csr_mtvec /* upon interrupt, alu calc (mtvec | 0) as jmp dst */ :
                 (opcode==OPCODE_LUI) ?
                     {`XLEN{0}} :
                 (opcode==OPCODE_AUIPC || opcode==OPCODE_JAL || opcode==OPCODE_BRANCH || opcode==OPCODE_FENCE) ?
@@ -481,16 +545,16 @@ module core (
                     rs1_val;
 
             assign s1_alu_b =
-                trap ?
-                    {`XLEN{0}} /* upon trap, alu calc (mtvec | 0) as jmp dst */ :
+                interrupt ?
+                    {`XLEN{0}} /* upon interrupt, alu calc (mtvec | 0) as jmp dst */ :
                 (opcode==OPCODE_CAL) ?
                     rs2_val :
                 /* otherwise */
                     imm_val;
 
             assign s1_alu_op =
-                trap ?
-                    ALU_OR /* upon trap, alu calc (mtvec | 0) as jmp dst */ :
+                interrupt ?
+                    ALU_OR /* upon interrupt, alu calc (mtvec | 0) as jmp dst */ :
                 (opcode==OPCODE_CAL || opcode==OPCODE_IMMCAL) ?
                 (
                     funct3==3'd1 ?
@@ -524,8 +588,8 @@ module core (
                     ALU_ADD;
 
             assign s1_op =
-                trap ?
-                    OP_TRAP /* trap jump operation, not a real instruction */ :
+                interrupt ?
+                    OP_TRAP /* interrupt jump operation, not a real instruction */ :
                 (opcode==OPCODE_LOAD) ?
                 (
                     (funct3==3'd4 || funct3==3'd5) ?
@@ -559,22 +623,22 @@ module core (
             ) || (
                 opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */
             ) || (
-                trap /* always jump if trap detected */
+                interrupt /* always jump if interrupt detected */
             );
 
             assign s1_j_lr =
                 ((opcode==OPCODE_JALR) || (opcode==OPCODE_JAL)) ?
                     (s1_pc + (s1_c ? 2 : 4)) :
-                /* trap */
-                    s1_pc; // TODO: s1_pc for interrupt, s2_pc for exception
+                /* interrupt */
+                    s1_pc;
 
             assign s1_d_req = opcode==OPCODE_LOAD || opcode==OPCODE_STORE;
             assign s1_d_req_acc = (funct3[1:0]==2'd0 ? `BUS_ACC_1B : funct3[1:0]==2'd1 ? `BUS_ACC_2B : `BUS_ACC_4B);
             assign s1_d_req_w_rb = (opcode==OPCODE_STORE);
             assign s1_d_req_wdata = rs2_val;
 
-            assign undef_instr = /* not triggerd upon trap */
-                (~trap & s1_vld) && (
+            assign illegal_instr = /* not triggerd upon interrupt */
+                (~interrupt & s1_vld) && (
                     (opcode==OPCODE_LUI || opcode==OPCODE_AUIPC || opcode==OPCODE_JAL) ?
                         rd[4] :
                     (opcode==OPCODE_JALR) ?
@@ -674,22 +738,16 @@ module core (
         // write mepc upon a trap
         // TODO: write mepc if s2_op==OP_TRAP
 
-        // Fault signal
-        assign overshift = s2_vld && (s2_alu_op==ALU_SL || s2_alu_op==ALU_SRL || s2_alu_op==ALU_SRA) && s2_alu_b[`XLEN-1:5];
     end // STAGE2
 
     /**********************************************************************************************************************/
     always @(posedge clk) begin
         if (~rstn) begin
             core_fault <= 0;
-        end else if (undef_instr) begin
+        end else if (illegal_instr) begin
             core_fault <= 1;
             core_fault_pc <= s1_pc;
             $display("FAULT: undefined instruction");
-        end else if (overshift) begin
-            core_fault <= 1;
-            core_fault_pc <= s2_pc;
-            $display("FAULT: over shift");
         end
     end
 endmodule
@@ -701,22 +759,25 @@ module alu(
     input wire[`XLEN-1:0]  b,
     output wire[`XLEN-1:0] r
 );
-    wire[`XLEN-1:0] sra_r = $signed(a)>>>b,
+    localparam SHIFTWIDTH = $clog2(`XLEN);
+    wire[SHIFTWIDTH-1:0] shift = b[SHIFTWIDTH-1:0];
+
+    wire[`XLEN-1:0] sra_r = $signed(a)>>>shift,
                     lt_r  = $signed(a)<$signed(b);
 
     `include "core.vh"
 
     assign r =
-        op==ALU_ADD ? (a+b)   :
-        op==ALU_SUB ? (a-b)   :
-        op==ALU_AND ? (a&b)   :
-        op==ALU_OR  ? (a|b)   :
-        op==ALU_XOR ? (a^b)   :
-        op==ALU_LTU ? (a<b)   :
-        op==ALU_LT  ? (lt_r) :
-        op==ALU_SRL ? (a>>b)  :
-        op==ALU_SRA ? (sra_r) :
-        op==ALU_SL  ? (a<<b)  :
+        op==ALU_ADD ? (a+b     ) :
+        op==ALU_SUB ? (a-b     ) :
+        op==ALU_AND ? (a&b     ) :
+        op==ALU_OR  ? (a|b     ) :
+        op==ALU_XOR ? (a^b     ) :
+        op==ALU_LTU ? (a<b     ) :
+        op==ALU_LT  ? (lt_r    ) :
+        op==ALU_SRL ? (a>>shift) :
+        op==ALU_SRA ? (sra_r   ) :
+        op==ALU_SL  ? (a<<shift) :
         0;
 endmodule
 
@@ -887,7 +948,7 @@ module expander( // conpressed instruction expansion
     wire[2:0] rd_q_rs1_q = in_instr[9:7];
     wire[2:0] rd_q_rs2_q = in_instr[4:2];
 
-    wire undef_instr_c = out_c &&
+    wire illegal_instr_c = out_c &&
         (
             (opcode==OPCODE_C0 && (
                 (funct3==3'b000 && in_instr[12:5]==8'd0) ||
@@ -916,7 +977,7 @@ module expander( // conpressed instruction expansion
         );
 
     assign out_instr =
-        undef_instr_c ? {`ILEN{1'b0}} : (
+        illegal_instr_c ? {`ILEN{1'b0}} : (
             (opcode==OPCODE_C0) ? (
                 funct3==3'b000 ? {{2'd0,in_instr[10:7],in_instr[12:11],in_instr[5],in_instr[6],2'd0},5'd2/*x2*/,3'b000,{2'b01,rd_q_rs2_q},OPCODE_IMMCAL} : //c.addi4spn
                 funct3==3'b010 ? {{5'd0,in_instr[5],in_instr[12:10],in_instr[6],2'd0},{2'b01,rd_q_rs1_q},3'b010,{2'b01,rd_q_rs2_q},OPCODE_LOAD} : //c.lw

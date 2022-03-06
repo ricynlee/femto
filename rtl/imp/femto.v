@@ -231,12 +231,27 @@ module femto (
 
     /******************************************************************************************************************************************************************/
     // core
+
+    reg ext_int_trigger = 1'b0;
+    wire ext_int_handled;
+
+    initial begin
+        #30001;
+        @(posedge clk) ext_int_trigger <= 1'b1;
+        @(posedge ext_int_handled);
+        @(posedge clk) ext_int_trigger <= 1'b0;
+    end
+
     core core (
         .clk (clk      ),
         .rstn(core_rstn),
 
         .core_fault   (core_fault),
         .core_fault_pc(),
+
+        .ext_int_trigger(ext_int_trigger),
+        .ext_int_info(),
+        .ext_int_handled(ext_int_handled),
 
         .ibus_addr (ibus_addr ),
         .ibus_w_rb (ibus_w_rb ),
