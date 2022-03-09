@@ -3,7 +3,7 @@
 - Mono core
 - Harvard architecture with 32-bit instruction and data buses
 - Fully synchronous design
-- Instruction prefectch
+- Instruction prefetch
 - 2-stage pipeline
 - Little-endian byte order
 - RV32EC ISA with Zfencei extension
@@ -40,7 +40,7 @@ femto
 ***
 
 # 概览
-`femto`是一款兼容RISCV指令的轻量级软核微控制器，可嵌入FPGA,便于用软件实现一定复杂度的控制逻辑。目前`femto`在MIT协议下开源发布。`femto`基本特性列表如下:  
+`femto`是一款兼容RISCV指令的轻量级软核微控制器,可嵌入FPGA,主要面向DIY和学习目的。目前`femto`在MIT协议下开源发布。`femto`基本特性列表如下:  
 - 单处理器核
 - 哈佛结构,32位数据总线和指令总线
 - 全同步设计,单时钟域
