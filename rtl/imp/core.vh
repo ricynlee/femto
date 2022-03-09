@@ -40,5 +40,5 @@ localparam  OPCODE_IMMCAL = 7'b0010011,
             OPCODE_FENCE  = 7'b0001111,
             OPCODE_SYSTEM = 7'b1110011;
 
-// mcause exception code
+// interrupt mcause exception code
 localparam  MCAUSE_MEXTINT = {1'b1, 31'd11};

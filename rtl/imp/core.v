@@ -10,9 +10,9 @@ module core (
     output reg[`XLEN-1:0] core_fault_pc,
 
     // external interrupt
-    input wire      ext_int_trigger,
-    input wire[7:0] ext_int_info,
-    output wire     ext_int_handled,
+    input wire            ext_int_trigger,
+    input wire[`XLEN-1:0] ext_int_info,
+    output wire           ext_int_handled,
 
     // data bus interface
     output wire[`XLEN-1:0]                dbus_addr, // byte addr

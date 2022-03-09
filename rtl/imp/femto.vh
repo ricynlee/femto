@@ -10,6 +10,10 @@
 
 `define RESET_PC            (32'h0000_0000)
 
+/* interrupt */
+`define INT_MTVAL_FMT       "number" // number - binary encoding
+                                     // flag - one-hot encoding (lower latency)
+
 /* bus */
 `define BUS_WIDTH           (`XLEN) // bus width
 

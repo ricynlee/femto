@@ -230,17 +230,35 @@ module femto (
     end
 
     /******************************************************************************************************************************************************************/
-    // core
+    // interrupt
+    wire            ext_int_trigger, ext_int_handled;
+    wire[`XLEN-1:0] ext_int_info;
+    wire[3:0]       ext_int_from;
 
-    reg ext_int_trigger = 1'b0;
-    wire ext_int_handled;
+    extint_controller # (
+        .INFO_TYPE(`INT_MTVAL_FMT)
+    ) extint_controller (
+        .clk (clk      ),
+        .rstn(core_rstn),
+        // core interface
+        .ext_int_trigger(ext_int_trigger),
+        .ext_int_info   (ext_int_info   ),
+        .ext_int_handled(ext_int_handled),
+        // ip interface
+        .ext_int_from(ext_int_from)
+    );
 
+    // simulation
+    reg[3:0] ext_int_from_r;
+    assign ext_int_from = ext_int_from_r;
     initial begin
+        ext_int_from_r = 0;
         #30001;
-        @(posedge clk) ext_int_trigger <= 1'b1;
-        @(posedge ext_int_handled);
-        @(posedge clk) ext_int_trigger <= 1'b0;
+        @(posedge clk) ext_int_from_r <= 4'b0110;
     end
+
+    /******************************************************************************************************************************************************************/
+    // core
 
     core core (
         .clk (clk      ),
@@ -250,7 +268,7 @@ module femto (
         .core_fault_pc(),
 
         .ext_int_trigger(ext_int_trigger),
-        .ext_int_info(),
+        .ext_int_info   (ext_int_info   ),
         .ext_int_handled(ext_int_handled),
 
         .ibus_addr (ibus_addr ),
