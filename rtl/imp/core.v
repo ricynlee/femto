@@ -527,8 +527,8 @@ module core (
 
             // signals for wider use
             assign s1_rd =
-                interrupt ?
-                    4'd0 /* interrupt seen as an instruction where rd=0 */ :
+                (interrupt || opcode==OPCODE_SYSTEM /* MRET */) ?
+                    4'd0 /* interrupt/return seen as an instruction where rd=0 */ :
                 (opcode==OPCODE_BRANCH || opcode==OPCODE_STORE || opcode==OPCODE_FENCE) /* rd not available */ ?
                     4'd0 /* available yet should not be used for FENCE.I/FENCE */ :
                 /* rd available */
@@ -537,6 +537,8 @@ module core (
             assign s1_alu_a =
                 interrupt ?
                     csr_mtvec /* upon interrupt, alu calc (mtvec | 0) as jmp dst */ :
+                (opcode==OPCODE_SYSTEM) ? /* MRET only */
+                    csr_mepc /* interrupt return addr */ :
                 (opcode==OPCODE_LUI) ?
                     {`XLEN{0}} :
                 (opcode==OPCODE_AUIPC || opcode==OPCODE_JAL || opcode==OPCODE_BRANCH || opcode==OPCODE_FENCE) ?
@@ -545,16 +547,16 @@ module core (
                     rs1_val;
 
             assign s1_alu_b =
-                interrupt ?
-                    {`XLEN{0}} /* upon interrupt, alu calc (mtvec | 0) as jmp dst */ :
+                (interrupt || opcode==OPCODE_SYSTEM /* MRET */) ?
+                    {`XLEN{0}} /* upon interrupt/return, alu calc (mtvec | 0)/(mepc | 0) as jmp dst */ :
                 (opcode==OPCODE_CAL) ?
                     rs2_val :
                 /* otherwise */
                     imm_val;
 
             assign s1_alu_op =
-                interrupt ?
-                    ALU_OR /* upon interrupt, alu calc (mtvec | 0) as jmp dst */ :
+                (interrupt || opcode==OPCODE_SYSTEM /* MRET */) ?
+                    ALU_OR /* upon interrupt/return, alu calc (mtvec | 0)/(mepc | 0) as jmp dst */ :
                 (opcode==OPCODE_CAL || opcode==OPCODE_IMMCAL) ?
                 (
                     funct3==3'd1 ?
@@ -590,6 +592,8 @@ module core (
             assign s1_op =
                 interrupt ?
                     OP_TRAP /* interrupt jump operation, not a real instruction */ :
+                (opcode==OPCODE_SYSTEM) ? /* MRET only */
+                    OP_TRET /* interrupt return */ :
                 (opcode==OPCODE_LOAD) ?
                 (
                     (funct3==3'd4 || funct3==3'd5) ?
@@ -623,13 +627,13 @@ module core (
             ) || (
                 opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */
             ) || (
-                interrupt /* always jump if interrupt detected */
+                interrupt || opcode==OPCODE_SYSTEM /* always jump if interrupt/return detected */
             );
 
             assign s1_j_lr =
                 ((opcode==OPCODE_JALR) || (opcode==OPCODE_JAL)) ?
                     (s1_pc + (s1_c ? 2 : 4)) :
-                /* interrupt */
+                /* interrupt mepc */
                     s1_pc;
 
             assign s1_d_req = opcode==OPCODE_LOAD || opcode==OPCODE_STORE;
@@ -655,6 +659,8 @@ module core (
                         (rd[4] || rs1[4] || rs2[4] || {funct7[6], funct7[4:0]} || (funct7[5] && (funct3[1] || (funct3[2]^funct3[0])))) :
                     (opcode==OPCODE_FENCE) ?
                         (rd[4] || rs1[4] || funct3[2:1]) :
+                    (opcode==OPCODE_SYSTEM) ?
+                        (funct7!=7'b0011000 || rs2!=5'd2 || rs1!=5'd0 || funct3!=3'b000 || rd!=5'd0) : // only MRET allowed
                     /* undefined / unimplemented opcode */
                         1'b1
                 );

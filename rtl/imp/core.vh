@@ -6,8 +6,8 @@ localparam  OP_UNDEF = 8'd0,
             OP_LD    = 8'd4, // load
             OP_LDU   = 8'd5, // load unsigned
             OP_SD    = 8'd6, // store
-
-            OP_TRAP  = 8'd7; // trap jump, not a real instruction
+            OP_TRAP  = 8'd7, // trap jump, not a real instruction
+            OP_TRET  = 8'd8; // trap return
 
 // ex/wb alu opcode
 localparam  ALU_ADD  = 8'h1,
