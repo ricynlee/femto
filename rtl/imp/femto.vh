@@ -13,6 +13,7 @@
 /* interrupt */
 `define INT_MTVAL_FMT       "number" // number - binary encoding
                                      // flag - one-hot encoding (lower latency)
+`define INT_RST_EN          (1'b1) // interrupt enabled or not at rst
 
 /* bus */
 `define BUS_WIDTH           (`XLEN) // bus width

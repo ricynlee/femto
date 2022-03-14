@@ -87,7 +87,8 @@ module core (
     wire[`XLEN-1:0] regfile_wdata;
 
     wire[3:0] s1_rd; // dest reg index
-    wire[`XLEN-1:0] s1_alu_a, s1_alu_b;
+    wire[3:0] s1_csr; // dest csr index
+    wire[`XLEN-1:0] s1_alu_a, s1_alu_b, s1_csr_v;
     wire[7:0] s1_alu_op; // alu operation
     wire[7:0] s1_op; // instruction operation
 
@@ -96,14 +97,19 @@ module core (
     wire s1_d_req;
 
     wire[3:0] s2_rd; // dest reg index
-    wire[`XLEN-1:0] s2_alu_a, s2_alu_b;
+    wire[3:0] s2_csr; // dest csr index
+    wire[`XLEN-1:0] s2_alu_a, s2_alu_b, s2_csr_v;
     wire[7:0] s2_alu_op; // alu operation
     wire[7:0] s2_op; // instruction operation
     wire[`XLEN-1:0] s2_j_lr; // jump link register/return address
 
     // trap control signals
     wire interrupt;
-    wire[`XLEN-1:0] csr_mtvec;
+    wire[`XLEN-1:0] csr_mtvec, csr_mepc; // read csr value
+    wire csr_wreq;
+    wire[2:0] csr_windex;
+    wire[`XLEN-1:0] csr_wdata;
+    wire[`XLEN-1:0] csr_rdata[0:15];
 
     // fault indicator
     wire illegal_instr;
@@ -349,109 +355,40 @@ module core (
 
     /**********************************************************************************************************************/
     begin:TCTRL // trap control
-        // 0x300
-        reg[`XLEN-1:0] mstatus; // mie & mpie function, other are WPRI fields
-                                // mie is hw cleared upon traps, and works only on interrupts
+        reg[`XLEN-1:0] csr[0:14];
 
-        // 0x305
-        reg[`XLEN-1:0] mtvec;   // trap jmp dst pc
+        // assign csr_mstatus = csr[CSR_INDEX_MSTATUS];
+        // assign csr_mie     = csr[CSR_INDEX_MIE    ];
+        assign csr_mtvec   = csr[CSR_INDEX_MTVEC  ];
+        assign csr_mepc    = csr[CSR_INDEX_MEPC   ];
+        // assign csr_mcause  = csr[CSR_INDEX_MCAUSE ];
+        // assign csr_mtval   = csr[CSR_INDEX_MTVAL  ];
+        // assign csr_mip     = csr[CSR_INDEX_MIP    ];
 
-        // 0x341
-        reg[`XLEN-1:0] mepc;    // erroneous instruction addr(s2_pc) for exception
-                                // unexecuted instruction(s1_pc) addr for interrupt
-                                // works for both exceptions and interrupts
+        for(genvar i=0; i<15; i=i+1) begin
+            assign csr_rdata[i] = csr[i];
+        end
+        assign csr_rdata[15] = {`XLEN{1'b0}};
 
-        // 0x342
-        reg[`XLEN-1:0] mcause;  // distinguishes exceptions/interrupts
-
-        // 0x343
-        reg[`XLEN-1:0] mtval;   // extra info of a trap
-
-        // 0x304
-        reg[`XLEN-1:0] mie;     // works on interrupts only
-
-        // 0x344
-        reg[`XLEN-1:0] mip;     // works on interrupts only
-
-        /*
-         * Talking about a RISCV MCU (M-mode only core):
-         * If software is to handle nested interrupts properly, the compiler needs to protect handler context
-         *  - mstatus (MPIE matters)
-         *  - mepc
-         *  - mcause
-         *  - mtval
-         *  - mie
-         * Only external interrupts are implemented among all kind of traps.
-         * Nested exceptions, esp. w/ priority arbitration can be a headache, so exceptions are treated as fatal faults.
-         */
-
-        `define MIE  3  // mstatus.MIE - global int enable
-        `define MPIE 7  // mstatus.MPIE - prev MIE
-        `define MEIE 11 // mie.MEIE - ext int enable
-        `define MEIP 11 // mip.MEIP - ext int pending
-
-        assign interrupt = mstatus[`MIE] & (mie[`MEIE] & mip[`MEIP]);
-        wire int_handled = s1_vld & interrupt;
+        assign interrupt = csr[CSR_INDEX_MSTATUS][`MIE] && (csr[CSR_INDEX_MIE][`MEIE] && csr[CSR_INDEX_MIP][`MEIP]);
+        wire int_handled = interrupt & s2_vld; // use s2 to ease s1 load
 
         always @ (posedge clk) begin
             if (~rstn) begin
-                // mstatus <= {`XLEN{1'b0}};
-                mstatus[`MIE] <= 1'b1;
-            end else if (int_handled) begin
-                mstatus[`MPIE] <= mstatus[`MIE];
-                mstatus[`MIE] <= 1'b0;
-            end
-        end
-
-        always @ (posedge clk) begin
-            if (~rstn) begin
-                mtvec <= {`XLEN{1'b0}};
-            end
-        end
-
-        always @ (posedge clk) begin
-            // if (~rstn) begin
-            //     mepc <= {`XLEN{1'b0}};
-            // end
-        end
-
-        always @ (posedge clk) begin
-            // if (~rstn) begin
-            //     mcause <= {`XLEN{1'b0}};
-            // end
-        end
-
-        always @ (posedge clk) begin
-            // if (~rstn) begin
-            //     mtval <= {`XLEN{1'b0}};
-            // end
-        end
-
-        always @ (posedge clk) begin
-            if (~rstn) begin
-                // mie <= {`XLEN{1'b0}};
-                mie[`MEIE] <= 1'b1;
-            end
-        end
-
-        always @ (posedge clk) begin
-            if (~rstn) begin
-                mip <= {`XLEN{1'b0}};
-            end else if(int_handled) begin // must come before ext_int_trigger
-                mip[`MEIP] <= 1'b0;
-            end else if(ext_int_trigger) begin
-                mip[`MEIP] <= 1'b1;
+                csr[CSR_INDEX_MSTATUS][`MIE ] <= `INT_RST_EN;
+                csr[CSR_INDEX_MIE    ][`MEIE] <= 1'b1;
+                csr[CSR_INDEX_MIP    ][`MEIP] <= 1'b0;
+            end else if (csr_wreq) begin
+                csr[csr_windex] <= csr_wdata;
             end
         end
 
         assign ext_int_handled = int_handled;
-
-        assign csr_mtvec = mtvec;
     end // TCTRL
 
     /**********************************************************************************************************************/
     begin:STAGE1 // instruction expansion & decoding
-        // regfile
+        // x regfile
         wire[`XLEN-1:0] x[0:15];
         regfile regfile(
             .clk   (clk           ),
@@ -493,6 +430,10 @@ module core (
             wire[4:0]  rd = s1_ir[11:7];
             wire[31:0] shamt = {27'd0, rs2};
             wire[6:0]  opcode = s1_ir[6:0];
+            wire[11:0] csr_addr = s1_ir[31:20];
+            wire[31:0] csr_uimm = {27'd0, rs1};
+
+            wire[3:0] csr_index = {csr_addr[6],csr_addr[2:0]};
 
             wire[`XLEN-1:0] rs1_val, rs2_val;
             wire[`XLEN-1:0] imm_val;
@@ -522,43 +463,51 @@ module core (
                     s_type_imm :
                 (opcode==OPCODE_FENCE) ?
                     32'd4 : /* 4 for FENCE.I, do-not-care for FENCE */
+                (opcode==OPCODE_SYSTEM) ?
+                    csr_uimm :
                 /* otherwise */
                     shamt;
 
             // signals for wider use
             assign s1_rd =
-                (interrupt || opcode==OPCODE_SYSTEM /* MRET */) ?
+                interrupt ?
                     4'd0 /* interrupt/return seen as an instruction where rd=0 */ :
                 (opcode==OPCODE_BRANCH || opcode==OPCODE_STORE || opcode==OPCODE_FENCE) /* rd not available */ ?
                     4'd0 /* available yet should not be used for FENCE.I/FENCE */ :
                 /* rd available */
                     rd[3:0];
 
+            assign s1_csr =
+                (opcode==OPCODE_SYSTEM && funct3) ? csr_index : CSR_INDEX_INVLD;
+
             assign s1_alu_a =
-                interrupt ?
-                    csr_mtvec /* upon interrupt, alu calc (mtvec | 0) as jmp dst */ :
-                (opcode==OPCODE_SYSTEM) ? /* MRET only */
-                    csr_mepc /* interrupt return addr */ :
+                interrupt ? /* upon interrupt, alu calc (mtvec | 0) as jmp dst */
+                    csr_mtvec :
+                (opcode==OPCODE_SYSTEM) ? /* upon interrupt return, alu calc (csr_mepc | 0) as jmp dst */
+                    (funct3[1:0]==2'b00 ? csr_mepc : ((funct3[2] ? imm_val : rs1_val) ^ {`XLEN{funct3[1] & funct3[0]}})) :
                 (opcode==OPCODE_LUI) ?
-                    {`XLEN{0}} :
+                    {`XLEN{1'b0}} :
                 (opcode==OPCODE_AUIPC || opcode==OPCODE_JAL || opcode==OPCODE_BRANCH || opcode==OPCODE_FENCE) ?
                     s1_pc /* do-not-care for FENCE. used for FENCE.I */ :
                 /* otherwise */
                     rs1_val;
 
             assign s1_alu_b =
-                (interrupt || opcode==OPCODE_SYSTEM /* MRET */) ?
-                    {`XLEN{0}} /* upon interrupt/return, alu calc (mtvec | 0)/(mepc | 0) as jmp dst */ :
+                interrupt ?
+                    {`XLEN{1'b0}} :
+                (opcode==OPCODE_SYSTEM) ?
+                    (funct3[1] ? csr_rdata[s1_csr] /* csr set/clr op */ : {`XLEN{1'b0}} /* mret/csr rw op */ ) :
                 (opcode==OPCODE_CAL) ?
                     rs2_val :
                 /* otherwise */
                     imm_val;
 
             assign s1_alu_op =
-                (interrupt || opcode==OPCODE_SYSTEM /* MRET */) ?
-                    ALU_OR /* upon interrupt/return, alu calc (mtvec | 0)/(mepc | 0) as jmp dst */ :
-                (opcode==OPCODE_CAL || opcode==OPCODE_IMMCAL) ?
-                (
+                interrupt ?
+                    ALU_OR :
+                (opcode==OPCODE_SYSTEM) ?
+                    ((funct3[1] & funct3[0]) ? ALU_AND : ALU_OR) :
+                (opcode==OPCODE_CAL || opcode==OPCODE_IMMCAL) ? (
                     funct3==3'd1 ?
                         ALU_SL :
                     funct3==3'd2 ?
@@ -568,47 +517,32 @@ module core (
                     funct3==3'd4 ?
                         ALU_XOR :
                     funct3==3'd5 ?
-                    (
-                        funct7[5]==1'b0 ?
-                            ALU_SRL :
-                        /* 1'b1 */
-                            ALU_SRA
-                    ) :
+                        (~funct7[5] ? ALU_SRL : ALU_SRA) :
                     funct3==3'd6 ?
                         ALU_OR :
                     funct3==3'd7 ?
                         ALU_AND :
                     /* 3'd0 */
-                    (
-                        (opcode==OPCODE_CAL && funct7[5]) ?
-                            ALU_SUB :
-                        /* else */
-                            ALU_ADD
-                    )
+                        ((opcode==OPCODE_CAL && funct7[5]) ? ALU_SUB : ALU_ADD)
                 ) :
                 /* otherwise (even if unimplemented) */
                     ALU_ADD;
 
             assign s1_op =
                 interrupt ?
-                    OP_TRAP /* interrupt jump operation, not a real instruction */ :
-                (opcode==OPCODE_SYSTEM) ? /* MRET only */
-                    OP_TRET /* interrupt return */ :
+                    WB_OP_TRAP /* interrupt jump operation, not a real instruction */ :
+                (opcode==OPCODE_SYSTEM) ?
+                    WB_OP_CSR :
                 (opcode==OPCODE_LOAD) ?
-                (
-                    (funct3==3'd4 || funct3==3'd5) ?
-                        OP_LDU :
-                    /*otherwise*/
-                        OP_LD
-                ) :
+                    (funct3[2] ? WB_OP_LDU : WB_OP_LD) :
                 (opcode==OPCODE_STORE) ?
-                    OP_SD :
+                    WB_OP_SD :
                 (opcode==OPCODE_JAL || (opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */ )) ?
-                    OP_JAL :
+                    WB_OP_JAL :
                 (opcode==OPCODE_JALR) ?
-                    OP_JALR :
+                    WB_OP_JALR :
                 /* otherwise */
-                    OP_STD;
+                    WB_OP_STD;
 
             assign s1_j_req =
             (
@@ -627,7 +561,7 @@ module core (
             ) || (
                 opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */
             ) || (
-                interrupt || opcode==OPCODE_SYSTEM /* always jump if interrupt/return detected */
+                interrupt || (opcode==OPCODE_SYSTEM && funct3==3'b000) /* always jump if interrupt/return detected */
             );
 
             assign s1_j_lr =
@@ -659,8 +593,12 @@ module core (
                         (rd[4] || rs1[4] || rs2[4] || {funct7[6], funct7[4:0]} || (funct7[5] && (funct3[1] || (funct3[2]^funct3[0])))) :
                     (opcode==OPCODE_FENCE) ?
                         (rd[4] || rs1[4] || funct3[2:1]) :
-                    (opcode==OPCODE_SYSTEM) ?
-                        (funct7!=7'b0011000 || rs2!=5'd2 || rs1!=5'd0 || funct3!=3'b000 || rd!=5'd0) : // only MRET allowed
+                    (opcode==OPCODE_SYSTEM) ? (
+                        funct3[1:0]==2'b00 ?
+                            (funct3[2] || rs1 || rd || funct7!=7'b0011000 || rs2!=5'd2) :
+                        // csr ops
+                            ((funct3[2]==1'b0 && rs1[4]) || rd[4] || csr_addr[11:7]!=5'b00110 || csr_addr[5:3]!=3'b000)
+                    ) :
                     /* undefined / unimplemented opcode */
                         1'b1
                 );
@@ -693,13 +631,13 @@ module core (
     /**********************************************************************************************************************/
     begin:STAGE2 // executing, mem access & write back
         dff #(
-            .WIDTH(4+`XLEN+`XLEN+8+8+`XLEN),
+            .WIDTH(4+`XLEN+`XLEN+8+8+`XLEN+4+`XLEN),
             .VALID("sync")
         ) s2_op_dff (
             .clk(clk),
             .vld(s1_vld),
-            .in ({s1_rd,s1_alu_a,s1_alu_b,s1_alu_op,s1_op,s1_j_lr}),
-            .out({s2_rd,s2_alu_a,s2_alu_b,s2_alu_op,s2_op,s2_j_lr})
+            .in ({s1_rd,s1_alu_a,s1_alu_b,s1_alu_op,s1_op,s1_j_lr,s1_csr,s1_csr_v}),
+            .out({s2_rd,s2_alu_a,s2_alu_b,s2_alu_op,s2_op,s2_j_lr,s2_csr,s2_csr_v})
         );
 
         // ALU
@@ -714,14 +652,14 @@ module core (
             .r (alu_r ) // for OP_JAL/OP_JALR/OP_TRAP(jal,mret,jalr,"trap") alu_r is jmp dst
         );
 
-        assign jmp_addr = {alu_r[`XLEN-1:1], ((s2_op==OP_JALR) ? 1'b0 : alu_r[0])}; // jmp_addr[0] clamped 1'b0 upon JALR
+        assign jmp_addr = {alu_r[`XLEN-1:1], ((s2_op==WB_OP_JALR) ? 1'b0 : alu_r[0])}; // jmp_addr[0] clamped 1'b0 upon JALR
         assign d_req_addr = alu_r;
 
         // Regfile W access
         assign regfile_wreq = s2_vld && regfile_windex;
         assign regfile_windex = s2_rd;
         assign regfile_wdata =
-            (s2_op==OP_LD) ? (
+            (s2_op==WB_OP_LD) ? (
                 (d_resp_acc==`BUS_ACC_1B) ?
                     {{24{d_resp_data[7]}}, d_resp_data[7:0]} :
                 (d_resp_acc==`BUS_ACC_2B) ?
@@ -729,20 +667,27 @@ module core (
                 /*otherwise*/
                     d_resp_data
             ) :
-            (s2_op==OP_LDU) ? (
+            (s2_op==WB_OP_LDU) ? (
                 (d_resp_acc==`BUS_ACC_1B) ?
                     {24'd0, d_resp_data[7:0]} :
                 /*d_resp_acc==`BUS_ACC_2B*/
                     {16'd0, d_resp_data[15:0]}
             ) :
-            ((s2_op==OP_JAL) || (s2_op==OP_JALR)) ? (
-                s2_j_lr
-            ) :
-            /* otherwise treated as OP_STD */
+            (s2_op==WB_OP_JAL || s2_op==WB_OP_JALR) ?
+                s2_j_lr :
+            (s2_op==WB_OP_CSR) ?
+                s2_csr_v :
+            /* otherwise treated as WB_OP_STD */
                 alu_r;
 
-        // write mepc upon a trap
-        // TODO: write mepc if s2_op==OP_TRAP
+        // CSR W access
+        assign csr_wreq = s2_vld && csr_windex!=CSR_INDEX_INVLD;
+        assign csr_windex = s2_csr;
+        assign csr_wdata =
+            (s2_op==WB_OP_TRAP) ?
+                s2_j_lr :
+            /* otherwise */
+                alu_r;
 
     end // STAGE2
 
@@ -789,7 +734,7 @@ endmodule
 
 /**********************************************************************************************************************/
 module regfile(
-    input wire              clk,
+    input wire             clk,
 
     input wire             wreq,
     input wire[3:0]        windex,
@@ -813,27 +758,27 @@ module regfile(
     output wire[`XLEN-1:0] x15
 );
 
-    reg[`XLEN-1:0] xreg[1:15];
+    reg[`XLEN-1:0] xr[1:15];
     assign x0  = 0;
-    assign x1  = xreg[1 ];
-    assign x2  = xreg[2 ];
-    assign x3  = xreg[3 ];
-    assign x4  = xreg[4 ];
-    assign x5  = xreg[5 ];
-    assign x6  = xreg[6 ];
-    assign x7  = xreg[7 ];
-    assign x8  = xreg[8 ];
-    assign x9  = xreg[9 ];
-    assign x10 = xreg[10];
-    assign x11 = xreg[11];
-    assign x12 = xreg[12];
-    assign x13 = xreg[13];
-    assign x14 = xreg[14];
-    assign x15 = xreg[15];
+    assign x1  = xr[1 ];
+    assign x2  = xr[2 ];
+    assign x3  = xr[3 ];
+    assign x4  = xr[4 ];
+    assign x5  = xr[5 ];
+    assign x6  = xr[6 ];
+    assign x7  = xr[7 ];
+    assign x8  = xr[8 ];
+    assign x9  = xr[9 ];
+    assign x10 = xr[10];
+    assign x11 = xr[11];
+    assign x12 = xr[12];
+    assign x13 = xr[13];
+    assign x14 = xr[14];
+    assign x15 = xr[15];
 
     always @ (posedge clk) begin
         if (wreq && windex) begin
-            xreg[windex] <= wdata;
+            xr[windex] <= wdata;
         end
     end
 endmodule
@@ -937,6 +882,7 @@ module prefetch_queue (
     end
 endmodule
 
+/**********************************************************************************************************************/
 module expander( // conpressed instruction expansion
     input wire[`ILEN-1:0]   in_instr,
     output wire[`ILEN-1:0]  out_instr,
@@ -1032,6 +978,7 @@ module expander( // conpressed instruction expansion
         );
 endmodule
 
+/**********************************************************************************************************************/
 module pipeline( // SR
     input wire  clk,
     input wire  rstn,

@@ -63,7 +63,9 @@ module ioring(
     assign  pad_qspi_sck = qspi_sclk;
 
     assign  qspi_miso = pad_qspi_sio;
-    generate for (genvar i=0; i<4; i=i+1)
+    generate
+        for (genvar i=0; i<4; i=i+1) begin
             assign  pad_qspi_sio[i] = qspi_dir[i]==`IOR_DIR_OUT ? qspi_mosi[i] : 1'bz;
+        end
     endgenerate
 endmodule
