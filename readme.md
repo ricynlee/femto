@@ -6,7 +6,7 @@
 - Instruction prefetch
 - 2-stage pipeline
 - Little-endian byte order
-- RV32EC ISA with Zfencei extension
+- RV32EC ISA with Zifencei & Zicsr extension
 - Support external interrupts
 - Single-cycle instructions in the majority 
 - No cache
@@ -47,7 +47,7 @@ femto
 - 指令预取
 - 2级流水线
 - 小端字节序
-- RV32EC指令集,支持Zfencei扩展
+- RV32EC指令集,支持Zifencei、Zicsr扩展
 - 支持外部中断
 - 单周期指令居多
 - 无高速缓存(Cache)
