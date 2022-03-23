@@ -46,9 +46,9 @@ localparam CSR_ADDR_MSTATUS = 12'h300,
  * If software is to handle nested interrupts properly, the compiler needs to protect handler context
  *  - mstatus (MPIE matters)
  *  - mepc
- *  - mcause
- *  - mtval
- *  - mie
+ *  - mcause (not required for femto as only ext ints are supported)
+ *  - mie (not required if not changed in int handler)
+ *  - mtval in case of exceptions, etc.
  * Only external interrupts are implemented among all kind of traps.
  * Nested exceptions, esp. w/ priority arbitration can be a headache, so exceptions are treated as fatal faults.
 
@@ -64,7 +64,8 @@ localparam OP_UNDEF = 8'd0,
            OP_LDU   = 8'd5, // load unsigned
            OP_CSR   = 8'd6,
            OP_TRAP  = 8'd7, // trap jump
-           OP_TRET  = 8'd8; // trap return
+           OP_TRET  = 8'd8, // trap return
+           OP_TSUC  = 8'd9; // trap succesion (trap-upon-mret)
 
 // ex/wb alu opcode
 localparam ALU_ADD  = 8'h1,
@@ -86,5 +87,4 @@ localparam CSR_INDEX_MSTATUS = 4'b0_000,
            CSR_INDEX_MTVEC   = 4'b0_101,
            CSR_INDEX_MEPC    = 4'b1_001,
            CSR_INDEX_MCAUSE  = 4'b1_010,
-           CSR_INDEX_MTVAL   = 4'b1_011,
            CSR_INDEX_MIP     = 4'b1_100;

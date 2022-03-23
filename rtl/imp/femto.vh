@@ -11,9 +11,8 @@
 `define RESET_PC            (32'h0000_0000)
 
 /* interrupt */
-`define INT_MTVAL_FMT       "number" // number - binary encoding
-                                     // flag - one-hot encoding (lower latency)
 `define INT_RST_EN          (1'b1) // interrupt enabled or not at rst
+`define EXT_INT_SRC_NUM     (4)    // <=XLEN
 
 /* bus */
 `define BUS_WIDTH           (`XLEN) // bus width
@@ -74,6 +73,11 @@
 `define TMR_SEL_MASK        (~`TMR_VA_MASK)
 
 // SM2/3 modules
+
+`define EIC_ADDR            (32'hc000_0000) // external interrupt controller
+`define EIC_VA_MASK         (32'h0000_0003) // 4B valid address range
+`define EIC_VA_WIDTH        ($clog2(`EIC_VA_MASK+1))
+`define EIC_SEL_MASK        (~`EIC_VA_MASK)
 
 `define RST_ADDR            (32'hf000_0000) // system reset
 `define RST_VA_MASK         (32'h0000_0001) // 1B valid address range

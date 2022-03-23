@@ -10,9 +10,8 @@ module core (
     output reg[`XLEN-1:0] core_fault_pc,
 
     // external interrupt
-    input wire            ext_int_trigger,
-    input wire[`XLEN-1:0] ext_int_info,
-    output wire           ext_int_handled,
+    input wire  ext_int_trigger,
+    output wire ext_int_handled,
 
     // data bus interface
     output wire[`XLEN-1:0]                dbus_addr, // byte addr
@@ -108,7 +107,8 @@ module core (
     wire[`XLEN-1:0] s2_csr_val;
 
     // trap control signals
-    wire interrupt;
+    wire interrupt, meip;
+    // wire csr_wreq;
     wire[2:0] csr_windex;
     wire[`XLEN-1:0] csr_wdata;
     wire[`XLEN-1:0] csr_rdata[0:15];
@@ -453,8 +453,12 @@ module core (
             assign s1_alu_a =
                 interrupt ?
                     csr_rdata[CSR_INDEX_MTVEC] :
-                (opcode==OPCODE_SYSTEM) ?
-                    (!funct3[1:0] ? csr_rdata[CSR_INDEX_MEPC] : funct3[1] ? csr_rdata[csr_index] : {`XLEN{1'b0}}) :
+                (opcode==OPCODE_SYSTEM) ? (
+                    funct3[1:0] ? // csr op
+                        (funct3[1] ? csr_rdata[csr_index] /* bit set/clr */ : {`XLEN{1'b0}} /* val set */) :
+                    // mret
+                        (meip ? csr_rdata[CSR_INDEX_MTVEC] /* successional traps */ : csr_rdata[CSR_INDEX_MEPC])
+                ) :
                 (opcode==OPCODE_LUI) ?
                     {`XLEN{1'b0}} :
                 (opcode==OPCODE_AUIPC || opcode==OPCODE_JAL || opcode==OPCODE_BRANCH || opcode==OPCODE_FENCE) ?
@@ -465,8 +469,12 @@ module core (
             assign s1_alu_b =
                 interrupt ?
                     {`XLEN{1'b0}} : // (csr_mtvec | 0) as trap jump dst
-                (opcode==OPCODE_SYSTEM) ?
-                    (!funct3[1:0] ? {`XLEN{1'b0}} : funct3[2] ? imm_val : rs1_val) : // (csr_mepc | 0) as trap return jump dst
+                (opcode==OPCODE_SYSTEM) ? (
+                    funct3[1:0] ? // csr op
+                        (funct3[2] ? imm_val : rs1_val) :
+                    // mret
+                        {`XLEN{1'b0}} // (csr_mepc/csr_mtvec | 0) as trap return/succession jump dst
+                ) :
                 (opcode==OPCODE_CAL) ?
                     rs2_val :
                 /* otherwise */
@@ -501,8 +509,12 @@ module core (
             assign s1_op =
                 interrupt ?
                     OP_TRAP :
-                (opcode==OPCODE_SYSTEM) ?
-                    (!funct3[1:0] ? OP_TRET : OP_CSR) :
+                (opcode==OPCODE_SYSTEM) ? (
+                    funct3[1:0] ? // csr op
+                        OP_CSR :
+                    // mret
+                        (meip ? OP_TSUC : OP_TRET)
+                ) :
                 (opcode==OPCODE_LOAD) ?
                     (funct3[2] ? OP_LDU : OP_LD) :
                 (opcode==OPCODE_JAL || (opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */ )) ?
@@ -529,13 +541,13 @@ module core (
             ) || (
                 opcode==OPCODE_FENCE && funct3[0] /* FENCE.I */
             ) || (
-                interrupt || (opcode==OPCODE_SYSTEM && !funct3) /* always jump if interrupt/return detected */
+                interrupt || (opcode==OPCODE_SYSTEM && !funct3) /* always jump if interrupt/mret detected */
             );
 
             assign s1_j_lr =
                 ((opcode==OPCODE_JALR) || (opcode==OPCODE_JAL)) ?
                     (s1_pc + (s1_c ? 2 : 4)) :
-                /* interrupt mepc */
+                /* to set interrupt mepc */
                     s1_pc;
 
             assign s1_d_req = opcode==OPCODE_LOAD || opcode==OPCODE_STORE;
@@ -561,10 +573,10 @@ module core (
                         (rd[4] || rs1[4] || rs2[4] || {funct7[6], funct7[4:0]} || (funct7[5] && (funct3[1] || (funct3[2]^funct3[0])))) :
                     (opcode==OPCODE_FENCE) ?
                         (rd[4] || rs1[4] || funct3[2:1]) :
-                    (opcode==OPCODE_SYSTEM) ? (
+                    (opcode==OPCODE_SYSTEM) ? ( // no ecall/ebreak
                         funct3[1:0]==2'b00 ? // mret
                             (funct3[2] || rs1 || rd || funct7!=7'b0011000 || rs2!=5'd2) :
-                        // csr ops
+                        // csr ops, 0x300~0x307 & 0x340~0x347 permitted
                             ((funct3[2]==1'b0 && rs1[4]) || rd[4] || csr_addr[11:7]!=5'b00110 || csr_addr[5:3]!=3'b000)
                     ) :
                     /* undefined / unimplemented opcode */
@@ -650,6 +662,7 @@ module core (
                 alu_r;
 
         // csr w access : only csr op instructions are handled, not for trap control/mret
+        // assign csr_wreq = s2_op==OP_CSR;
         assign csr_windex = s2_csr;
         assign csr_wdata = alu_r;
 
@@ -660,25 +673,43 @@ module core (
             `define MEIE 11 // mie.MEIE - ext int enable
             `define MEIP 11 // mip.MEIP - ext int pending
 
+            // csr definition
             reg[`XLEN-1:0] csr[0:15];
-
             for(genvar i=0; i<15; i=i+1) begin
-                assign csr_rdata[i] = csr[i];
+                case (i)
+                    CSR_INDEX_MIP : assign csr_rdata[i] = {csr[i][`XLEN-1:`MEIP+1], ext_int_trigger, csr[i][`MEIP-1:0]};
+                    default       : assign csr_rdata[i] = csr[i];
+                endcase
             end
 
-            // mark handled vs. handled
+            initial csr[CSR_INDEX_MTVEC] <= 32'd0; // simulation ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            assign interrupt = csr_rdata[CSR_INDEX_MSTATUS][`MIE] && (csr_rdata[CSR_INDEX_MIE][`MEIE] && csr_rdata[CSR_INDEX_MIP][`MEIP]);
+            // signaling
+            assign ext_int_handled = interrupt && s2_vld && (s2_op==OP_TRAP || s2_op==OP_TSUC);
+            assign interrupt = csr_rdata[CSR_INDEX_MSTATUS][`MIE] && (csr_rdata[CSR_INDEX_MIE][`MEIE] && csr_rdata[CSR_INDEX_MIP][`MEIP]); // pending & permitted interrupt
+            assign meip = csr_rdata[CSR_INDEX_MIP][`MEIP]; // pending (but perhaps not permitted) interrupt
 
+            // csr op
             always @ (posedge clk) begin
                 if (~rstn) begin
                     csr[CSR_INDEX_MSTATUS][`MIE ] <= `INT_RST_EN;
                     csr[CSR_INDEX_MIE    ][`MEIE] <= 1'b1;
-                    csr[CSR_INDEX_MIP    ][`MEIP] <= 1'b0;
+                end else if (s2_vld) begin
+                    if (s2_op==OP_CSR) begin
+                        csr[csr_windex] <= csr_wdata;
+                    end else if (s2_op==OP_TSUC) begin
+                        csr[CSR_INDEX_MCAUSE] <= MCAUSE_MEXTINT;
+                        csr[CSR_INDEX_MSTATUS][`MIE] <= 1'b0;
+                    end else if (s2_op==OP_TRAP) begin
+                        csr[CSR_INDEX_MEPC] <= s2_j_lr;
+                        csr[CSR_INDEX_MCAUSE] <= MCAUSE_MEXTINT;
+                        csr[CSR_INDEX_MSTATUS][`MIE ] <= 1'b0;
+                        csr[CSR_INDEX_MSTATUS][`MPIE] <= csr_rdata[CSR_INDEX_MSTATUS][`MIE];
+                    end else if (s2_op==OP_TRET) begin
+                        csr[CSR_INDEX_MSTATUS][`MIE ] <= csr_rdata[CSR_INDEX_MSTATUS][`MPIE];
+                    end
                 end
             end
-
-            assign ext_int_handled = 1'b0;
         end // TRAP
     end // STAGE2
 

@@ -90,6 +90,7 @@ module femto (
                             dbus_uart_rdata   ,
                             dbus_qspinor_rdata,
                             dbus_tmr_rdata    ,
+                            dbus_eic_rdata    ,
                             dbus_rst_rdata    ;
 
     // io signals
@@ -168,6 +169,7 @@ module femto (
         wire    dbus_uart_req_sel    = (dbus_addr & `UART_SEL_MASK)==`UART_ADDR;
         wire    dbus_qspinor_req_sel = (dbus_addr & `QSPINOR_SEL_MASK)==`QSPINOR_ADDR;
         wire    dbus_tmr_req_sel     = (dbus_addr & `TMR_SEL_MASK)==`TMR_ADDR;
+        wire    dbus_eic_req_sel     = (dbus_addr & `EIC_SEL_MASK)==`EIC_ADDR;
         wire    dbus_rst_req_sel     = (dbus_addr & `RST_SEL_MASK)==`RST_ADDR;
 
         wire    dbus_rom_resp_sel,
@@ -178,6 +180,7 @@ module femto (
                 dbus_uart_resp_sel,
                 dbus_qspinor_resp_sel,
                 dbus_tmr_resp_sel,
+                dbus_eic_resp_sel,
                 dbus_rst_resp_sel;
         dff # (
             .WIDTH(9     ),
@@ -185,8 +188,8 @@ module femto (
         ) dbus_resp_sel_dff (
             .clk (clk     ),
             .vld (dbus_req),
-            .in  ({dbus_rom_req_sel, dbus_tcm_req_sel, dbus_sram_req_sel, dbus_nor_req_sel, dbus_gpio_req_sel, dbus_uart_req_sel, dbus_qspinor_req_sel, dbus_tmr_req_sel, dbus_rst_req_sel}         ),
-            .out ({dbus_rom_resp_sel, dbus_tcm_resp_sel, dbus_sram_resp_sel, dbus_nor_resp_sel, dbus_gpio_resp_sel, dbus_uart_resp_sel, dbus_qspinor_resp_sel, dbus_tmr_resp_sel, dbus_rst_resp_sel})
+            .in  ({dbus_rom_req_sel, dbus_tcm_req_sel, dbus_sram_req_sel, dbus_nor_req_sel, dbus_gpio_req_sel, dbus_uart_req_sel, dbus_qspinor_req_sel, dbus_tmr_req_sel, dbus_eic_req_sel, dbus_rst_req_sel}         ),
+            .out ({dbus_rom_resp_sel, dbus_tcm_resp_sel, dbus_sram_resp_sel, dbus_nor_resp_sel, dbus_gpio_resp_sel, dbus_uart_resp_sel, dbus_qspinor_resp_sel, dbus_tmr_resp_sel, dbus_eic_resp_sel, dbus_rst_resp_sel})
         );
 
         // MUX
@@ -203,6 +206,7 @@ module femto (
         assign  dbus_uart_req    = dbus_req & dbus_uart_req_sel   ;
         assign  dbus_qspinor_req = dbus_req & dbus_qspinor_req_sel;
         assign  dbus_tmr_req     = dbus_req & dbus_tmr_req_sel    ;
+        assign  dbus_eic_req     = dbus_req & dbus_eic_req_sel    ;
         assign  dbus_rst_req     = dbus_req & dbus_rst_req_sel    ;
 
         // DEMUX
@@ -221,41 +225,28 @@ module femto (
                              dbus_uart_resp_sel    ? dbus_uart_rdata    :
                              dbus_qspinor_resp_sel ? dbus_qspinor_rdata :
                              dbus_tmr_resp_sel     ? dbus_tmr_rdata     :
+                             dbus_eic_resp_sel     ? dbus_eic_rdata     :
                              dbus_rst_resp_sel     ? dbus_rst_rdata     : {`BUS_WIDTH{1'bx}};
 
         // fault
         wire ibus_fault = ibus_req & ~|{ibus_rom_req_sel, ibus_tcm_req_sel, ibus_sram_req_sel, ibus_nor_req_sel};
-        wire dbus_fault = dbus_req & ~|{dbus_rom_req_sel, dbus_tcm_req_sel, dbus_sram_req_sel, dbus_nor_req_sel, dbus_gpio_req_sel, dbus_uart_req_sel, dbus_qspinor_req_sel, dbus_tmr_req_sel, dbus_rst_req_sel};
+        wire dbus_fault = dbus_req & ~|{dbus_rom_req_sel, dbus_tcm_req_sel, dbus_sram_req_sel, dbus_nor_req_sel, dbus_gpio_req_sel, dbus_uart_req_sel, dbus_qspinor_req_sel, dbus_tmr_req_sel, dbus_eic_req_sel, dbus_rst_req_sel};
         assign  bus_fault = ibus_fault | dbus_fault;
     end
 
     /******************************************************************************************************************************************************************/
     // interrupt
     wire            ext_int_trigger, ext_int_handled;
-    wire[`XLEN-1:0] ext_int_info;
     wire[3:0]       ext_int_from;
 
-    extint_controller # (
-        .INFO_TYPE(`INT_MTVAL_FMT)
-    ) extint_controller (
-        .clk (clk      ),
-        .rstn(core_rstn),
-        // core interface
-        .ext_int_trigger(ext_int_trigger),
-        .ext_int_info   (ext_int_info   ),
-        .ext_int_handled(ext_int_handled),
-        // ip interface
-        .ext_int_from(ext_int_from)
-    );
-
-    // simulation
-    reg[3:0] ext_int_from_r;
-    assign ext_int_from = ext_int_from_r;
-    initial begin
-        ext_int_from_r = 0;
-        #30001;
-        @(posedge clk) ext_int_from_r <= 4'b0110;
-    end
+                // simulation /////////////////////////////////////////////////////////////////////////////////////////////
+                reg[3:0] ext_int_from_r;
+                assign ext_int_from = ext_int_from_r;
+                initial begin
+                    ext_int_from_r = 0;
+                    #30001;
+                    @(posedge clk) ext_int_from_r <= 4'b0110;
+                end
 
     /******************************************************************************************************************************************************************/
     // core
@@ -268,7 +259,6 @@ module femto (
         .core_fault_pc(),
 
         .ext_int_trigger(ext_int_trigger),
-        .ext_int_info   (ext_int_info   ),
         .ext_int_handled(ext_int_handled),
 
         .ibus_addr (ibus_addr ),
@@ -618,6 +608,27 @@ module femto (
         .resp (dbus_tmr_resp ),
 
         .fault(tmr_fault)
+    );
+
+    // eic
+    extint_controller extint_controller (
+        .clk (clk      ),
+        .rstn(core_rstn),
+
+        .ext_int_trigger(ext_int_trigger),
+        .ext_int_handled(ext_int_handled),
+
+        .ext_int_from(ext_int_from),
+
+        .addr (dbus_addr     ),
+        .w_rb (dbus_w_rb     ),
+        .acc  (dbus_acc      ),
+        .wdata(dbus_wdata    ),
+        .rdata(dbus_eic_rdata),
+        .req  (dbus_eic_req  ),
+        .resp (dbus_eic_resp ),
+
+        .fault(eic_fault)
     );
 
     // reset

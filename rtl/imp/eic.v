@@ -1,25 +1,31 @@
-// This file is generated with ..\tools\eic_rtl_gen.py
-// XLEN = 32, EISN = 4
+`include "femto.vh"
+`include "timescale.vh"
 
-module extint_controller # (
-    parameter INFO_TYPE = "number" // "number", "flag"
-)(
+module extint_controller (
     input wire clk,
     input wire rstn,
     // core interface
-    output wire       ext_int_trigger,
-    output wire[31:0] ext_int_info,
-    input wire        ext_int_handled,
+    output wire ext_int_trigger,
+    input wire  ext_int_handled,
     // ip interface
-    input wire[3:0] ext_int_from // int from ip, posedge active
+    input wire[`EXT_INT_SRC_NUM-1:0] ext_int_from, // int from ip, posedge active
+    // bus interface
+    input wire[`EIC_VA_WIDTH-1:0]  addr,
+    input wire                     w_rb,
+    input wire[`BUS_ACC_WIDTH-1:0] acc,
+    output reg[`BUS_WIDTH-1:0]     rdata,
+    input wire[`BUS_WIDTH-1:0]     wdata,
+    input wire                     req,
+    output reg                     resp,
+    output wire                    fault
 );
     // interrupt posedge detection
-    wire[3:0] ext_int_pulse;
+    wire[`EXT_INT_SRC_NUM-1:0] ext_int_pulse;
     begin:PEDGE_DETECT
-        reg[3:0] prev_ext_int_from;
+        reg[`EXT_INT_SRC_NUM-1:0] prev_ext_int_from;
         always @ (posedge clk) begin
             if (~rstn) begin
-                prev_ext_int_from <= 4'd0;
+                prev_ext_int_from <= {`EXT_INT_SRC_NUM{1'b0}};
             end else begin
                 prev_ext_int_from <= ext_int_from;
             end
@@ -28,54 +34,53 @@ module extint_controller # (
     end // PEDGE_DETECT
 
     // interrupt flag: one-hot interrupt number
-    wire[31:0] ext_int_flag;
-    wire       ext_int_flag_vld;
+    reg[`EXT_INT_SRC_NUM-1:0]  ext_int_clr;
+    wire[`EXT_INT_SRC_NUM-1:0] ext_int_flag;
     begin: IFLAG_HANDLER
-        reg[3:0]  ext_int;
-        wire[3:0] ext_int_minus_one = ext_int-1'b1;
-        wire[3:0] ext_int_after_handled = ext_int_minus_one & ext_int;
-        wire[3:0] ext_int_to_be_handled = ~ext_int_minus_one & ext_int;
+        reg[`EXT_INT_SRC_NUM-1:0]  ext_int;
+        wire[`EXT_INT_SRC_NUM-1:0] ext_int_minus_one = ext_int-1'b1;
+        wire[`EXT_INT_SRC_NUM-1:0] ext_int_after_handled = ext_int_minus_one & ext_int;
+        wire[`EXT_INT_SRC_NUM-1:0] ext_int_to_be_handled = ~ext_int_minus_one & ext_int;
         always @ (posedge clk) begin
             if (~rstn) begin
-                ext_int <= 4'd0;
+                ext_int <= {`EXT_INT_SRC_NUM{1'b0}};
             end else begin
-                ext_int <= (ext_int_handled ? ext_int_after_handled : ext_int) | ext_int_pulse;
+                ext_int <= ((ext_int_handled ? ext_int_after_handled : ext_int) | ext_int_pulse) & ext_int_clr;
             end
         end
-
-        assign ext_int_flag = {28'd0, ext_int_to_be_handled};
-        assign ext_int_flag_vld = |ext_int;
+        assign ext_int_trigger = |ext_int;
+        assign ext_int_flag = ext_int;
     end // IFLAG_HANDLER
 
-    generate
-        if (INFO_TYPE=="number") begin
-            // interrupt number: binary interrupt flag
-            wire[31:0] ext_int_num;
-            wire       ext_int_num_vld;
-            begin: INUM_HANDLER
-                reg[3:0] ext_int;
-                reg      ext_int_vld;
-                always @ (posedge clk) begin
-                    if (~rstn) begin
-                        ext_int_vld <= 1'b0;
-                    end else begin
-                        ext_int <= ext_int_flag[3:0];
-                        ext_int_vld <= ext_int_handled ? 1'b0 : ext_int_flag_vld;
-                    end
-                end
+    // fault generation
+    wire invld_addr = 0;
+    wire invld_acc  = (acc!=`BUS_ACC_4B);
+    wire invld_wr   = 0;
+    wire invld_d    = 0;
 
-                assign ext_int_num[0] = |{ext_int[1], ext_int[3]};
-                assign ext_int_num[1] = |{ext_int[2], ext_int[3]};
-                assign ext_int_num[31:2] = 30'd0;
-                assign ext_int_num_vld = ext_int_vld;
-            end // INUM_HANDLER
+    wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
+    assign fault    = req & invld;
 
-            assign ext_int_info = ext_int_num;
-            assign ext_int_trigger = ext_int_num_vld;
-        end else begin // INFO_TYPE=="flag"
-            assign ext_int_info = ext_int_flag;
-            assign ext_int_trigger = ext_int_flag_vld;
+    // resp generation
+    always @ (posedge clk) begin
+        if (~rstn) begin
+            resp <= 0;
+        end else begin
+            resp <= req & ~invld;
         end
-    endgenerate
+    end
 
+    always @ (posedge clk) begin
+        if (~rstn) begin
+            ext_int_clr <= {`EXT_INT_SRC_NUM{1'b1}};
+        end else begin
+            if (req & ~invld & w_rb)
+                ext_int_clr <= ~wdata; // implicitly truncated
+            else
+                ext_int_clr <= {`EXT_INT_SRC_NUM{1'b1}};
+
+            if (req & ~invld & ~w_rb)
+                rdata <= ext_int_flag; // implicitly extended
+        end
+    end
 endmodule
