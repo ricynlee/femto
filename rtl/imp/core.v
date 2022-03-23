@@ -682,8 +682,6 @@ module core (
                 endcase
             end
 
-            initial csr[CSR_INDEX_MTVEC] <= 32'd0; // simulation ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
             // signaling
             assign ext_int_handled = interrupt && s2_vld && (s2_op==OP_TRAP || s2_op==OP_TSUC);
             assign interrupt = csr_rdata[CSR_INDEX_MSTATUS][`MIE] && (csr_rdata[CSR_INDEX_MIE][`MEIE] && csr_rdata[CSR_INDEX_MIP][`MEIP]); // pending & permitted interrupt

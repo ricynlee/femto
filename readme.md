@@ -1,3 +1,5 @@
+> TODO: software-level SoC unit test/verification of external interrupt feature  
+
 # Brief
 `femto` is a RISCV ISA-compatible light-weight soft-core MCU that can be implemented on an FPGA for DIY or educational purposes. `femto` is now released under MIT license. Here are some basic features of `femto`:  
 - Mono core
@@ -9,9 +11,9 @@
 - RV32EC ISA with Zifencei & Zicsr extension
 - Support external interrupts
 - Single-cycle instructions in the majority 
+- SRAM/NOR/UART support
 - No cache
 - No debug support so far
-- SRAM/NOR/UART support
 
 # Project tree
 femto
@@ -21,7 +23,9 @@ femto
     - constraints: io, timing XDC files
   - imp: `femto` implementation
   - sim: RTL simulation environment
-    - ut_core: RTL simulation files for processor core
+    - periph: virtual peripherals for simulation
+    - simfeature: useful features of testbench, e.g. print
+    - ut_core: RTL simulation files for processor core (actually never did stand-alone verification of core)
   - tools: script tools, e.g. for IP generation
 - src: software code
   - imp: bootloader/flashloader/demo application
@@ -50,9 +54,9 @@ femto
 - RV32EC指令集,支持Zifencei、Zicsr扩展
 - 支持外部中断
 - 单周期指令居多
+- 内置MCU常用的SRAM/NOR/UART控制器模块
 - 无高速缓存(Cache)
 - 尚不支持调试
-- 内置MCU常用的SRAM/NOR/UART控制器模块
 
 # 目录树导航
 femto
@@ -62,7 +66,9 @@ femto
     - constraints: 输入输出、时序约束
   - imp: `femto`实现主体
   - sim: 仿真验证所需的RTL环境
-    - ut_core: 处理器核仿真验证RTL环境
+    - periph: 仿真验证所需的虚拟外设
+    - simfeature: 仿真环境的小功能,如打印
+    - ut_core: 处理器核仿真验证RTL环境(其实并未单独验证处理器核)
   - tools: 脚本工具,可生成IP等
 - src: 软件代码
   - imp: 引导程序/Flashloader/示例应用程序

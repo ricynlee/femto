@@ -152,7 +152,7 @@ module femto (
                 ibus_sram_resp_sel,
                 ibus_nor_resp_sel;
         dff # (
-            .WIDTH(9     ),
+            .WIDTH(4     ),
             .VALID("sync")
         ) ibus_resp_sel_dff (
             .clk (clk     ),
@@ -183,7 +183,7 @@ module femto (
                 dbus_eic_resp_sel,
                 dbus_rst_resp_sel;
         dff # (
-            .WIDTH(9     ),
+            .WIDTH(10    ),
             .VALID("sync")
         ) dbus_resp_sel_dff (
             .clk (clk     ),
@@ -238,15 +238,6 @@ module femto (
     // interrupt
     wire            ext_int_trigger, ext_int_handled;
     wire[3:0]       ext_int_from;
-
-                // simulation /////////////////////////////////////////////////////////////////////////////////////////////
-                reg[3:0] ext_int_from_r;
-                assign ext_int_from = ext_int_from_r;
-                initial begin
-                    ext_int_from_r = 0;
-                    #30001;
-                    @(posedge clk) ext_int_from_r <= 4'b0110;
-                end
 
     /******************************************************************************************************************************************************************/
     // core
@@ -359,13 +350,13 @@ module femto (
             .clk (clk     ),
             .rstn(rom_rstn),
 
-            .addr (bus_addr ),
-            .w_rb (bus_w_rb ),
-            .acc  (bus_acc  ),
-            .rdata(bus_rdata),
-            .wdata(bus_wdata),
-            .req  (bus_req  ),
-            .resp (bus_resp ),
+            .addr (bus_addr[`ROM_VA_WIDTH-1:0]),
+            .w_rb (bus_w_rb                   ),
+            .acc  (bus_acc                    ),
+            .rdata(bus_rdata                  ),
+            .wdata(bus_wdata                  ),
+            .req  (bus_req                    ),
+            .resp (bus_resp                   ),
 
             .fault(rom_fault)
         );
@@ -412,13 +403,13 @@ module femto (
             .clk (clk     ),
             .rstn(tcm_rstn),
 
-            .addr (bus_addr ),
-            .w_rb (bus_w_rb ),
-            .acc  (bus_acc  ),
-            .rdata(bus_rdata),
-            .wdata(bus_wdata),
-            .req  (bus_req  ),
-            .resp (bus_resp ),
+            .addr (bus_addr[`TCM_VA_WIDTH-1:0]),
+            .w_rb (bus_w_rb                   ),
+            .acc  (bus_acc                    ),
+            .rdata(bus_rdata                  ),
+            .wdata(bus_wdata                  ),
+            .req  (bus_req                    ),
+            .resp (bus_resp                   ),
 
             .fault(tcm_fault)
         );
@@ -465,13 +456,13 @@ module femto (
             .clk (clk      ),
             .rstn(sram_rstn),
 
-            .addr (bus_addr ),
-            .w_rb (bus_w_rb ),
-            .acc  (bus_acc  ),
-            .rdata(bus_rdata),
-            .wdata(bus_wdata),
-            .req  (bus_req  ),
-            .resp (bus_resp ),
+            .addr (bus_addr[`SRAM_VA_WIDTH-1:0]),
+            .w_rb (bus_w_rb                    ),
+            .acc  (bus_acc                     ),
+            .rdata(bus_rdata                   ),
+            .wdata(bus_wdata                   ),
+            .req  (bus_req                     ),
+            .resp (bus_resp                    ),
 
             .fault(sram_fault),
 
@@ -527,23 +518,23 @@ module femto (
             .nor_rstn    (nor_rstn    ),
             .qspinor_rstn(qspinor_rstn),
 
-            .nor_addr (bus_addr ),
-            .nor_w_rb (bus_w_rb ),
-            .nor_acc  (bus_acc  ),
-            .nor_rdata(bus_rdata),
-            .nor_wdata(bus_wdata),
-            .nor_req  (bus_req  ),
-            .nor_resp (bus_resp ),
+            .nor_addr (bus_addr[`NOR_VA_WIDTH-1:0]),
+            .nor_w_rb (bus_w_rb                   ),
+            .nor_acc  (bus_acc                    ),
+            .nor_rdata(bus_rdata                  ),
+            .nor_wdata(bus_wdata                  ),
+            .nor_req  (bus_req                    ),
+            .nor_resp (bus_resp                   ),
 
             .nor_fault(nor_fault),
 
-            .qspinor_addr (dbus_addr         ),
-            .qspinor_w_rb (dbus_w_rb         ),
-            .qspinor_acc  (dbus_acc          ),
-            .qspinor_wdata(dbus_wdata        ),
-            .qspinor_rdata(dbus_qspinor_rdata),
-            .qspinor_req  (dbus_qspinor_req  ),
-            .qspinor_resp (dbus_qspinor_resp ),
+            .qspinor_addr (dbus_addr[`QSPINOR_VA_WIDTH-1:0]),
+            .qspinor_w_rb (dbus_w_rb                       ),
+            .qspinor_acc  (dbus_acc                        ),
+            .qspinor_wdata(dbus_wdata                      ),
+            .qspinor_rdata(dbus_qspinor_rdata              ),
+            .qspinor_req  (dbus_qspinor_req                ),
+            .qspinor_resp (dbus_qspinor_resp               ),
 
             .qspinor_fault(qspinor_fault),
 
@@ -564,13 +555,13 @@ module femto (
         .i  (ior_gpio_i  ),
         .o  (ior_gpio_o  ),
 
-        .addr (dbus_addr      ),
-        .w_rb (dbus_w_rb      ),
-        .acc  (dbus_acc       ),
-        .wdata(dbus_wdata     ),
-        .rdata(dbus_gpio_rdata),
-        .req  (dbus_gpio_req  ),
-        .resp (dbus_gpio_resp ),
+        .addr (dbus_addr[`GPIO_VA_WIDTH-1:0]),
+        .w_rb (dbus_w_rb                    ),
+        .acc  (dbus_acc                     ),
+        .wdata(dbus_wdata                   ),
+        .rdata(dbus_gpio_rdata              ),
+        .req  (dbus_gpio_req                ),
+        .resp (dbus_gpio_resp               ),
 
         .fault(gpio_fault)
     );
@@ -583,13 +574,13 @@ module femto (
         .rx(ior_uart_rx),
         .tx(ior_uart_tx),
 
-        .addr (dbus_addr      ),
-        .w_rb (dbus_w_rb      ),
-        .acc  (dbus_acc       ),
-        .wdata(dbus_wdata     ),
-        .rdata(dbus_uart_rdata),
-        .req  (dbus_uart_req  ),
-        .resp (dbus_uart_resp ),
+        .addr (dbus_addr[`UART_VA_WIDTH-1:0]),
+        .w_rb (dbus_w_rb                    ),
+        .acc  (dbus_acc                     ),
+        .wdata(dbus_wdata                   ),
+        .rdata(dbus_uart_rdata              ),
+        .req  (dbus_uart_req                ),
+        .resp (dbus_uart_resp               ),
 
         .fault(uart_fault)
     );
@@ -599,13 +590,13 @@ module femto (
         .clk (clk     ),
         .rstn(tmr_rstn),
 
-        .addr (dbus_addr     ),
-        .w_rb (dbus_w_rb     ),
-        .acc  (dbus_acc      ),
-        .wdata(dbus_wdata    ),
-        .rdata(dbus_tmr_rdata),
-        .req  (dbus_tmr_req  ),
-        .resp (dbus_tmr_resp ),
+        .addr (dbus_addr[`TMR_VA_WIDTH-1:0]),
+        .w_rb (dbus_w_rb                   ),
+        .acc  (dbus_acc                    ),
+        .wdata(dbus_wdata                  ),
+        .rdata(dbus_tmr_rdata              ),
+        .req  (dbus_tmr_req                ),
+        .resp (dbus_tmr_resp               ),
 
         .fault(tmr_fault)
     );
@@ -620,13 +611,13 @@ module femto (
 
         .ext_int_from(ext_int_from),
 
-        .addr (dbus_addr     ),
-        .w_rb (dbus_w_rb     ),
-        .acc  (dbus_acc      ),
-        .wdata(dbus_wdata    ),
-        .rdata(dbus_eic_rdata),
-        .req  (dbus_eic_req  ),
-        .resp (dbus_eic_resp ),
+        .addr (dbus_addr[`EIC_VA_WIDTH-1:0]),
+        .w_rb (dbus_w_rb                   ),
+        .acc  (dbus_acc                    ),
+        .wdata(dbus_wdata                  ),
+        .rdata(dbus_eic_rdata              ),
+        .req  (dbus_eic_req                ),
+        .resp (dbus_eic_resp               ),
 
         .fault(eic_fault)
     );
@@ -638,13 +629,13 @@ module femto (
         .rst_ib(rstn    ),
         .rst_ob(rstn_vec),
 
-        .addr (dbus_addr     ),
-        .w_rb (dbus_w_rb     ),
-        .acc  (dbus_acc      ),
-        .wdata(dbus_wdata    ),
-        .rdata(dbus_rst_rdata),
-        .req  (dbus_rst_req  ),
-        .resp (dbus_rst_resp ),
+        .addr (dbus_addr[`RST_VA_WIDTH-1:0]),
+        .w_rb (dbus_w_rb                   ),
+        .acc  (dbus_acc                    ),
+        .wdata(dbus_wdata                  ),
+        .rdata(dbus_rst_rdata              ),
+        .req  (dbus_rst_req                ),
+        .resp (dbus_rst_resp               ),
 
         .fault(rst_fault)
     );
