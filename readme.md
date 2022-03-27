@@ -1,8 +1,8 @@
 > **`TODO`**  
 > - 更新关键IP模块使之能输出中断请求  
-> - 更新SDK使之支持中断和嵌套中断  
+> - 更新SDK使之易于支持中断(嵌套)  
+> - 更新SDK使之支持简化的复位逻辑  
 > - 验证EIC总线接口  
-> - 可以考虑只允许软件访问`mstatus`,`mtvec`,`mepc`  
 
 # Brief
 `femto` is a RISCV ISA-compatible light-weight soft-core MCU that can be implemented on an FPGA for DIY or educational purposes. `femto` is now released under MIT license. Here are some basic features of `femto`:  
