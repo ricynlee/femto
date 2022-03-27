@@ -80,6 +80,7 @@ module femto (
             dbus_uart_req,    dbus_uart_resp,
             dbus_qspinor_req, dbus_qspinor_resp,
             dbus_tmr_req,     dbus_tmr_resp,
+            dbus_eic_req,     dbus_eic_resp,
             dbus_rst_req,     dbus_rst_resp;
 
     wire[`BUS_WIDTH-1:0]    dbus_rom_rdata    ,

@@ -1,6 +1,4 @@
-> **`TODO`** software-level verification of external interrupt feature, to cover/基于软件的外部中断功能验证,需验证  
-> - nested interrupts/中断嵌套  
-> - successional interrupts/连续中断  
+> **`TODO`** enable IP modules' interrupt request to EIC/实现IP模块输出中断请求,并连接到EIC  
 
 # Brief
 `femto` is a RISCV ISA-compatible light-weight soft-core MCU that can be implemented on an FPGA for DIY or educational purposes. `femto` is now released under MIT license. Here are some basic features of `femto`:  

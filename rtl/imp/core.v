@@ -107,9 +107,9 @@ module core (
     wire[`XLEN-1:0] s2_csr_val;
 
     // trap control signals
-    wire interrupt, meip;
+    wire interrupt, succesional_interrupt;
     // wire csr_wreq;
-    wire[2:0] csr_windex;
+    wire[3:0] csr_windex;
     wire[`XLEN-1:0] csr_wdata;
     wire[`XLEN-1:0] csr_rdata[0:15];
 
@@ -219,8 +219,8 @@ module core (
 
         wire i_resp_16_32b = (i_resp_acc==`BUS_ACC_2B);
         wire[1:0] pf_vacant_entry16, pf_filled_entry16;
-        assign i_req = (pf_vacant_entry16!=2'd0);
-        assign i_req_acc = (i_req_addr[1] || pf_filled_entry16!=2'd0) ? `BUS_ACC_2B : `BUS_ACC_4B;
+        assign i_req = (pf_vacant_entry16 != 2'd0);
+        assign i_req_acc = (i_req_addr[1] || pf_filled_entry16) ? `BUS_ACC_2B : `BUS_ACC_4B;
 
         wire[`ILEN-1:0] if_ir_raw;
         prefetch_queue prefetch_queue(
@@ -457,7 +457,7 @@ module core (
                     funct3[1:0] ? // csr op
                         (funct3[1] ? csr_rdata[csr_index] /* bit set/clr */ : {`XLEN{1'b0}} /* val set */) :
                     // mret
-                        (meip ? csr_rdata[CSR_INDEX_MTVEC] /* successional traps */ : csr_rdata[CSR_INDEX_MEPC])
+                        (succesional_interrupt ? csr_rdata[CSR_INDEX_MTVEC] /* successional traps */ : csr_rdata[CSR_INDEX_MEPC])
                 ) :
                 (opcode==OPCODE_LUI) ?
                     {`XLEN{1'b0}} :
@@ -513,7 +513,7 @@ module core (
                     funct3[1:0] ? // csr op
                         OP_CSR :
                     // mret
-                        (meip ? OP_TSUC : OP_TRET)
+                        (succesional_interrupt ? OP_TSUC : OP_TRET)
                 ) :
                 (opcode==OPCODE_LOAD) ?
                     (funct3[2] ? OP_LDU : OP_LD) :
@@ -550,7 +550,7 @@ module core (
                 /* to set interrupt mepc */
                     s1_pc;
 
-            assign s1_d_req = opcode==OPCODE_LOAD || opcode==OPCODE_STORE;
+            assign s1_d_req = (opcode==OPCODE_LOAD || opcode==OPCODE_STORE) && !interrupt;
             assign s1_d_req_acc = (funct3[1:0]==2'd0 ? `BUS_ACC_1B : funct3[1:0]==2'd1 ? `BUS_ACC_2B : `BUS_ACC_4B);
             assign s1_d_req_w_rb = (opcode==OPCODE_STORE);
             assign s1_d_req_wdata = rs2_val;
@@ -670,7 +670,7 @@ module core (
             // csr field definition
             `define MIE  3  // mstatus.MIE - global int enable
             `define MPIE 7  // mstatus.MPIE - prev MIE
-            `define MEIE 11 // mie.MEIE - ext int enable
+            // `define MEIE 11 // mie.MEIE - ext int enable
             `define MEIP 11 // mip.MEIP - ext int pending
 
             // csr definition
@@ -683,15 +683,15 @@ module core (
             end
 
             // signaling
-            assign ext_int_handled = interrupt && s2_vld && (s2_op==OP_TRAP || s2_op==OP_TSUC);
-            assign interrupt = csr_rdata[CSR_INDEX_MSTATUS][`MIE] && (csr_rdata[CSR_INDEX_MIE][`MEIE] && csr_rdata[CSR_INDEX_MIP][`MEIP]); // pending & permitted interrupt
-            assign meip = csr_rdata[CSR_INDEX_MIP][`MEIP]; // pending (but perhaps not permitted) interrupt
+            assign ext_int_handled = s2_vld && (s2_op==OP_TRAP || s2_op==OP_TSUC);
+            assign interrupt = csr_rdata[CSR_INDEX_MSTATUS][`MIE] && (/*csr_rdata[CSR_INDEX_MIE][`MEIE] &&*/ csr_rdata[CSR_INDEX_MIP][`MEIP]);
+            assign succesional_interrupt = csr_rdata[CSR_INDEX_MSTATUS][`MPIE] && (/*csr_rdata[CSR_INDEX_MIE][`MEIE] &&*/ csr_rdata[CSR_INDEX_MIP][`MEIP]);
 
             // csr op
             always @ (posedge clk) begin
                 if (~rstn) begin
                     csr[CSR_INDEX_MSTATUS][`MIE ] <= `INT_RST_EN;
-                    csr[CSR_INDEX_MIE    ][`MEIE] <= 1'b1;
+                    // csr[CSR_INDEX_MIE    ][`MEIE] <= 1'b1;
                 end else if (s2_vld) begin
                     if (s2_op==OP_CSR) begin
                         csr[csr_windex] <= csr_wdata;

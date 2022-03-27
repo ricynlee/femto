@@ -83,7 +83,7 @@ localparam ALU_ADD  = 8'h1,
 
 // bound with csr_addr to csr_index logic
 localparam CSR_INDEX_MSTATUS = 4'b0_000,
-           CSR_INDEX_MIE     = 4'b0_100,
+           // CSR_INDEX_MIE  = 4'b0_100,
            CSR_INDEX_MTVEC   = 4'b0_101,
            CSR_INDEX_MEPC    = 4'b1_001,
            CSR_INDEX_MCAUSE  = 4'b1_010,

@@ -11,7 +11,7 @@
 `define RESET_PC            (32'h0000_0000)
 
 /* interrupt */
-`define INT_RST_EN          (1'b1) // interrupt enabled or not at rst
+`define INT_RST_EN          (1'b0) // interrupt enabled or not at rst
 `define EXT_INT_SRC_NUM     (4)    // <=XLEN
 
 /* bus */
