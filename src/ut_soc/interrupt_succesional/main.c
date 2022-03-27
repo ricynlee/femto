@@ -28,7 +28,7 @@ bool undone = true;
 int main(){
     set_interrupt_handler(f);
     enable_interrupt(true);
-    trig_int(0x4);
+    trig_int(0x6);
     while(undone);
     trigger_pass();
     return 0;

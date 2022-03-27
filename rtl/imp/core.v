@@ -90,7 +90,7 @@ module core (
     wire[7:0] s1_alu_op; // alu operation
     wire[7:0] s1_op; // instruction operation
 
-    wire[3:0] s1_csr; // dest csr index
+    wire[1:0] s1_csr; // dest csr index
     wire[`XLEN-1:0] s1_csr_val;
 
     wire s1_j_req;
@@ -103,15 +103,15 @@ module core (
     wire[7:0] s2_op; // instruction operation
     wire[`XLEN-1:0] s2_j_lr; // jump link register/return address
 
-    wire[3:0] s2_csr; // dest csr index
+    wire[1:0] s2_csr; // dest csr index
     wire[`XLEN-1:0] s2_csr_val;
 
     // trap control signals
     wire interrupt, succesional_interrupt;
     // wire csr_wreq;
-    wire[3:0] csr_windex;
+    wire[1:0] csr_windex;
     wire[`XLEN-1:0] csr_wdata;
-    wire[`XLEN-1:0] csr_rdata[0:15];
+    wire[`XLEN-1:0] csr_rdata[0:3];
 
     // fault indicator
     wire illegal_instr;
@@ -402,7 +402,7 @@ module core (
             wire[11:0] csr_addr = s1_ir[31:20];
             wire[31:0] csr_uimm = {27'd0, rs1};
 
-            wire[3:0] csr_index = {csr_addr[6],csr_addr[2:0]};
+            wire[3:0] csr_index = {csr_addr[2], csr_addr[0]};
 
             wire[`XLEN-1:0] rs1_val, rs2_val;
             wire[`XLEN-1:0] imm_val;
@@ -556,7 +556,7 @@ module core (
             assign s1_d_req_wdata = rs2_val;
 
             assign illegal_instr = /* not triggerd upon interrupt */
-                (~interrupt & s1_vld) && (
+                ~interrupt && (
                     (opcode==OPCODE_LUI || opcode==OPCODE_AUIPC || opcode==OPCODE_JAL) ?
                         rd[4] :
                     (opcode==OPCODE_JALR) ?
@@ -576,8 +576,8 @@ module core (
                     (opcode==OPCODE_SYSTEM) ? ( // no ecall/ebreak
                         funct3[1:0]==2'b00 ? // mret
                             (funct3[2] || rs1 || rd || funct7!=7'b0011000 || rs2!=5'd2) :
-                        // csr ops, 0x300~0x307 & 0x340~0x347 permitted
-                            ((funct3[2]==1'b0 && rs1[4]) || rd[4] || csr_addr[11:7]!=5'b00110 || csr_addr[5:3]!=3'b000)
+                        // csr ops, mcause/mtvec/mepc/mip permitted
+                            ((funct3[2]==1'b0 && rs1[4]) || rd[4] || {csr_addr[11:7], csr_addr[5:3], csr_addr[1]}!=9'b001100000 || ^{csr_addr[6], csr_addr[2], csr_addr[0]})
                     ) :
                     /* undefined / unimplemented opcode */
                         1'b1
@@ -674,8 +674,8 @@ module core (
             `define MEIP 11 // mip.MEIP - ext int pending
 
             // csr definition
-            reg[`XLEN-1:0] csr[0:15];
-            for(genvar i=0; i<15; i=i+1) begin
+            reg[`XLEN-1:0] csr[0:3];
+            for(genvar i=0; i<4; i=i+1) begin
                 case (i)
                     CSR_INDEX_MIP : assign csr_rdata[i] = {csr[i][`XLEN-1:`MEIP+1], ext_int_trigger, csr[i][`MEIP-1:0]};
                     default       : assign csr_rdata[i] = csr[i];
@@ -696,11 +696,11 @@ module core (
                     if (s2_op==OP_CSR) begin
                         csr[csr_windex] <= csr_wdata;
                     end else if (s2_op==OP_TSUC) begin
-                        csr[CSR_INDEX_MCAUSE] <= MCAUSE_MEXTINT;
+                        // csr[CSR_INDEX_MCAUSE] <= MCAUSE_MEXTINT;
                         csr[CSR_INDEX_MSTATUS][`MIE] <= 1'b0;
                     end else if (s2_op==OP_TRAP) begin
                         csr[CSR_INDEX_MEPC] <= s2_j_lr;
-                        csr[CSR_INDEX_MCAUSE] <= MCAUSE_MEXTINT;
+                        // csr[CSR_INDEX_MCAUSE] <= MCAUSE_MEXTINT;
                         csr[CSR_INDEX_MSTATUS][`MIE ] <= 1'b0;
                         csr[CSR_INDEX_MSTATUS][`MPIE] <= csr_rdata[CSR_INDEX_MSTATUS][`MIE];
                     end else if (s2_op==OP_TRET) begin
@@ -715,7 +715,7 @@ module core (
     always @(posedge clk) begin
         if (~rstn) begin
             core_fault <= 0;
-        end else if (illegal_instr) begin
+        end else if (s1_vld & illegal_instr) begin
             core_fault <= 1;
             core_fault_pc <= s1_pc;
             $display("FAULT: undefined instruction");

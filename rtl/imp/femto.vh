@@ -104,16 +104,18 @@
 `define TMR_DIV             (`SYSCLK_FREQ/1000000)
 
 /* rst */
-`define RST_CORE            (0)
-`define RST_ROM             (1)
-`define RST_TCM             (2)
-`define RST_SRAM            (3)
-`define RST_NOR             (4)
-`define RST_GPIO            (5)
-`define RST_UART            (6)
-`define RST_QSPI            (7)
-`define RST_TMR             (8)
+`define RST_MISC            (0 )
+`define RST_CORE            (1 )
+`define RST_ROM             (2 )
+`define RST_TCM             (3 )
+`define RST_SRAM            (4 )
+`define RST_NOR             (5 )
+`define RST_GPIO            (6 )
+`define RST_UART            (7 )
+`define RST_QSPI            (8 )
+`define RST_TMR             (9 )
+`define RST_EIC             (10)
 
-`define RST_WIDTH           (9)
+`define RST_WIDTH           (11)
 
 `endif // FEMTO_HEADER

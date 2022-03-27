@@ -46,11 +46,8 @@ module rst_controller(
     always @ (posedge clk) begin
         if (~rst_ib) begin // external reset input: higher priority
             rst_r <= {`RST_WIDTH{1'b0}};
-        end else if (req & ~invld) begin
-            if (wdata[7:0]==0)
-                rst_r <= {`RST_WIDTH{1'b0}};
-            else
-                rst_r <= ~(1<<(wdata[7:0]-1));
+        end else if (req & ~invld & wdata[0]) begin
+            rst_r <= {`RST_WIDTH{1'b0}};
         end else begin
             rst_r <= {`RST_WIDTH{1'b1}};
         end

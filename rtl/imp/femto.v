@@ -32,13 +32,15 @@ module femto (
             uart_fault,
             qspinor_fault,
             tmr_fault,
+            eic_fault,
             rst_fault;
 
     wire    fault;
 
     // reset signals
     wire[`RST_WIDTH-1:0]    rstn_vec; // rstn vector
-    wire                    core_rstn,
+    wire                    misc_rstn,
+                            core_rstn,
                             rom_rstn,
                             tcm_rstn,
                             sram_rstn,
@@ -46,7 +48,8 @@ module femto (
                             gpio_rstn,
                             uart_rstn,
                             qspinor_rstn,
-                            tmr_rstn;
+                            tmr_rstn,
+                            eic_rstn;
 
     // instruction bus signals
     wire[`XLEN-1:0]                 ibus_addr;
@@ -119,17 +122,33 @@ module femto (
     /******************************************************************************************************************************************************************/
     begin: FAULT_GEN
         dff #(
-            .VALID("sync")
+            .VALID("sync"),
+            .RESET("sync")
         ) req_acc_dff (
-            .clk(clk                ),
-            .vld(ibus_req | dbus_req),
-            .in (|{core_fault, bus_fault, rom_fault, tcm_fault, sram_fault, nor_fault, gpio_fault, uart_fault, qspinor_fault, tmr_fault, rst_fault}),
-            .out(fault              )
+            .clk (clk      ),
+            .rstn(misc_rstn),
+            .vld (|{
+                core_fault,
+                bus_fault,
+                rom_fault,
+                tcm_fault,
+                sram_fault,
+                nor_fault,
+                gpio_fault,
+                uart_fault,
+                qspinor_fault,
+                tmr_fault,
+                eic_fault,
+                rst_fault
+            }),
+            .in (1'b1 ),
+            .out(fault)
         );
     end
 
     /******************************************************************************************************************************************************************/
     begin: RESET_GEN
+        assign  misc_rstn    = rstn_vec[`RST_MISC];
         assign  core_rstn    = rstn_vec[`RST_CORE];
         assign  rom_rstn     = rstn_vec[`RST_ROM ];
         assign  tcm_rstn     = rstn_vec[`RST_TCM ];
@@ -139,6 +158,7 @@ module femto (
         assign  uart_rstn    = rstn_vec[`RST_UART];
         assign  qspinor_rstn = rstn_vec[`RST_QSPI];
         assign  tmr_rstn     = rstn_vec[`RST_TMR ];
+        assign  eic_rstn     = rstn_vec[`RST_EIC ];
     end
 
     /******************************************************************************************************************************************************************/
@@ -217,7 +237,7 @@ module femto (
                              ibus_sram_resp_sel ? ibus_sram_rdata :
                              ibus_nor_resp_sel  ? ibus_nor_rdata  : {`BUS_WIDTH{1'bx}};
 
-        assign  dbus_resp = fault ? 1'b0 : |{dbus_rom_resp, dbus_tcm_resp, dbus_sram_resp, dbus_nor_resp, dbus_gpio_resp, dbus_uart_resp, dbus_qspinor_resp, dbus_tmr_resp, dbus_rst_resp};
+        assign  dbus_resp = fault ? 1'b0 : |{dbus_rom_resp, dbus_tcm_resp, dbus_sram_resp, dbus_nor_resp, dbus_gpio_resp, dbus_uart_resp, dbus_qspinor_resp, dbus_tmr_resp, dbus_eic_resp, dbus_rst_resp};
         assign  dbus_rdata = dbus_rom_resp_sel     ? dbus_rom_rdata     :
                              dbus_tcm_resp_sel     ? dbus_tcm_rdata     :
                              dbus_sram_resp_sel    ? dbus_sram_rdata    :
@@ -605,7 +625,7 @@ module femto (
     // eic
     extint_controller extint_controller (
         .clk (clk      ),
-        .rstn(core_rstn),
+        .rstn(eic_rstn ),
 
         .ext_int_trigger(ext_int_trigger),
         .ext_int_handled(ext_int_handled),

@@ -18,7 +18,7 @@ localparam OPCODE_IMMCAL = 7'b0010011,
            OPCODE_SYSTEM = 7'b1110011;
 
 // interrupt mcause exception code
-localparam MCAUSE_MEXTINT = {1'b1, 31'd11};
+// localparam MCAUSE_MEXTINT = {1'b1, 31'd11};
 
 // csr addr encoding
 localparam CSR_ADDR_MSTATUS = 12'h300,
@@ -82,9 +82,7 @@ localparam ALU_ADD  = 8'h1,
            ALU_SL   = 8'hb;
 
 // bound with csr_addr to csr_index logic
-localparam CSR_INDEX_MSTATUS = 4'b0_000,
-           // CSR_INDEX_MIE  = 4'b0_100,
-           CSR_INDEX_MTVEC   = 4'b0_101,
-           CSR_INDEX_MEPC    = 4'b1_001,
-           CSR_INDEX_MCAUSE  = 4'b1_010,
-           CSR_INDEX_MIP     = 4'b1_100;
+localparam CSR_INDEX_MSTATUS = 2'b00,
+           CSR_INDEX_MTVEC   = 2'b11,
+           CSR_INDEX_MEPC    = 2'b01,
+           CSR_INDEX_MIP     = 2'b10;
