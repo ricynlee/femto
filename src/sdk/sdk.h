@@ -60,6 +60,10 @@ extern void timer_set(uint32_t val);
 extern uint32_t timer_get(void);
 extern void timer_delay_us(uint32_t val);
 
+// EIC
+extern unsigned get_interrupt_pending_flag(void);
+extern void clr_interrupt_pending_flag(unsigned bit_mask);
+
 // RESET
 extern void reset_soc(void);
 extern void reset_core(void);

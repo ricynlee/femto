@@ -143,6 +143,13 @@
 
     #define TIMER ((femto_timer_t*)0x70000000)
 
+// EIC
+    typedef struct {
+        volatile unsigned   ipfr; // interrupt pending flag register
+    } femto_eic_t;
+
+    #define EIC ((femto_eic_t*)0xc0000000)
+
 // RESET
     typedef struct {
         volatile unsigned char  rst;

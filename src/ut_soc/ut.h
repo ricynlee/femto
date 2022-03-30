@@ -30,6 +30,7 @@
     enum {
         UT_PRN = 0x50524e00u, // PRN$
     };
+    static void ut_putc(char c) { UT = (UT_PRN | c); }
     static void ut_print(const char* const s) { for (const char* p=s; *p; p++) UT = (UT_PRN | (*p)); UT = (UT_PRN | '\n'); };
 
 // Interrupt trigger

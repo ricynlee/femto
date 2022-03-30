@@ -64,7 +64,7 @@ module extint_controller (
     // resp generation
     always @ (posedge clk) begin
         if (~rstn) begin
-            resp <= 0;
+            resp <= 1'b0;
         end else begin
             resp <= req & ~invld;
         end
@@ -73,14 +73,15 @@ module extint_controller (
     always @ (posedge clk) begin
         if (~rstn) begin
             ext_int_clr <= {`EXT_INT_SRC_NUM{1'b1}};
+            rdata <= {`XLEN{1'b0}};
         end else begin
             if (req & ~invld & w_rb)
-                ext_int_clr <= ~wdata; // implicitly truncated
+                ext_int_clr <= ~wdata[`EXT_INT_SRC_NUM-1:0];
             else
                 ext_int_clr <= {`EXT_INT_SRC_NUM{1'b1}};
 
             if (req & ~invld & ~w_rb)
-                rdata <= ext_int_flag; // implicitly extended
+                rdata[`EXT_INT_SRC_NUM-1:0] <= ext_int_flag; // implicitly extended
         end
     end
 endmodule

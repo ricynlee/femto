@@ -294,6 +294,15 @@ void timer_delay_us(uint32_t val) {
     while(timer_get());
 }
 
+// EIC
+unsigned get_interrupt_pending_flag(void) {
+    return EIC->ipfr;
+}
+
+void clr_interrupt_pending_flag(unsigned bit_mask) {
+    EIC->ipfr = bit_mask;
+}
+
 // RESET
 void reset_soc(void) {
     RESET->rst = RESET_ALL;
