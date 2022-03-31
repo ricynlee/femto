@@ -5,7 +5,6 @@
 > - 更新SDK使之支持简化的复位逻辑  
 > - 中断ut_soc中需要声明`undone`为`volatile`  
 > - 所有`main`函数都改为`void`型  
-> - core内部的`fault`信号改为由`dff`驱动而非`always`  
 
 # Brief
 `femto` is a RISCV ISA-compatible light-weight soft-core MCU that can be implemented on an FPGA for DIY or educational purposes. `femto` is now released under MIT license. Here are some basic features of `femto`:  
