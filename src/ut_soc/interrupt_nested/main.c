@@ -6,7 +6,7 @@ bool undone = true;
 
 int main(){
     enable_interrupt(true);
-    trig_int(0x6);
+    trigger_extint(0x6);
     while(undone);
     trigger_pass();
     return 0;

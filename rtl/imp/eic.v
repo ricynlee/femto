@@ -40,7 +40,6 @@ module extint_controller (
         reg[`EXT_INT_SRC_NUM-1:0]  ext_int;
         wire[`EXT_INT_SRC_NUM-1:0] ext_int_minus_one = ext_int-1'b1;
         wire[`EXT_INT_SRC_NUM-1:0] ext_int_after_handled = ext_int_minus_one & ext_int;
-        wire[`EXT_INT_SRC_NUM-1:0] ext_int_to_be_handled = ~ext_int_minus_one & ext_int;
         always @ (posedge clk) begin
             if (~rstn) begin
                 ext_int <= {`EXT_INT_SRC_NUM{1'b0}};

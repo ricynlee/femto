@@ -6,8 +6,8 @@ module core (
     input wire rstn,
 
     // fault
-    output reg            core_fault,
-    output reg[`XLEN-1:0] core_fault_pc,
+    output wire            core_fault,
+    output wire[`XLEN-1:0] core_fault_pc,
 
     // external interrupt
     input wire  ext_int_trigger,
@@ -712,15 +712,26 @@ module core (
     end // STAGE2
 
     /**********************************************************************************************************************/
-    always @(posedge clk) begin
-        if (~rstn) begin
-            core_fault <= 0;
-        end else if (s1_vld & illegal_instr) begin
-            core_fault <= 1;
-            core_fault_pc <= s1_pc;
-            $display("FAULT: undefined instruction");
-        end
-    end
+    // fault propagation
+    dff #(
+        .RESET("sync")
+    ) core_fault_dff (
+        .clk (clk                   ),
+        .rstn(rstn                  ),
+        .in  (s1_vld & illegal_instr),
+        .out (core_fault            )
+    );
+
+    dff #(
+        .WIDTH(`XLEN ),
+        .VALID("sync")
+    ) core_fault_pc_dff (
+        .clk (clk                   ),
+        .vld (s1_vld & illegal_instr),
+        .in  (s1_pc                 ),
+        .out (core_fault_pc         )
+    );
+
 endmodule
 
 /**********************************************************************************************************************/

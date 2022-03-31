@@ -5,7 +5,7 @@
 bool undone = true;
 
 int main(){
-    trig_int(0x6);
+    trigger_extint(0x6);
     ut_putc('f');
     ut_putc('=');
     ut_putc('0'+EIC->ipfr);

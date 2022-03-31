@@ -37,6 +37,6 @@
     enum {
         UT_INT = 0x494e5400u, // INT#
     };
-    static void trig_int(int int_flag) { UT = (UT_INT | (int_flag & 0xf)); };
+    static void trigger_extint(int int_flag) { UT = (UT_INT | (int_flag & 0xf)); };
 
 #endif // _FEMTO_UT_H
