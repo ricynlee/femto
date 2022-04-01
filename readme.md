@@ -6,6 +6,8 @@
 > - 中断ut_soc中需要声明`undone`为`volatile`  
 > - 所有`main`函数都改为`void`型  
 
+ABI要求:RV32EC指令集/RV32E寄存器模型和使用约定/ILP32E数据模型/仅支持内存对齐访问
+
 # Brief
 `femto` is a RISCV ISA-compatible light-weight soft-core MCU that can be implemented on an FPGA for DIY or educational purposes. `femto` is now released under MIT license. Here are some basic features of `femto`:  
 - Mono core
