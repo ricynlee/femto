@@ -305,25 +305,16 @@ void clr_interrupt_pending_flag(unsigned bit_mask) {
 
 // RESET
 void reset_soc(void) {
-    RESET->rst = RESET_ALL;
+    RESET->rst = 1;
 }
 
-void reset_core(void) {
-    RESET->rst = RESET_CORE;
+unsigned short get_reset_cause(void) {
+    return RESET->cause;
 }
 
-void reset_uart(void) {
-    RESET->rst = RESET_UART;
-}
-
-void reset_gpio(void) {
-    RESET->rst = RESET_GPIO;
-}
-
-void reset_qspinor(void) {
-    RESET->rst = RESET_QSPINOR;
-}
-
-void reset_timer(void) {
-    RESET->rst = RESET_TIMER;
+void get_reset_info(unsigned short* const ptr_cause, unsigned* const ptr_tagval) {
+    if (ptr_cause)
+        *ptr_cause = RESET->cause;
+    if (ptr_tagval)
+        *ptr_tagval = RESET->tagval;
 }

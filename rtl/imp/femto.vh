@@ -80,7 +80,7 @@
 `define EIC_SEL_MASK        (~`EIC_VA_MASK)
 
 `define RST_ADDR            (32'hf000_0000) // system reset
-`define RST_VA_MASK         (32'h0000_0001) // 1B valid address range
+`define RST_VA_MASK         (32'h0000_0007) // 8B valid address range
 `define RST_VA_WIDTH        ($clog2(`RST_VA_MASK+1))
 `define RST_SEL_MASK        (~`RST_VA_MASK)
 
@@ -117,5 +117,12 @@
 `define RST_EIC             (10)
 
 `define RST_WIDTH           (11)
+
+`define RST_CAUSE_POR       (8'd0)
+`define RST_CAUSE_HW        (8'd1)
+`define RST_CAUSE_SW        (8'd2)
+`define RST_FAULT_CORE      (8'd3)
+`define RST_FAULT_IBUS      (8'd4)
+`define RST_FAULT_DBUS      (8'd5)
 
 `endif // FEMTO_HEADER

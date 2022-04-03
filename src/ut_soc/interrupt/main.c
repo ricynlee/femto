@@ -2,9 +2,9 @@
 #include "interrupt.h"
 #include "ut.h"
 
-bool undone = true;
+volatile bool undone = true;
 
-int main(){
+void main(void){
     trigger_extint(0x6);
     ut_putc('f');
     ut_putc('=');
@@ -14,7 +14,6 @@ int main(){
     enable_interrupt(true);
     while(undone);
     trigger_pass();
-    return 0;
 }
 
 void main_interrupt(void) {

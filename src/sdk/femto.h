@@ -152,22 +152,20 @@
 
 // RESET
     typedef struct {
-        volatile unsigned char  rst;
+        volatile unsigned short       rst;
+        const volatile unsigned short cause;
+        const volatile unsigned       tagval;
     } femto_reset_t;
 
     #define RESET ((femto_reset_t*)0xf0000000)
 
-    enum femto_reset_target {
-        RESET_ALL    ,
-        RESET_CORE   ,
-        RESET_ROM    ,
-        RESET_TCM    ,
-        RESET_SRAM   ,
-        RESET_NOR    ,
-        RESET_GPIO   ,
-        RESET_UART   ,
-        RESET_QSPINOR,
-        RESET_TIMER  ,
+    enum femto_reset_cause {
+        RST_CAUSE_POR ,
+        RST_CAUSE_HW  ,
+        RST_CAUSE_SW  ,
+        RST_FAULT_CORE,
+        RST_FAULT_IBUS,
+        RST_FAULT_DBUS,
     };
 
 #endif // _FEMTO_H

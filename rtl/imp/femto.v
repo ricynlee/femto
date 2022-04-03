@@ -23,19 +23,22 @@ module femto (
 );
     // fault signals
     wire    core_fault,
-            bus_fault,
-            rom_fault,
-            tcm_fault,
-            sram_fault,
-            nor_fault,
+            bus_i_fault,    bus_d_fault,
+            rom_i_fault,    rom_d_fault,
+            tcm_i_fault,    tcm_d_fault,
+            sram_i_fault,   sram_d_fault,
+            nor_i_fault,    nor_d_fault,
             gpio_fault,
             uart_fault,
             qspinor_fault,
             tmr_fault,
             eic_fault,
             rst_fault;
+    wire[`XLEN-1:0] core_fault_pc;
 
-    wire    fault;
+    wire            fault;
+    wire[`XLEN-1:0] fault_addr;
+    wire[7:0]       fault_cause;
 
     // reset signals
     wire[`RST_WIDTH-1:0]    rstn_vec; // rstn vector
@@ -120,29 +123,23 @@ module femto (
     wire[3:0]               ior_qspi_miso;
 
     /******************************************************************************************************************************************************************/
-    begin: FAULT_GEN
+    begin: FAULT_ARBITRATION
+        wire farb_fault = |{core_fault, bus_i_fault, bus_d_fault, rom_i_fault, rom_d_fault, tcm_i_fault, tcm_d_fault, sram_i_fault, sram_d_fault, nor_i_fault, nor_d_fault, gpio_fault, uart_fault, qspinor_fault, tmr_fault, eic_fault, rst_fault},
+             farb_ibus_fault = |{bus_i_fault, rom_i_fault, tcm_i_fault, sram_i_fault, nor_i_fault};
         dff #(
-            .VALID("sync"),
-            .RESET("sync")
-        ) req_acc_dff (
-            .clk (clk      ),
-            .rstn(misc_rstn),
-            .vld (|{
-                core_fault,
-                bus_fault,
-                rom_fault,
-                tcm_fault,
-                sram_fault,
-                nor_fault,
-                gpio_fault,
-                uart_fault,
-                qspinor_fault,
-                tmr_fault,
-                eic_fault,
-                rst_fault
+            .VALID("sync"   ),
+            .RESET("sync"   ),
+            .WIDTH(1+8+`XLEN)
+        ) fault_dff (
+            .clk (clk       ),
+            .rstn(misc_rstn ),
+            .vld (farb_fault),
+            .in ({
+                1'b1,
+                (core_fault ? `RST_FAULT_CORE : farb_ibus_fault ? `RST_FAULT_IBUS : `RST_FAULT_DBUS),
+                (core_fault ? core_fault_pc : farb_ibus_fault ? ibus_addr : dbus_addr)
             }),
-            .in (1'b1 ),
-            .out(fault)
+            .out({fault, fault_cause, fault_addr})
         );
     end
 
@@ -250,15 +247,14 @@ module femto (
                              dbus_rst_resp_sel     ? dbus_rst_rdata     : {`BUS_WIDTH{1'bx}};
 
         // fault
-        wire ibus_fault = ibus_req & ~|{ibus_rom_req_sel, ibus_tcm_req_sel, ibus_sram_req_sel, ibus_nor_req_sel};
-        wire dbus_fault = dbus_req & ~|{dbus_rom_req_sel, dbus_tcm_req_sel, dbus_sram_req_sel, dbus_nor_req_sel, dbus_gpio_req_sel, dbus_uart_req_sel, dbus_qspinor_req_sel, dbus_tmr_req_sel, dbus_eic_req_sel, dbus_rst_req_sel};
-        assign  bus_fault = ibus_fault | dbus_fault;
+        assign bus_i_fault = ibus_req & ~|{ibus_rom_req_sel, ibus_tcm_req_sel, ibus_sram_req_sel, ibus_nor_req_sel};
+        assign bus_d_fault = dbus_req & ~|{dbus_rom_req_sel, dbus_tcm_req_sel, dbus_sram_req_sel, dbus_nor_req_sel, dbus_gpio_req_sel, dbus_uart_req_sel, dbus_qspinor_req_sel, dbus_tmr_req_sel, dbus_eic_req_sel, dbus_rst_req_sel};
     end
 
     /******************************************************************************************************************************************************************/
     // interrupt
-    wire            ext_int_trigger, ext_int_handled;
-    wire[3:0]       ext_int_from;
+    wire      ext_int_trigger, ext_int_handled;
+    wire[3:0] ext_int_from;
 
     /******************************************************************************************************************************************************************/
     // core
@@ -267,8 +263,8 @@ module femto (
         .clk (clk      ),
         .rstn(core_rstn),
 
-        .core_fault   (core_fault),
-        .core_fault_pc(),
+        .core_fault   (core_fault   ),
+        .core_fault_pc(core_fault_pc),
 
         .ext_int_trigger(ext_int_trigger),
         .ext_int_handled(ext_int_handled),
@@ -336,7 +332,7 @@ module femto (
         wire                            bus_w_rb;
         wire[$clog2(`BUS_ACC_CNT)-1:0]  bus_acc;
         wire[`BUS_WIDTH-1:0]            bus_rdata, bus_wdata;
-        wire                            bus_req, bus_resp;
+        wire                            bus_req, bus_resp, bus_fault;
 
         bus_mux rom_bus_mux (
             .clk       (clk     ),
@@ -349,6 +345,7 @@ module femto (
             .dbus_rdata(dbus_rom_rdata),
             .dbus_req  (dbus_rom_req  ),
             .dbus_resp (dbus_rom_resp ),
+            .dbus_fault(rom_d_fault   ),
 
             .ibus_addr (ibus_addr     ),
             .ibus_w_rb (ibus_w_rb     ),
@@ -357,6 +354,7 @@ module femto (
             .ibus_rdata(ibus_rom_rdata),
             .ibus_req  (ibus_rom_req  ),
             .ibus_resp (ibus_rom_resp ),
+            .ibus_fault(rom_i_fault   ),
 
             .bus_addr  (bus_addr ),
             .bus_w_rb  (bus_w_rb ),
@@ -364,7 +362,8 @@ module femto (
             .bus_rdata (bus_rdata),
             .bus_wdata (bus_wdata),
             .bus_req   (bus_req  ),
-            .bus_resp  (bus_resp )
+            .bus_resp  (bus_resp ),
+            .bus_fault (bus_fault)
         );
 
         rom_controller rom_controller (
@@ -379,7 +378,7 @@ module femto (
             .req  (bus_req                    ),
             .resp (bus_resp                   ),
 
-            .fault(rom_fault)
+            .fault(bus_fault)
         );
     end
 
@@ -389,7 +388,7 @@ module femto (
         wire                            bus_w_rb;
         wire[$clog2(`BUS_ACC_CNT)-1:0]  bus_acc;
         wire[`BUS_WIDTH-1:0]            bus_rdata, bus_wdata;
-        wire                            bus_req, bus_resp;
+        wire                            bus_req, bus_resp, bus_fault;
 
         bus_mux tcm_bus_mux (
             .clk       (clk     ),
@@ -402,6 +401,7 @@ module femto (
             .dbus_rdata(dbus_tcm_rdata),
             .dbus_req  (dbus_tcm_req  ),
             .dbus_resp (dbus_tcm_resp ),
+            .dbus_fault(tcm_d_fault   ),
 
             .ibus_addr (ibus_addr     ),
             .ibus_w_rb (ibus_w_rb     ),
@@ -410,6 +410,7 @@ module femto (
             .ibus_rdata(ibus_tcm_rdata),
             .ibus_req  (ibus_tcm_req  ),
             .ibus_resp (ibus_tcm_resp ),
+            .ibus_fault(tcm_i_fault   ),
 
             .bus_addr  (bus_addr ),
             .bus_w_rb  (bus_w_rb ),
@@ -417,7 +418,8 @@ module femto (
             .bus_rdata (bus_rdata),
             .bus_wdata (bus_wdata),
             .bus_req   (bus_req  ),
-            .bus_resp  (bus_resp )
+            .bus_resp  (bus_resp ),
+            .bus_fault (bus_fault)
         );
 
         tcm_controller tcm_controller (
@@ -432,7 +434,7 @@ module femto (
             .req  (bus_req                    ),
             .resp (bus_resp                   ),
 
-            .fault(tcm_fault)
+            .fault(bus_fault)
         );
     end
 
@@ -442,7 +444,7 @@ module femto (
         wire                            bus_w_rb;
         wire[$clog2(`BUS_ACC_CNT)-1:0]  bus_acc;
         wire[`BUS_WIDTH-1:0]            bus_rdata, bus_wdata;
-        wire                            bus_req, bus_resp;
+        wire                            bus_req, bus_resp, bus_fault;
 
         bus_mux sram_bus_mux (
             .clk       (clk      ),
@@ -455,6 +457,7 @@ module femto (
             .dbus_rdata(dbus_sram_rdata),
             .dbus_req  (dbus_sram_req  ),
             .dbus_resp (dbus_sram_resp ),
+            .dbus_fault(sram_d_fault   ),
 
             .ibus_addr (ibus_addr      ),
             .ibus_w_rb (ibus_w_rb      ),
@@ -463,6 +466,7 @@ module femto (
             .ibus_rdata(ibus_sram_rdata),
             .ibus_req  (ibus_sram_req  ),
             .ibus_resp (ibus_sram_resp ),
+            .ibus_fault(sram_i_fault   ),
 
             .bus_addr  (bus_addr ),
             .bus_w_rb  (bus_w_rb ),
@@ -470,7 +474,8 @@ module femto (
             .bus_rdata (bus_rdata),
             .bus_wdata (bus_wdata),
             .bus_req   (bus_req  ),
-            .bus_resp  (bus_resp )
+            .bus_resp  (bus_resp ),
+            .bus_fault (bus_fault)
         );
 
         sram_controller sram_controller (
@@ -485,7 +490,7 @@ module femto (
             .req  (bus_req                     ),
             .resp (bus_resp                    ),
 
-            .fault(sram_fault),
+            .fault(bus_fault),
 
             .sram_ce_bar  (ior_sram_ce_bar  ),
             .sram_oe_bar  (ior_sram_oe_bar  ),
@@ -503,7 +508,7 @@ module femto (
         wire                            bus_w_rb;
         wire[$clog2(`BUS_ACC_CNT)-1:0]  bus_acc;
         wire[`BUS_WIDTH-1:0]            bus_rdata, bus_wdata;
-        wire                            bus_req, bus_resp;
+        wire                            bus_req, bus_resp, bus_fault;
 
         bus_mux qspinor_bus_mux (
             .clk       (clk     ),
@@ -516,6 +521,7 @@ module femto (
             .dbus_rdata(dbus_nor_rdata),
             .dbus_req  (dbus_nor_req  ),
             .dbus_resp (dbus_nor_resp ),
+            .dbus_fault(nor_d_fault   ),
 
             .ibus_addr (ibus_addr     ),
             .ibus_w_rb (ibus_w_rb     ),
@@ -524,6 +530,7 @@ module femto (
             .ibus_rdata(ibus_nor_rdata),
             .ibus_req  (ibus_nor_req  ),
             .ibus_resp (ibus_nor_resp ),
+            .ibus_fault(nor_i_fault   ),
 
             .bus_addr  (bus_addr ),
             .bus_w_rb  (bus_w_rb ),
@@ -531,7 +538,8 @@ module femto (
             .bus_rdata (bus_rdata),
             .bus_wdata (bus_wdata),
             .bus_req   (bus_req  ),
-            .bus_resp  (bus_resp )
+            .bus_resp  (bus_resp ),
+            .bus_fault (bus_fault)
         );
 
         qspinor_controller qspinor_controller (
@@ -547,7 +555,7 @@ module femto (
             .nor_req  (bus_req                    ),
             .nor_resp (bus_resp                   ),
 
-            .nor_fault(nor_fault),
+            .nor_fault(bus_fault),
 
             .qspinor_addr (dbus_addr[`QSPINOR_VA_WIDTH-1:0]),
             .qspinor_w_rb (dbus_w_rb                       ),
@@ -650,6 +658,10 @@ module femto (
         .rst_ib(rstn    ),
         .rst_ob(rstn_vec),
 
+        .soc_fault      (fault      ),
+        .soc_fault_cause(fault_cause),
+        .soc_fault_addr (fault_addr ),
+
         .addr (dbus_addr[`RST_VA_WIDTH-1:0]),
         .w_rb (dbus_w_rb                   ),
         .acc  (dbus_acc                    ),
@@ -675,6 +687,7 @@ module bus_mux(
     input wire[`BUS_WIDTH-1:0]              dbus_wdata,
     input wire                              dbus_req,
     output reg                              dbus_resp,
+    output reg                              dbus_fault,
 
     // instruction bus interface
     input wire[`XLEN-1:0]                   ibus_addr, // byte addr
@@ -684,6 +697,7 @@ module bus_mux(
     input wire[`BUS_WIDTH-1:0]              ibus_wdata,
     input wire                              ibus_req,
     output reg                              ibus_resp,
+    output reg                              ibus_fault,
 
     // memory bus interface
     output reg[`XLEN-1:0]                   bus_addr, // byte addr
@@ -692,7 +706,8 @@ module bus_mux(
     input wire[`BUS_WIDTH-1:0]              bus_rdata,
     output reg[`BUS_WIDTH-1:0]              bus_wdata,
     output reg                              bus_req,
-    input wire                              bus_resp
+    input wire                              bus_resp,
+    input wire                              bus_fault
 );
     wire[`XLEN-1:0] ibus_req_addr;
     wire    ibus_req_w_rb;
@@ -819,20 +834,26 @@ module bus_mux(
     always @ (*) case (state)
         default: begin
             dbus_resp = 1'b0;
+            dbus_fault = 1'b0;
             dbus_rdata = {`BUS_WIDTH{1'bx}};
             ibus_resp = 1'b0;
+            ibus_fault = 1'b0;
             ibus_rdata = {`BUS_WIDTH{1'bx}};
         end
         I: begin
             dbus_resp = 1'b0;
+            dbus_fault = 1'b0;
             dbus_rdata = {`BUS_WIDTH{1'bx}};
             ibus_resp = bus_resp;
+            ibus_fault = bus_fault;
             ibus_rdata = bus_rdata;
         end
         D: begin
             dbus_resp = bus_resp;
+            dbus_fault = bus_fault;
             dbus_rdata = bus_rdata;
             ibus_resp = 1'b0;
+            ibus_fault = 1'b0;
             ibus_rdata = {`BUS_WIDTH{1'bx}};
         end
     endcase

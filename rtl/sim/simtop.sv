@@ -8,8 +8,11 @@ module simtop #(
     reg clk = 0;
     initial forever #41.667 clk<=~clk;
 
-    reg rst = 1;
-    initial #200us @(negedge clk) rst = 0;
+    initial begin
+        // force top.femto.rstn = 0;
+        // #25us;
+        force top.femto.rstn = 1;
+    end
 
     wire [3:0] led;
     wire uart_rxd, uart_txd;
@@ -57,7 +60,7 @@ module simtop #(
 
     wrapper top (
         .sysclk     (clk),
-        .sysrst     (rst),
+        .sysrst     (1'b0),
         .led_r      (led[3]),
         .led_g      (led[2]),
         .led_b      (led[1]),

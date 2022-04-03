@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-int main(){
+void main(void){
     *((uint8_t*)SRAM) = 0x5a;
     if (*((uint8_t*)SRAM) != 0x5a)
         trigger_fail();
@@ -17,5 +17,4 @@ int main(){
         trigger_fail();
 
     trigger_pass();
-    return 0;
 }
