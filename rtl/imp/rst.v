@@ -74,9 +74,11 @@ module rst_controller (
     assign rst_ob = rst_r;
 
     always @ (posedge clk) begin
-        if (~rst_ib) begin // external reset input: higher priority
+        if (~rst_ib) begin // external reset input: highest priority
             rst_r <= {`RST_WIDTH{1'b0}};
         end else if (req & ~invld & wdata[0]) begin
+            rst_r <= {`RST_WIDTH{1'b0}};
+        end else if (soc_fault) begin
             rst_r <= {`RST_WIDTH{1'b0}};
         end else begin
             rst_r <= {`RST_WIDTH{1'b1}};
