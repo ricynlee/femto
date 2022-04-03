@@ -37,9 +37,8 @@ module rst_controller (
     wire invld_addr = (addr != 0) && (addr != 2) && (addr != 4);
     wire invld_acc  = (addr==4) ? (acc != `BUS_ACC_4B) : (acc != `BUS_ACC_2B);
     wire invld_wr   = addr ? w_rb : ~w_rb;
-    wire invld_d    = 0;
 
-    wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
+    wire invld      = |{invld_addr,invld_acc,invld_wr};
     assign fault    = req & invld;
 
     // rst info

@@ -810,50 +810,50 @@ module bus_mux(
         D:       bus_req = bus_resp & (ibus_req | ibus_access_ongoing | dbus_req);
     endcase
 
-    always @ (*) case (next_state)
+    always @ (*) case (next_state) // req operation (combinatorial fault operation)
         default: begin
             bus_addr = {`XLEN{1'bx}};
             bus_w_rb = 1'bx;
             bus_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
             bus_wdata = {`BUS_WIDTH{1'bx}};
+            dbus_fault = 1'b0;
+            ibus_fault = 1'b0;
         end
         I: begin
             bus_addr = ibus_req_addr;
             bus_w_rb = ibus_req_w_rb;
             bus_acc = ibus_req_acc;
             bus_wdata = ibus_req_wdata;
+            dbus_fault = 1'b0;
+            ibus_fault = bus_fault;
         end
         D: begin
             bus_addr = dbus_req_addr;
             bus_w_rb = dbus_req_w_rb;
             bus_acc = dbus_req_acc;
             bus_wdata = dbus_req_wdata;
+            dbus_fault = bus_fault;
+            ibus_fault = 1'b0;
         end
     endcase
 
-    always @ (*) case (state)
+    always @ (*) case (state) // resp operation
         default: begin
             dbus_resp = 1'b0;
-            dbus_fault = 1'b0;
             dbus_rdata = {`BUS_WIDTH{1'bx}};
             ibus_resp = 1'b0;
-            ibus_fault = 1'b0;
             ibus_rdata = {`BUS_WIDTH{1'bx}};
         end
         I: begin
             dbus_resp = 1'b0;
-            dbus_fault = 1'b0;
             dbus_rdata = {`BUS_WIDTH{1'bx}};
             ibus_resp = bus_resp;
-            ibus_fault = bus_fault;
             ibus_rdata = bus_rdata;
         end
         D: begin
             dbus_resp = bus_resp;
-            dbus_fault = bus_fault;
             dbus_rdata = bus_rdata;
             ibus_resp = 1'b0;
-            ibus_fault = 1'b0;
             ibus_rdata = {`BUS_WIDTH{1'bx}};
         end
     endcase

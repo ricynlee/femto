@@ -5,7 +5,7 @@ module dff #( // D-type flip-flop
     parameter   RESET       = "none", // async, sync, none
     parameter   CLEAR       = "none", // async, sync, none
     parameter   VALID       = "none", // async, sync, none
-    parameter   INITIALIZER = 0 // reset value
+    parameter   INITIALIZER = {WIDTH{1'b0}} // reset value
 )(
     input wire              clk,
     input wire              rstn,

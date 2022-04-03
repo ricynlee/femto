@@ -36,9 +36,8 @@ module uart_controller(
     wire invld_addr = 0;
     wire invld_acc  = (acc != `BUS_ACC_1B);
     wire invld_wr   = ((addr==0 && ~w_rb) || ((addr==1 || addr==2) && w_rb));
-    wire invld_d    = 0;
 
-    wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
+    wire invld      = |{invld_addr,invld_acc,invld_wr};
     assign fault    = req & invld;
 
     // resp generation

@@ -18,9 +18,8 @@ module tcm_controller(
     wire invld_addr = 0;
     wire invld_acc  = (addr[0]==1'd1 && acc!=`BUS_ACC_1B) || (addr[1:0]==2'd2 && acc==`BUS_ACC_4B);
     wire invld_wr   = 0;
-    wire invld_d    = 0;
 
-    wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
+    wire invld      = |{invld_addr,invld_acc,invld_wr};
     assign fault    = req & invld;
 
     // resp generation

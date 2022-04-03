@@ -28,9 +28,8 @@ module timer_controller # (
     wire invld_addr = (addr!=0);
     wire invld_acc  = (acc!=`BUS_ACC_4B);
     wire invld_wr   = 0;
-    wire invld_d    = 0;
 
-    wire invld      = |{invld_addr,invld_acc,invld_wr,invld_d};
+    wire invld      = |{invld_addr,invld_acc,invld_wr};
     assign fault    = req & invld;
 
     // resp generation
