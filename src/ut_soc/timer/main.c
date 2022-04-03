@@ -5,7 +5,7 @@
 
 const uint32_t itv = 64;
 
-void main(void){
+void main(void) {
     TIMER->tr = itv;
 
     for (int i=0; i<24; i++);

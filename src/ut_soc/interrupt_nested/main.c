@@ -4,7 +4,7 @@
 
 volatile bool undone = true;
 
-void main(void){
+void main(void) {
     enable_interrupt(true);
     trigger_extint(0x6);
     while(undone);

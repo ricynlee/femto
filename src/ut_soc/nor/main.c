@@ -12,7 +12,7 @@ void test_144read();
 void test_222read();
 void test_444read();
 
-void main(void){
+void main(void) {
     select_nor(UT_QSPI);
     test_read();
     test_111read();

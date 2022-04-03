@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void main(void){
+void main(void) {
     GPIO->dir=0xeu;
     GPIO->io =0x4u;
     GPIO->io =0xau;

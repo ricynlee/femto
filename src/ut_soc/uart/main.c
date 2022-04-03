@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void main(void){
+void main(void) {
     while (!(UART->txqsr & UART_TXQSR_RDY_MASK));
 
     UART->txd=0x55u;

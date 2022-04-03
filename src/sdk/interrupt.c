@@ -23,7 +23,7 @@ void enable_interrupt(bool enable) {
 
 // this works with femto only
 #define BEGIN_NESTABLE_SEGMENT() \
-    asm(                                           \
+    asm volatile(                                           \
         "c.addi sp, -4;"                           \
         "csrr   t1, mstatus;"                      \
         "c.swsp t1, 4(sp);"                        \
@@ -35,7 +35,7 @@ void enable_interrupt(bool enable) {
 
 // this works with femto only
 #define END_NESTABLE_SEGMENT() \
-    asm(                                           \
+    asm volatile(                                           \
         "csrci mstatus, " CSR_MSTATUS_MIE_MASK ";" \
         "c.lwsp t1, 0(sp);"                        \
         "csrw   mepc, t1;"                         \

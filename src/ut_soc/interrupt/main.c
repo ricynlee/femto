@@ -4,7 +4,7 @@
 
 volatile bool undone = true;
 
-void main(void){
+void main(void) {
     trigger_extint(0x6);
     ut_putc('f');
     ut_putc('=');
