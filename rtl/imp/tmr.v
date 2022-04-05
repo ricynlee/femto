@@ -7,6 +7,8 @@ module timer_controller # (
     input wire  clk,
     input wire  rstn, // sync
 
+    output wire interrupt,
+
     // user interface
     input wire[`TMR_VA_WIDTH-1:0]   addr,
     input wire                      w_rb,
@@ -22,10 +24,14 @@ module timer_controller # (
      * Register map
      *  Name    | Address | Size | Access | Note
      *  TR      | 0       | 4    | R/W    | -
+     *  INTCSR  | 4       | 4    | R/W    | -
+     *
+     * INTCSR
+     *  (31:8) | INTEN(7) | (6:0)
      */
 
     // fault generation
-    wire invld_addr = (addr!=0);
+    wire invld_addr = (addr[1:0]!=0);
     wire invld_acc  = (acc!=`BUS_ACC_4B);
     wire invld_wr   = 0;
 
@@ -43,9 +49,10 @@ module timer_controller # (
 
     // register operation
     reg[31:0]   tr;
+    reg         inten;
     always @ (posedge clk)
         if (req & ~invld & ~w_rb)
-            rdata <= tr;
+            rdata <= addr[2] ? {24'd0, inten, 7'd0} : tr;
 
     reg[15:0]   div;
     always @ (posedge clk) begin
@@ -68,10 +75,16 @@ module timer_controller # (
     always @ (posedge clk) begin
         if (~rstn) begin
             tr <= 0;
+            inten <= 1'b0;
         end else if (req & ~invld & w_rb) begin
-            tr <= wdata;
+            if (addr[2])
+                inten <= wdata[7];
+            else
+                tr <= wdata;
         end else if (tr && !div) begin
             tr <= tr-1;
         end
     end
+
+    assign interrupt = inten && (tr==1) && (div==0);
 endmodule

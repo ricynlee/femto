@@ -1,7 +1,7 @@
 `include "timescale.vh"
 `include "femto.vh"
 
-(*keep_hierarchy="true"*)
+// for VLA dbg: (*keep_hierarchy="true"*)
 module femto (
     input wire  clk ,
     input wire  rstn,
@@ -253,8 +253,8 @@ module femto (
 
     /******************************************************************************************************************************************************************/
     // interrupt
-    wire      ext_int_trigger, ext_int_handled;
-    wire[3:0] ext_int_from;
+    wire                       ext_int_trigger, ext_int_handled;
+    wire[`EXT_INT_SRC_NUM-1:0] ext_int_from;
 
     /******************************************************************************************************************************************************************/
     // core
@@ -603,6 +603,8 @@ module femto (
         .rx(ior_uart_rx),
         .tx(ior_uart_tx),
 
+        .interrupt(ext_int_from[`EXT_INT_SRC_UART]),
+
         .addr (dbus_addr[`UART_VA_WIDTH-1:0]),
         .w_rb (dbus_w_rb                    ),
         .acc  (dbus_acc                     ),
@@ -618,6 +620,8 @@ module femto (
     timer_controller timer_controller (
         .clk (clk     ),
         .rstn(tmr_rstn),
+
+        .interrupt(ext_int_from[`EXT_INT_SRC_TMR]),
 
         .addr (dbus_addr[`TMR_VA_WIDTH-1:0]),
         .w_rb (dbus_w_rb                   ),

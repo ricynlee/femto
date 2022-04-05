@@ -8,6 +8,8 @@ module uart_controller(
     input wire  rx,
     output wire tx,
 
+    output wire interrupt,
+
     // user interface
     input wire[`UART_VA_WIDTH-1:0]  addr,
     input wire                      w_rb,
@@ -23,13 +25,13 @@ module uart_controller(
      *  Name    | Address | Size | Access | Note
      *  TXD     | 0       | 1    | W      | -
      *  RXD     | 1       | 1    | R      | -
-     *  TXQSR   | 2       | 1    | R      | -
+     *  TXQCSR  | 2       | 1    | R/W    | -
      *  RXQCSR  | 3       | 1    | R/W    | -
      *
-     * TXQSR
-     *  (7:1) | RDY(0)
+     * TXQCSR
+     *  INTEN(7) | (6:1) | RDY(0)
      * RXQCSR
-     *  (7:2) | CLR(1) | RDY(0)
+     *  INTEN(7) | (6:2) | CLR(1) | RDY(0)
      */
 
     // fault generation

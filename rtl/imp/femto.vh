@@ -12,7 +12,10 @@
 
 /* interrupt */
 `define INT_RST_EN          (1'b0) // interrupt enabled or not at rst
-`define EXT_INT_SRC_NUM     (4)    // <=XLEN
+`define EXT_INT_SRC_NUM     (2)    // <=XLEN
+
+`define EXT_INT_SRC_TMR     (0)
+`define EXT_INT_SRC_UART    (1)
 
 /* bus */
 `define BUS_WIDTH           (`XLEN) // bus width
@@ -68,7 +71,7 @@
 `define QSPINOR_SEL_MASK    (~`QSPINOR_VA_MASK)
 
 `define TMR_ADDR            (32'h7000_0000) // system timer
-`define TMR_VA_MASK         (32'h0000_0003) // 4B valid address range
+`define TMR_VA_MASK         (32'h0000_0007) // 8B valid address range
 `define TMR_VA_WIDTH        ($clog2(`TMR_VA_MASK+1))
 `define TMR_SEL_MASK        (~`TMR_VA_MASK)
 
