@@ -32,20 +32,26 @@
     typedef struct {
         volatile unsigned char       txd;
         const volatile unsigned char rxd;
-        const volatile unsigned char txqsr;
+        volatile unsigned char       txqcsr;
         volatile unsigned char       rxqcsr;
     } femto_uart_t;
 
     #define UART    ((femto_uart_t*)0x50000000)
 
-    #define UART_TXQSR_RDY_SHIFT    (0u)
-    #define UART_TXQSR_RDY_MASK     (MASK_WIDTH(1u)<<UART_TXQSR_RDY_SHIFT)
+    #define UART_TXQCSR_RDY_SHIFT   (0u)
+    #define UART_TXQCSR_RDY_MASK    (MASK_WIDTH(1u)<<UART_TXQCSR_RDY_SHIFT)
+
+    #define UART_TXQCSR_INTEN_SHIFT (7u)
+    #define UART_TXQCSR_INTEN_MASK  (MASK_WIDTH(1u)<<UART_TXQCSR_INTEN_SHIFT)
 
     #define UART_RXQCSR_RDY_SHIFT   (0u)
     #define UART_RXQCSR_RDY_MASK    (MASK_WIDTH(1u)<<UART_RXQCSR_RDY_SHIFT)
 
     #define UART_RXQCSR_CLR_SHIFT   (1u)
     #define UART_RXQCSR_CLR_MASK    (MASK_WIDTH(1u)<<UART_RXQCSR_CLR_SHIFT)
+
+    #define UART_RXQCSR_INTEN_SHIFT (7u)
+    #define UART_RXQCSR_INTEN_MASK  (MASK_WIDTH(1u)<<UART_RXQCSR_INTEN_SHIFT)
 
 // QSPI NOR
     typedef struct {
@@ -139,7 +145,11 @@
 // TIMER
     typedef struct {
         volatile unsigned   tr;
+        volatile unsigned   intcsr;
     } femto_timer_t;
+
+    #define TIMER_INTCSR_INTEN_SHIFT    (7u)
+    #define TIMER_INTCSR_INTEN_MASK     (MASK_WIDTH(1u)<<TIMER_INTCSR_INTEN_SHIFT)
 
     #define TIMER ((femto_timer_t*)0x70000000)
 

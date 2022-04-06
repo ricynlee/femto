@@ -82,8 +82,8 @@ module uart_controller(
             rxinten <= 1'b0;
         end else if (req & ~invld) case (addr)
             1: if (~w_rb) rdata[7:0] <= uart_rx_data;
-            2: if (~w_rb) rdata[7:0] <= {7'd0, ~uart_txq_full};  else txinten <= wdata[7];
-            3: if (~w_rb) rdata[7:0] <= {7'd0, ~uart_rxq_empty}; else rxinten <= wdata[7];
+            2: if (~w_rb) rdata[7:0] <= {txinten, 6'd0, ~uart_txq_full};  else txinten <= wdata[7];
+            3: if (~w_rb) rdata[7:0] <= {rxinten, 6'd0, ~uart_rxq_empty}; else rxinten <= wdata[7];
         endcase
     end
 
