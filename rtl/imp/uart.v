@@ -75,13 +75,19 @@ module uart_controller(
     assign uart_rx_req=(req & ~invld) && (addr==1) && ~w_rb;
     assign uart_rxq_clr=(req & ~invld) && (addr==3) && w_rb && wdata[1];
 
+    reg txinten, rxinten;
     always @ (posedge clk) begin
-        if (req & ~invld & ~w_rb) case (addr)
-            1: rdata[7:0] <= uart_rx_data;
-            2: rdata[7:0] <= {7'd0, ~uart_txq_full};
-            3: rdata[7:0] <= {7'd0, ~uart_rxq_empty};
+        if (~rstn) begin
+            txinten <= 1'b0;
+            rxinten <= 1'b0;
+        end else if (req & ~invld) case (addr)
+            1: if (~w_rb) rdata[7:0] <= uart_rx_data;
+            2: if (~w_rb) rdata[7:0] <= {7'd0, ~uart_txq_full};  else txinten <= wdata[7];
+            3: if (~w_rb) rdata[7:0] <= {7'd0, ~uart_rxq_empty}; else rxinten <= wdata[7];
         endcase
     end
+
+    assign interrupt = (txinten & ~uart_txq_full) | (rxinten & ~uart_rxq_empty);
 endmodule
 
 module uart_transceiver(
