@@ -1,7 +1,6 @@
 > **`TODO`**  
-> - 更新SDK:timer以匹配新的寄存器定义  
-> - 更新SDK:uart以匹配新的寄存器定义
-> - 更新simtop以支持新的中断源
+> - 更新simtop以支持新的中断源  
+> - timer uart gpio eic rst划为低速外设  
 > - 测试timer和uart的总线访问行为
 > - 关注timer.tr写0是否触发中断
 
