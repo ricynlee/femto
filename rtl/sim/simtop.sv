@@ -88,6 +88,5 @@ module simtop #(
 `include "simfeature/endsim.vh"
 `include "simfeature/print.vh"
 `include "simfeature/norsel.vh"
-`include "simfeature/interrupt.vh"
 
 endmodule

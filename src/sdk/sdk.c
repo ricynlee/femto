@@ -72,7 +72,7 @@ bool uart_rx_ready(void) {
 }
 
 bool uart_tx_ready(void) {
-    return (UART->txqsr & UART_TXQSR_RDY_MASK) ? true : false;
+    return (UART->txqcsr & UART_TXQCSR_RDY_MASK) ? true : false;
 }
 
 void uart_clear_rxq(void) {

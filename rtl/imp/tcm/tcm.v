@@ -5,14 +5,14 @@ module tcm_controller(
     input wire clk,
     input wire rstn,
 
-    input wire[`TCM_VA_WIDTH-1:0]   addr,
-    input wire                      w_rb,
-    input wire[`BUS_ACC_WIDTH-1:0]  acc,
-    output reg[`BUS_WIDTH-1:0]      rdata,
-    input wire[`BUS_WIDTH-1:0]      wdata,
-    input wire                      req,
-    output reg                      resp,
-    output wire                     fault
+    input wire[$clog2(`TCM_SIZE)-1:0]   addr,
+    input wire                          w_rb,
+    input wire[`BUS_ACC_WIDTH-1:0]      acc,
+    output reg[`BUS_WIDTH-1:0]          rdata,
+    input wire[`BUS_WIDTH-1:0]          wdata,
+    input wire                          req,
+    output reg                          resp,
+    output wire                         fault
 );
     // fault generation
     wire invld_addr = 0;

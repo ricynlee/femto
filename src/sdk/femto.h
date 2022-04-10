@@ -164,18 +164,19 @@
     typedef struct {
         volatile unsigned short       rst;
         const volatile unsigned short cause;
-        const volatile unsigned       tagval;
+        const volatile unsigned       info;
     } femto_reset_t;
 
     #define RESET ((femto_reset_t*)0xf0000000)
 
     enum femto_reset_cause {
-        RST_CAUSE_POR ,
-        RST_CAUSE_HW  ,
-        RST_CAUSE_SW  ,
-        RST_FAULT_CORE,
-        RST_FAULT_IBUS,
-        RST_FAULT_DBUS,
+        RST_CAUSE_POR   ,
+        RST_CAUSE_HW    ,
+        RST_CAUSE_SW    ,
+        RST_FAULT_CORE  ,
+        RST_FAULT_IBUS  ,
+        RST_FAULT_DBUS  ,
+        RST_FAULT_PERIPH
     };
 
 #endif // _FEMTO_H

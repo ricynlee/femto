@@ -11,21 +11,21 @@ module rst_controller (
     input wire[7:0]       soc_fault_cause,
     input wire[`XLEN-1:0] soc_fault_addr,
 
-    input wire[`RST_VA_WIDTH-1:0]   addr,
-    input wire                      w_rb,
-    input wire[`BUS_ACC_WIDTH-1:0]  acc,
-    output reg[`BUS_WIDTH-1:0]      rdata,
-    input wire[`BUS_WIDTH-1:0]      wdata,
-    input wire                      req,
-    output wire                     resp,
-    output wire                     fault
+    input wire[$clog2(`RST_SIZE)-1:0]   addr,
+    input wire                          w_rb,
+    input wire[`BUS_ACC_WIDTH-1:0]      acc,
+    output reg[`BUS_WIDTH-1:0]          rdata,
+    input wire[`BUS_WIDTH-1:0]          wdata,
+    input wire                          req,
+    output wire                         resp,
+    output wire                         fault
 );
     /*
      * Register map
      *  Name   | Address | Size | Access | Note
      *  RST    | 0       | 2    | W      | -
      *  CAUSE  | 2       | 2    | R      | -
-     *  TAGVAL | 4       | 4    | R      | Core fault PC/bus fault addr
+     *  INFO   | 4       | 4    | R      | Core fault PC/bus fault addr
      *
      * RST
      *  (15:1) | RESET(0)
@@ -43,7 +43,7 @@ module rst_controller (
 
     // rst info
     reg[7:0]       rst_cause_r = `RST_CAUSE_POR;
-    reg[`XLEN-1:0] rst_tagval_r;
+    reg[`XLEN-1:0] rst_info_r;
     always @ (posedge clk) begin
         if (~rst_ib)
             rst_cause_r <= `RST_CAUSE_HW;
@@ -51,7 +51,7 @@ module rst_controller (
             rst_cause_r <= `RST_CAUSE_SW;
         else if (soc_fault) begin
             rst_cause_r <= soc_fault_cause;
-            rst_tagval_r <= soc_fault_addr;
+            rst_info_r <= soc_fault_addr;
         end
     end
 
@@ -63,8 +63,8 @@ module rst_controller (
         if (req & ~invld) begin
             if (addr[1]) // CAUSE
                 rdata <= rst_cause_r;
-            else if (addr[2]) // TAGVAL
-                rdata <= rst_tagval_r;
+            else if (addr[2]) // INFO
+                rdata <= rst_info_r;
         end
     end
 

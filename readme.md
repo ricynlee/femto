@@ -1,8 +1,6 @@
 > **`TODO`**  
-> - 更新simtop以支持新的中断源  
-> - timer uart gpio eic rst划为低速外设  
-> - 测试timer和uart的总线访问行为
-> - 关注timer.tr写0是否触发中断
+> - 测试timer和uart的总线访问行为  
+> - 关注timer.tr写0是否触发中断  
 
 ABI要求:RV32EC指令集/RV32E寄存器模型和使用约定/推荐ILP32E数据模型/仅支持内存对齐访问
 

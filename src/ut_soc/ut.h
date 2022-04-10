@@ -33,10 +33,4 @@
     static void ut_putc(char c) { UT = (UT_PRN | c); }
     static void ut_print(const char* const s) { for (const char* p=s; *p; p++) UT = (UT_PRN | (*p)); UT = (UT_PRN | '\n'); };
 
-// Interrupt trigger
-    enum {
-        UT_INT = 0x494e5400u, // INT#
-    };
-    static void trigger_extint(int int_flag) { UT = (UT_INT | (int_flag & 0xf)); };
-
 #endif // _FEMTO_UT_H

@@ -8,16 +8,16 @@ module extint_controller (
     output wire ext_int_trigger,
     input wire  ext_int_handled,
     // ip interface
-    input wire[`EXT_INT_SRC_NUM-1:0] ext_int_from, // int from ip, posedge active
+    input wire[`EXT_INT_SRC_NUM-1:0] ext_int_src_vect, // int from ip, posedge active
     // bus interface
-    input wire[`EIC_VA_WIDTH-1:0]  addr,
-    input wire                     w_rb,
-    input wire[`BUS_ACC_WIDTH-1:0] acc,
-    output reg[`BUS_WIDTH-1:0]     rdata,
-    input wire[`BUS_WIDTH-1:0]     wdata,
-    input wire                     req,
-    output reg                     resp,
-    output wire                    fault
+    input wire[$clog2(`EIC_SIZE)-1:0]   addr,
+    input wire                          w_rb,
+    input wire[`BUS_ACC_WIDTH-1:0]      acc,
+    output reg[`BUS_WIDTH-1:0]          rdata,
+    input wire[`BUS_WIDTH-1:0]          wdata,
+    input wire                          req,
+    output reg                          resp,
+    output wire                         fault
 );
     // interrupt posedge detection
     wire[`EXT_INT_SRC_NUM-1:0] ext_int_pulse;
@@ -27,10 +27,10 @@ module extint_controller (
             if (~rstn) begin
                 prev_ext_int_from <= {`EXT_INT_SRC_NUM{1'b0}};
             end else begin
-                prev_ext_int_from <= ext_int_from;
+                prev_ext_int_from <= ext_int_vect;
             end
         end
-        assign ext_int_pulse = ~prev_ext_int_from & ext_int_from;
+        assign ext_int_pulse = ~prev_ext_int_from & ext_int_vect;
     end // PEDGE_DETECT
 
     // interrupt flag: one-hot interrupt number

@@ -11,14 +11,14 @@ module uart_controller(
     output wire interrupt,
 
     // user interface
-    input wire[`UART_VA_WIDTH-1:0]  addr,
-    input wire                      w_rb,
-    input wire[`BUS_ACC_WIDTH-1:0]  acc,
-    output reg[`BUS_WIDTH-1:0]      rdata,
-    input wire[`BUS_WIDTH-1:0]      wdata,
-    input wire                      req,
-    output reg                      resp,
-    output wire                     fault
+    input wire[$clog2(`UART_SIZE)-1:0]  addr,
+    input wire                          w_rb,
+    input wire[`BUS_ACC_WIDTH-1:0]      acc,
+    output reg[`BUS_WIDTH-1:0]          rdata,
+    input wire[`BUS_WIDTH-1:0]          wdata,
+    input wire                          req,
+    output reg                          resp,
+    output wire                         fault
 );
     /*
      * Register map

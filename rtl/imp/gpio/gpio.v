@@ -1,21 +1,22 @@
 `include "timescale.vh"
+`include "femto.vh"
 
-module gpio_controller(
-    input wire  clk,
-    input wire  rstn,
+module gpio_controller (
+    input wire clk,
+    input wire rstn,
 
-    output reg[`GPIO_WIDTH-1:0]     dir,
-    input wire[`GPIO_WIDTH-1:0]     i,
-    output reg[`GPIO_WIDTH-1:0]     o,
+    output reg[`GPIO_WIDTH-1:0] dir,
+    input wire[`GPIO_WIDTH-1:0] i,
+    output reg[`GPIO_WIDTH-1:0] o,
 
-    input wire[`GPIO_VA_WIDTH-1:0]  addr,
-    input wire                      w_rb,
-    input wire[`BUS_ACC_WIDTH-1:0]  acc,
-    output wire[`BUS_WIDTH-1:0]     rdata,
-    input wire[`BUS_WIDTH-1:0]      wdata,
-    input wire                      req,
-    output reg                      resp,
-    output wire                     fault
+    input wire[$clog2(`GPIO_SIZE)-1:0] addr,
+    input wire                         w_rb,
+    input wire[`BUS_ACC_WIDTH-1:0]     acc,
+    output wire[`BUS_WIDTH-1:0]        rdata,
+    input wire[`BUS_WIDTH-1:0]         wdata,
+    input wire                         req,
+    output reg                         resp,
+    output wire                        fault
 );
     /*
      * Register map
