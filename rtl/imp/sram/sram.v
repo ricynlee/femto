@@ -32,12 +32,12 @@ module sram_controller(
     assign fault    = req & invld;
 
     // latch request
-    wire                     req_w_rb;
-    wire[`SRAM_VA_WIDTH-1:0] req_addr;
-    wire[`BUS_ACC_WIDTH-1:0] req_acc;
-    wire[`BUS_WIDTH-1:0]     req_wdata;
+    wire                         req_w_rb;
+    wire[$clog2(`SRAM_SIZE)-1:0] req_addr;
+    wire[`BUS_ACC_WIDTH-1:0]     req_acc;
+    wire[`BUS_WIDTH-1:0]         req_wdata;
     dff #(
-        .WIDTH(1+`SRAM_VA_WIDTH+`BUS_ACC_WIDTH+`BUS_WIDTH),
+        .WIDTH(1+$clog2(`SRAM_SIZE)+`BUS_ACC_WIDTH+`BUS_WIDTH),
         .VALID("async")
     ) req_acc_dff (
         .clk(clk         ),

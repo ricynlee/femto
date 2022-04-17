@@ -32,10 +32,10 @@ module rom_controller(
     end
 
     // array operations
-    wire [31:0]  array[0:(1<<(`ROM_VA_WIDTH-2))-1];
+    wire [31:0] array[0:(1<<($clog2(`ROM_SIZE)-2))-1];
 
-    wire [`ROM_VA_WIDTH-3:0]    cell_addr = addr[`ROM_VA_WIDTH-1:2];
-    wire [1:0]                  byte_sel[0:`BUS_ACC_CNT-1];
+    wire [$clog2(`ROM_SIZE)-3:0] cell_addr = addr[$clog2(`ROM_SIZE)-1:2];
+    wire [1:0]                   byte_sel[0:`BUS_ACC_CNT-1];
     assign byte_sel[`BUS_ACC_1B] = addr[1:0];
     assign byte_sel[`BUS_ACC_2B] = {addr[1], 1'b0};
     assign byte_sel[`BUS_ACC_4B] = 2'd0;
