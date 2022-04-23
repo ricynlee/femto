@@ -4,6 +4,42 @@
   <spirit:library>customized_ip</spirit:library>
   <spirit:name>femto_fault_encoder_0_0</spirit:name>
   <spirit:version>1.0</spirit:version>
+  <spirit:busInterfaces>
+
+    <spirit:busInterface>
+      <spirit:name>fault</spirit:name>
+      <spirit:busType spirit:vendor="ricynlee" spirit:library="user" spirit:name="femto_faultinfo_bus" spirit:version="1.0"/>
+      <spirit:abstractionType spirit:vendor="ricynlee" spirit:library="user" spirit:name="femto_faultinfo_bus_rtl" spirit:version="1.0"/>
+      <spirit:master/>
+      <spirit:portMaps>
+        <spirit:portMap>
+          <spirit:logicalPort>
+            <spirit:name>FAULT</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>fault</spirit:name>
+          </spirit:physicalPort>
+        </spirit:portMap>
+        <spirit:portMap>
+          <spirit:logicalPort>
+            <spirit:name>CAUSE</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>fault_cause</spirit:name>
+          </spirit:physicalPort>
+        </spirit:portMap>
+        <spirit:portMap>
+          <spirit:logicalPort>
+            <spirit:name>ADDR</spirit:name>
+          </spirit:logicalPort>
+          <spirit:physicalPort>
+            <spirit:name>fault_addr</spirit:name>
+          </spirit:physicalPort>
+        </spirit:portMap>
+      </spirit:portMaps>
+    </spirit:busInterface>
+
+  </spirit:busInterfaces>
   <spirit:model>
     <spirit:ports>
       <spirit:port>

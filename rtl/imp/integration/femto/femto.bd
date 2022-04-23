@@ -20,6 +20,102 @@
           <spirit:hierarchyRef spirit:library="BlockDiagram" spirit:name="femto_imp" spirit:vendor="xilinx.com" spirit:version="1.00.a"/>
         </spirit:view>
       </spirit:views>
+      <spirit:ports>
+        <spirit:port>
+          <spirit:name>clk</spirit:name>
+          <spirit:wire>
+            <spirit:direction>in</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>rstn</spirit:name>
+          <spirit:wire>
+            <spirit:direction>in</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>uart_rx</spirit:name>
+          <spirit:wire>
+            <spirit:direction>in</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>gpio</spirit:name>
+          <spirit:wire>
+            <spirit:direction>inout</spirit:direction>
+            <spirit:vector>
+              <spirit:left>3</spirit:left>
+              <spirit:right>0</spirit:right>
+            </spirit:vector>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>uart_tx</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>sram_ce_bar</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>sram_oe_bar</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>sram_we_bar</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>sram_data</spirit:name>
+          <spirit:wire>
+            <spirit:direction>inout</spirit:direction>
+            <spirit:vector>
+              <spirit:left>7</spirit:left>
+              <spirit:right>0</spirit:right>
+            </spirit:vector>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>pad_sram_addr_0</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+            <spirit:vector>
+              <spirit:left>18</spirit:left>
+              <spirit:right>0</spirit:right>
+            </spirit:vector>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>pad_qspi_sck_0</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>pad_qspi_csb_0</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>pad_qspi_sio_0</spirit:name>
+          <spirit:wire>
+            <spirit:direction>inout</spirit:direction>
+            <spirit:vector>
+              <spirit:left>3</spirit:left>
+              <spirit:right>0</spirit:right>
+            </spirit:vector>
+          </spirit:wire>
+        </spirit:port>
+      </spirit:ports>
     </spirit:model>
   </spirit:component>
 
@@ -230,138 +326,69 @@
     </spirit:componentInstances>
     <spirit:adHocConnections>
       <spirit:adHocConnection>
-        <spirit:name>dbus_conn_0_bus_fault</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="dbus_conn_0" spirit:portRef="bus_fault"/>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="dbus_fault"/>
+        <spirit:name>pad_clk_0_1</spirit:name>
+        <spirit:externalPortReference spirit:portRef="clk"/>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_clk"/>
       </spirit:adHocConnection>
       <spirit:adHocConnection>
-        <spirit:name>ibus_conn_0_bus_fault</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="ibus_conn_0" spirit:portRef="bus_fault"/>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="ibus_fault"/>
+        <spirit:name>pad_rstn_0_1</spirit:name>
+        <spirit:externalPortReference spirit:portRef="rstn"/>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_rstn"/>
       </spirit:adHocConnection>
       <spirit:adHocConnection>
-        <spirit:name>pbus_conn_0_bus_fault</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="pbus_conn_0" spirit:portRef="bus_fault"/>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="pbus_fault"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>ioring_0_clk</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="qspi_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="core_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="rom_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="sram_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="eic_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="tcm_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="rst_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="gpio_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="tmr_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="uart_wrapper_0" spirit:portRef="clk"/>
-        <spirit:internalPortReference spirit:componentRef="bus_bridge_0" spirit:portRef="clk"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>fault_encoder_0_fault</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="fault"/>
-        <spirit:internalPortReference spirit:componentRef="dbus_conn_0" spirit:portRef="bus_halt"/>
-        <spirit:internalPortReference spirit:componentRef="ibus_conn_0" spirit:portRef="bus_halt"/>
-        <spirit:internalPortReference spirit:componentRef="pbus_conn_0" spirit:portRef="bus_halt"/>
+        <spirit:name>pad_uart_rx_0_1</spirit:name>
+        <spirit:externalPortReference spirit:portRef="uart_rx"/>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_uart_rx"/>
       </spirit:adHocConnection>
       <spirit:adHocConnection>
         <spirit:name>Net</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="ibus_addr"/>
-        <spirit:internalPortReference spirit:componentRef="ibus_conn_0" spirit:portRef="m_addr"/>
+        <spirit:externalPortReference spirit:portRef="gpio"/>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_gpio"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>ioring_0_pad_uart_tx</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_uart_tx"/>
+        <spirit:externalPortReference spirit:portRef="uart_tx"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>ioring_0_pad_sram_ce_bar</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_sram_ce_bar"/>
+        <spirit:externalPortReference spirit:portRef="sram_ce_bar"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>ioring_0_pad_sram_oe_bar</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_sram_oe_bar"/>
+        <spirit:externalPortReference spirit:portRef="sram_oe_bar"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>ioring_0_pad_sram_we_bar</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_sram_we_bar"/>
+        <spirit:externalPortReference spirit:portRef="sram_we_bar"/>
       </spirit:adHocConnection>
       <spirit:adHocConnection>
         <spirit:name>Net1</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="dbus_addr"/>
-        <spirit:internalPortReference spirit:componentRef="dbus_conn_0" spirit:portRef="m_addr"/>
+        <spirit:externalPortReference spirit:portRef="sram_data"/>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_sram_data"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>ioring_0_pad_sram_addr</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_sram_addr"/>
+        <spirit:externalPortReference spirit:portRef="pad_sram_addr_0"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>ioring_0_pad_qspi_sck</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_qspi_sck"/>
+        <spirit:externalPortReference spirit:portRef="pad_qspi_sck_0"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>ioring_0_pad_qspi_csb</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_qspi_csb"/>
+        <spirit:externalPortReference spirit:portRef="pad_qspi_csb_0"/>
       </spirit:adHocConnection>
       <spirit:adHocConnection>
         <spirit:name>Net2</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="pbus_addr"/>
-        <spirit:internalPortReference spirit:componentRef="pbus_conn_0" spirit:portRef="m_addr"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>rst_wrapper_0_rst_ob</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="rst_wrapper_0" spirit:portRef="rst_ob"/>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="i"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>merger_0_o</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="merger_0" spirit:portRef="o"/>
-        <spirit:internalPortReference spirit:componentRef="eic_wrapper_0" spirit:portRef="ext_int_src"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>tmr_wrapper_0_interrupt</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="tmr_wrapper_0" spirit:portRef="interrupt"/>
-        <spirit:internalPortReference spirit:componentRef="merger_0" spirit:portRef="i0"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>uart_wrapper_0_interrupt</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="uart_wrapper_0" spirit:portRef="interrupt"/>
-        <spirit:internalPortReference spirit:componentRef="merger_0" spirit:portRef="i1"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o0</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o0"/>
-        <spirit:internalPortReference spirit:componentRef="core_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>eic_wrapper_0_ext_int_trigger</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="eic_wrapper_0" spirit:portRef="ext_int_trigger"/>
-        <spirit:internalPortReference spirit:componentRef="core_0" spirit:portRef="ext_int_trigger"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>core_0_ext_int_handled</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="core_0" spirit:portRef="ext_int_handled"/>
-        <spirit:internalPortReference spirit:componentRef="eic_wrapper_0" spirit:portRef="ext_int_handled"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o9</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o9"/>
-        <spirit:internalPortReference spirit:componentRef="fault_encoder_0" spirit:portRef="rstn"/>
-        <spirit:internalPortReference spirit:componentRef="bus_bridge_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o1</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o1"/>
-        <spirit:internalPortReference spirit:componentRef="rom_wrapper_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o2</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o2"/>
-        <spirit:internalPortReference spirit:componentRef="tcm_wrapper_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o3</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o3"/>
-        <spirit:internalPortReference spirit:componentRef="sram_wrapper_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o4</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o4"/>
-        <spirit:internalPortReference spirit:componentRef="qspi_wrapper_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o5</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o5"/>
-        <spirit:internalPortReference spirit:componentRef="eic_wrapper_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o6</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o6"/>
-        <spirit:internalPortReference spirit:componentRef="uart_wrapper_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o8</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o8"/>
-        <spirit:internalPortReference spirit:componentRef="tmr_wrapper_0" spirit:portRef="rstn"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>splitter_0_o7</spirit:name>
-        <spirit:internalPortReference spirit:componentRef="splitter_0" spirit:portRef="o7"/>
-        <spirit:internalPortReference spirit:componentRef="gpio_wrapper_0" spirit:portRef="rstn"/>
+        <spirit:externalPortReference spirit:portRef="pad_qspi_sio_0"/>
+        <spirit:internalPortReference spirit:componentRef="ioring_0" spirit:portRef="pad_qspi_sio"/>
       </spirit:adHocConnection>
     </spirit:adHocConnections>
   </spirit:design>
