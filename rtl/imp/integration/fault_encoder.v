@@ -29,6 +29,8 @@ module fault_encoder (
     input wire[`XLEN-1:0] pbus_addr,
     input wire[`XLEN-1:0] core_fault_pc,
 
+    output wire            halt, // halt bus activity upon fault
+
     output wire            fault,
     output wire[7:0]       fault_cause,
     output wire[`XLEN-1:0] fault_addr
@@ -75,4 +77,6 @@ module fault_encoder (
         .in  ({1'b1, fault_cause_comb, fault_addr_comb}),
         .out ({fault, fault_cause, fault_addr}         )
     );
+
+    assign halt = fault;
 endmodule

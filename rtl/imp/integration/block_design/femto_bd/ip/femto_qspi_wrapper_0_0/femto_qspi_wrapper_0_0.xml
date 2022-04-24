@@ -5,6 +5,7 @@
   <spirit:name>femto_qspi_wrapper_0_0</spirit:name>
   <spirit:version>1.0</spirit:version>
   <spirit:busInterfaces>
+
     <spirit:busInterface>
       <spirit:name>i_nor</spirit:name>
       <spirit:busType spirit:vendor="ricynlee" spirit:library="user" spirit:name="femto_bus" spirit:version="1.0"/>
@@ -69,6 +70,7 @@
         </spirit:portMap>
       </spirit:portMaps>
     </spirit:busInterface>
+
     <spirit:busInterface>
       <spirit:name>d_nor</spirit:name>
       <spirit:busType spirit:vendor="ricynlee" spirit:library="user" spirit:name="femto_bus" spirit:version="1.0"/>
@@ -133,6 +135,7 @@
         </spirit:portMap>
       </spirit:portMaps>
     </spirit:busInterface>
+
     <spirit:busInterface>
       <spirit:name>d_qspi</spirit:name>
       <spirit:busType spirit:vendor="ricynlee" spirit:library="user" spirit:name="femto_bus" spirit:version="1.0"/>
@@ -197,6 +200,7 @@
         </spirit:portMap>
       </spirit:portMaps>
     </spirit:busInterface>
+
     <spirit:busInterface>
       <spirit:name>qspi</spirit:name>
       <spirit:busType spirit:vendor="ricynlee" spirit:library="user" spirit:name="femto_qspi_bus" spirit:version="1.0"/>
@@ -245,6 +249,7 @@
         </spirit:portMap>
       </spirit:portMaps>
     </spirit:busInterface>
+
   </spirit:busInterfaces>
   <spirit:model>
     <spirit:views>
@@ -272,7 +277,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>GENtimestamp</spirit:name>
-            <spirit:value>Sun Apr 24 02:03:09 UTC 2022</spirit:value>
+            <spirit:value>Sun Apr 24 02:16:45 UTC 2022</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>outputProductCRC</spirit:name>
@@ -304,7 +309,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>GENtimestamp</spirit:name>
-            <spirit:value>Sun Apr 24 02:03:09 UTC 2022</spirit:value>
+            <spirit:value>Sun Apr 24 02:16:45 UTC 2022</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>outputProductCRC</spirit:name>

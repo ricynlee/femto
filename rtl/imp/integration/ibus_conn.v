@@ -52,6 +52,7 @@ module ibus_conn # (
     input wire[`BUS_WIDTH-1:0] s_nor_rdata,
 
     output wire bus_fault, // no bus slave is selected
+    output wire[`XLEN-1:0] bus_fault_addr,
     input wire bus_halt // force halt bus
 );
     localparam SLAVE_CNT = 4;
@@ -84,6 +85,7 @@ module ibus_conn # (
     assign s_nor_wdata = m_wdata;
 
     assign bus_fault = m_req & ~|bus_slave_sel;
+    assign bus_fault_addr = m_addr;
 
     // resp mux
     always @ (*) begin

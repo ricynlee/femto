@@ -54,6 +54,7 @@ for s in slaves:
 
 f.write("""
     output wire bus_fault, // no bus slave is selected
+    output wire[`XLEN-1:0] bus_fault_addr,
     input wire bus_halt // force halt bus
 );""")
 
@@ -78,6 +79,7 @@ for i in range(len(slaves)):
 
 f.write("""
     assign bus_fault = m_req & ~|bus_slave_sel;
+    assign bus_fault_addr = m_addr;
 """)
 
 f.write('''
