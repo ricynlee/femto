@@ -6,3 +6,4 @@ synth
 *.dcp
 *.v
 *.vhdl
+*.xdc

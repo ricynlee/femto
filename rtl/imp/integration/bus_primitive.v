@@ -5,7 +5,7 @@ module bus_bridge (
     input wire clk,
     input wire rstn,
 
-    input wire[$clog2(`BRIDGE_SIZE)-1:0] d_addr,
+    input wire[`XLEN-1:0]                d_addr,
     input wire                           d_w_rb,
     input wire[$clog2(`BUS_ACC_CNT)-1:0] d_acc,
     input wire[`BUS_WIDTH-1:0]           d_wdata,
