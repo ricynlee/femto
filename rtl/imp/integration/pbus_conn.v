@@ -13,13 +13,15 @@ module pbus_conn # (
     parameter RST_BASE = `RST_BASE,
     parameter RST_SPAN = $clog2(`RST_SIZE)
 ) (
+    input wire clk,
+
     input wire m_req,
     input wire[`XLEN-1:0] m_addr,
     input wire m_w_rb,
     input wire[$clog2(`BUS_ACC_CNT)-1:0] m_acc,
     input wire[`BUS_WIDTH-1:0] m_wdata,
     output wire m_resp,
-    output reg[`BUS_WIDTH-1:0] m_rdata,
+    output wire[`BUS_WIDTH-1:0] m_rdata,
 
     output wire s_eic_req,
     output wire[`XLEN-1:0] s_eic_addr,
@@ -104,14 +106,18 @@ module pbus_conn # (
     assign bus_fault_addr = m_addr;
 
     // resp mux
-    always @ (*) begin
-        if (s_eic_resp) m_rdata = s_eic_rdata;
-        else if (s_uart_resp) m_rdata = s_uart_rdata;
-        else if (s_gpio_resp) m_rdata = s_gpio_rdata;
-        else if (s_tmr_resp) m_rdata = s_tmr_rdata;
-        else if (s_rst_resp) m_rdata = s_rst_rdata;
-        else m_rdata = m_rdata;
+    reg[`BUS_WIDTH-1:0] m_rdata_latch;
+    always @ (posedge clk) begin
+        m_rdata_latch <= m_rdata;
     end
+
+    assign m_rdata =
+        s_eic_resp ? s_eic_rdata :
+        s_uart_resp ? s_uart_rdata :
+        s_gpio_resp ? s_gpio_rdata :
+        s_tmr_resp ? s_tmr_rdata :
+        s_rst_resp ? s_rst_rdata :
+        /* otherwise */ m_rdata_latch;
 
     assign m_resp = ~bus_halt & |{s_eic_resp, s_uart_resp, s_gpio_resp, s_tmr_resp, s_rst_resp};
 endmodule

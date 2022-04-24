@@ -32,13 +32,15 @@ for i in range(len(slaves)):
 f.write(""") (""")
 
 f.write("""
+    input wire clk,
+
     input wire m_req,
     input wire[`XLEN-1:0] m_addr,
     input wire m_w_rb,
     input wire[$clog2(`BUS_ACC_CNT)-1:0] m_acc,
     input wire[`BUS_WIDTH-1:0] m_wdata,
     output wire m_resp,
-    output reg[`BUS_WIDTH-1:0] m_rdata,
+    output wire[`BUS_WIDTH-1:0] m_rdata,
 """)
 
 for s in slaves:
@@ -84,15 +86,19 @@ f.write("""
 
 f.write('''
     // resp mux
-    always @ (*) begin
+    reg[`BUS_WIDTH-1:0] m_rdata_latch;
+    always @ (posedge clk) begin
+        m_rdata_latch <= m_rdata;
+    end
+
+    assign m_rdata =
 ''')
 
 for i in range(len(slaves)):
     s = slave[i]
-    f.write(f"""        {'' if i==0 else 'else '}if ({'s_'+s.lower()+'_resp'}) m_rdata = s_{s.lower()}_rdata;
+    f.write(f"""        {'s_'+s.lower()+'_resp'} ? s_{s.lower()}_rdata :
 """)
-f.write('''        else m_rdata = m_rdata;
-    end
+f.write('''        /* otherwise */ m_rdata_latch;
 
 ''')
 

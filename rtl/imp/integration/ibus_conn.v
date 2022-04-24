@@ -11,13 +11,15 @@ module ibus_conn # (
     parameter NOR_BASE = `NOR_BASE,
     parameter NOR_SPAN = $clog2(`NOR_SIZE)
 ) (
+    input wire clk,
+
     input wire m_req,
     input wire[`XLEN-1:0] m_addr,
     input wire m_w_rb,
     input wire[$clog2(`BUS_ACC_CNT)-1:0] m_acc,
     input wire[`BUS_WIDTH-1:0] m_wdata,
     output wire m_resp,
-    output reg[`BUS_WIDTH-1:0] m_rdata,
+    output wire[`BUS_WIDTH-1:0] m_rdata,
 
     output wire s_rom_req,
     output wire[`XLEN-1:0] s_rom_addr,
@@ -88,13 +90,17 @@ module ibus_conn # (
     assign bus_fault_addr = m_addr;
 
     // resp mux
-    always @ (*) begin
-        if (s_rom_resp) m_rdata = s_rom_rdata;
-        else if (s_tcm_resp) m_rdata = s_tcm_rdata;
-        else if (s_sram_resp) m_rdata = s_sram_rdata;
-        else if (s_nor_resp) m_rdata = s_nor_rdata;
-        else m_rdata = m_rdata;
+    reg[`BUS_WIDTH-1:0] m_rdata_latch;
+    always @ (posedge clk) begin
+        m_rdata_latch <= m_rdata;
     end
+
+    assign m_rdata =
+        s_rom_resp ? s_rom_rdata :
+        s_tcm_resp ? s_tcm_rdata :
+        s_sram_resp ? s_sram_rdata :
+        s_nor_resp ? s_nor_rdata :
+        /* otherwise */ m_rdata_latch;
 
     assign m_resp = ~bus_halt & |{s_rom_resp, s_tcm_resp, s_sram_resp, s_nor_resp};
 endmodule

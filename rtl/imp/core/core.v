@@ -611,7 +611,7 @@ module core (
     /**********************************************************************************************************************/
     begin:STAGE2 // executing, mem access & write back
         dff #(
-            .WIDTH(4+`XLEN+`XLEN+8+8+`XLEN+4+`XLEN),
+            .WIDTH(4+`XLEN+`XLEN+8+8+`XLEN+2+`XLEN),
             .VALID("sync")
         ) s2_op_dff (
             .clk(clk),
