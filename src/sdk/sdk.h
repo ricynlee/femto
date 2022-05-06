@@ -77,6 +77,7 @@ extern void clr_interrupt_pending_flag(unsigned bit_mask);
 // RESET
 extern void reset_soc(void);
 extern unsigned short get_reset_cause(void);
-extern void get_reset_info(unsigned short* const ptr_cause, unsigned* const ptr_tagval);
+extern unsigned get_reset_info(void);
+extern void set_reset_info(unsigned info);
 
 #endif // _FEMTO_SDK_H

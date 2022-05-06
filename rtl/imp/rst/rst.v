@@ -36,7 +36,7 @@ module rst_controller (
     // fault generation
     wire invld_addr = (addr != 0) && (addr != 2) && (addr != 4);
     wire invld_acc  = (addr==4) ? (acc != `BUS_ACC_4B) : (acc != `BUS_ACC_2B);
-    wire invld_wr   = addr ? w_rb : ~w_rb;
+    wire invld_wr   = w_rb ? addr[2:1]==2'd1 : addr[2:1]==2'd0;
 
     wire invld      = |{invld_addr,invld_acc,invld_wr};
     assign fault    = req & invld;
@@ -72,18 +72,18 @@ module rst_controller (
     end
 
     // reset generation
-    reg [`RST_WIDTH-1:0] rst_r = {`RST_WIDTH{1'b0}}; // initially POR (FPGA synthesizable)
-    assign rst_ob = rst_r;
+    reg [`RST_WIDTH-1:0] rst_drv = {`RST_WIDTH{1'b0}}; // initially POR (FPGA synthesizable)
+    assign rst_ob = rst_drv;
 
     always @ (posedge clk) begin
         if (~rst_ib) begin // external reset input: highest priority
-            rst_r <= {`RST_WIDTH{1'b0}};
+            rst_drv <= {`RST_WIDTH{1'b0}};
         end else if (req && ~invld && w_rb && addr==0 && wdata[0]) begin
-            rst_r <= {`RST_WIDTH{1'b0}};
+            rst_drv <= {`RST_WIDTH{1'b0}};
         end else if (soc_fault) begin
-            rst_r <= {`RST_WIDTH{1'b0}};
+            rst_drv <= {`RST_WIDTH{1'b0}};
         end else begin
-            rst_r <= {`RST_WIDTH{1'b1}};
+            rst_drv <= {`RST_WIDTH{1'b1}};
         end
     end
 endmodule

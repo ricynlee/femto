@@ -152,7 +152,7 @@
     typedef struct {
         volatile unsigned short       rst;
         const volatile unsigned short cause;
-        const volatile unsigned       info; // typically a fault addr
+        volatile unsigned             info; // hardfault addr, or sw-defined message
     } femto_reset_t;
 
     #define RESET ((femto_reset_t*)0xf0000000)

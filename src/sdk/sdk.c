@@ -312,9 +312,10 @@ unsigned short get_reset_cause(void) {
     return RESET->cause;
 }
 
-void get_reset_info(unsigned short* const ptr_cause, unsigned* const ptr_faddr) {
-    if (ptr_cause)
-        *ptr_cause = RESET->cause;
-    if (ptr_faddr)
-        *ptr_faddr = RESET->info;
+unsigned get_reset_info(void) {
+    return RESET->info;
+}
+
+void set_reset_info(unsigned info) {
+    RESET->info = info;
 }
