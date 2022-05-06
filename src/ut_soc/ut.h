@@ -1,11 +1,11 @@
 #ifndef _FEMTO_UT_H
 #define _FEMTO_UT_H
 
-    #define UT (TIMER->tr)
+    #define UT (*((volatile unsigned*)(0x20000000u+0x40000u))) /* 256K offset of SRAM */
 
 /*
- * Note that TIMER is reused as UT function interface
- * so these UT functions bring impacts on TIMER feature
+ * Note that a word of SRAM is reused as UT function interface
+ * so these UT functions bring impacts on SRAM
  */
 
 // PASS/FAIL

@@ -35,7 +35,7 @@ module fault_encoder (
     output wire[7:0]       fault_cause,
     output wire[`XLEN-1:0] fault_addr
 );
-    wire fault_occurred = { core_fault, ibus_fault, dbus_fault, pbus_fault, rom_i_fault,
+    wire fault_occurred = | { core_fault, ibus_fault, dbus_fault, pbus_fault, rom_i_fault,
         rom_d_fault, tcm_i_fault, tcm_d_fault, sram_i_fault, sram_d_fault, nor_i_fault,
         nor_d_fault, qspi_fault, eic_fault, uart_fault, gpio_fault, tmr_fault, rst_fault };
     wire[7:0] fault_cause_comb =
