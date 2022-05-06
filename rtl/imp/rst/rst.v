@@ -25,7 +25,7 @@ module rst_controller (
      *  Name   | Address | Size | Access | Note
      *  RST    | 0       | 2    | W      | -
      *  CAUSE  | 2       | 2    | R      | -
-     *  INFO   | 4       | 4    | RW     | Addr upon fault
+     *  INFO   | 4       | 4    | RW     | Addr upon fault or SW-defined message
      *
      * RST
      *  (15:1) | RESET(0)
@@ -47,6 +47,8 @@ module rst_controller (
     always @ (posedge clk) begin
         if (~rst_ib) begin
             rst_cause <= `RST_CAUSE_HW;
+            // do not touch rst_info here so sw can set it at key points
+            // in this way sw knows at which phase hw rst occurs
         end else if (req && ~invld && w_rb) begin
             if (addr==0 && wdata[0])
                 rst_cause <= `RST_CAUSE_SW;
