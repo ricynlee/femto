@@ -15,31 +15,31 @@ void nor_erase_block(size_t block_offset) {
     offset_converter_t offset = {.offset_n = block_offset*(64u*1024u)};
     uint8_t status;
 
-    qspinor_finish();
-    qspinor_clear_txq();
-    qspinor_clear_rxq();
+    qspi_finish();
+    qspi_clear_txq();
+    qspi_clear_rxq();
 
     // Send WREN
-    qspinor_write_txq(0x06u);
-    qspinor_begin_send(1u, QSPINOR_X1);
-    qspinor_finish();
+    qspi_write_txq(0x06u);
+    qspi_begin_send(1u, QSPI_X1);
+    qspi_finish();
 
     // Send erasure command
     timer_delay_us(10u);
-    qspinor_write_txq(0xd8u);
+    qspi_write_txq(0xd8u);
     for (int i=2; i>=0; i--)
-        qspinor_write_txq(offset.offset_a[i]);
-    qspinor_begin_send(4u, QSPINOR_X1);
-    qspinor_finish();
+        qspi_write_txq(offset.offset_a[i]);
+    qspi_begin_send(4u, QSPI_X1);
+    qspi_finish();
 
     // Wait for finish
     do {
         timer_delay_us(10u);
-        qspinor_write_txq(0x05u);
-        qspinor_begin_send(1u, QSPINOR_X1);
-        qspinor_begin_receive(1u, QSPINOR_X1);
-        qspinor_finish();
-        qspinor_read_rxq(&status);
+        qspi_write_txq(0x05u);
+        qspi_begin_send(1u, QSPI_X1);
+        qspi_begin_receive(1u, QSPI_X1);
+        qspi_finish();
+        qspi_read_rxq(&status);
     } while(status & 0x1u);
 }
 
@@ -54,32 +54,32 @@ void nor_program(size_t start_page_offset, const uint8_t* const data, size_t siz
     while (size) {
         n = size>256u ? 256u : size;
 
-        qspinor_finish();
-        qspinor_clear_txq();
-        qspinor_clear_rxq();
+        qspi_finish();
+        qspi_clear_txq();
+        qspi_clear_rxq();
 
         // Send WREN
-        qspinor_write_txq(0x06u);
-        qspinor_begin_send(1u, QSPINOR_X1);
-        qspinor_finish();
+        qspi_write_txq(0x06u);
+        qspi_begin_send(1u, QSPI_X1);
+        qspi_finish();
 
         // Send page program command & data
         timer_delay_us(10u);
-        qspinor_write_txq(0x02u);
+        qspi_write_txq(0x02u);
         for (int i=2; i>=0; i--)
-            qspinor_write_txq(offset.offset_a[i]);
-        qspinor_begin_send(4u, QSPINOR_X1);
-        qspinor_send_data(data+k, n, QSPINOR_X1);
-        qspinor_finish();
+            qspi_write_txq(offset.offset_a[i]);
+        qspi_begin_send(4u, QSPI_X1);
+        qspi_send_data(data+k, n, QSPI_X1);
+        qspi_finish();
 
         // Wait for finish
         do {
             timer_delay_us(10u);
-            qspinor_write_txq(0x05u);
-            qspinor_begin_send(1u, QSPINOR_X1);
-            qspinor_begin_receive(1u, QSPINOR_X1);
-            qspinor_finish();
-            qspinor_read_rxq(&status);
+            qspi_write_txq(0x05u);
+            qspi_begin_send(1u, QSPI_X1);
+            qspi_begin_receive(1u, QSPI_X1);
+            qspi_finish();
+            qspi_read_rxq(&status);
         } while(status & 0x1u);
 
         size -= n;
@@ -94,25 +94,25 @@ void nor_read(size_t byte_offset, uint8_t* const data, size_t size) {
 
     offset_converter_t offset = {.offset_n = byte_offset};
 
-    qspinor_finish();
-    qspinor_clear_txq();
-    qspinor_clear_rxq();
+    qspi_finish();
+    qspi_clear_txq();
+    qspi_clear_rxq();
 
     // Send command
-    qspinor_write_txq(0xbbu);
-    qspinor_begin_send(1u, QSPINOR_X1);
+    qspi_write_txq(0xbbu);
+    qspi_begin_send(1u, QSPI_X1);
 
     // Send address
     for (int i=2; i>=0; i--)
-        qspinor_write_txq(offset.offset_a[i]);
-    qspinor_begin_send(3u, QSPINOR_X2);
+        qspi_write_txq(offset.offset_a[i]);
+    qspi_begin_send(3u, QSPI_X2);
 
     // Send dummy cycles
-    qspinor_send_dummy_cycle(4u, QSPINOR_X2, true, 0x03u);
+    qspi_send_dummy_cycle(4u, QSPI_X2, true, 0x03u);
 
     // Receive data
-    qspinor_receive_data(data, size, QSPINOR_X2);
-    qspinor_finish();
+    qspi_receive_data(data, size, QSPI_X2);
+    qspi_finish();
 }
 
 // Gpio

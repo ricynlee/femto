@@ -87,18 +87,6 @@
     #define QSPI_NORCSR_DMYPAT_MASK     (MASK_WIDTH(4u)<<QSPI_NORCSR_DMYPAT_SHIFT)
     #define QSPI_NORCSR_DMYPAT(v)       (((v) << QSPI_NORCSR_DMYPAT_SHIFT) & QSPI_NORCSR_DMYPAT_MASK)
 
-    enum femto_nor_mode {
-        NOR_MODE_111,
-        NOR_MODE_112,
-        NOR_MODE_114,
-        NOR_MODE_122,
-        NOR_MODE_144,
-        NOR_MODE_222,
-        NOR_MODE_444,
-        NOR_MODE_LLIM = NOR_MODE_111,
-        NOR_MODE_ULIM = NOR_MODE_444,
-    };
-
     enum femto_qspi_width {
         QSPI_X1,
         QSPI_X2,
@@ -164,7 +152,7 @@
     typedef struct {
         volatile unsigned short       rst;
         const volatile unsigned short cause;
-        const volatile unsigned       info;
+        const volatile unsigned       info; // typically a fault addr
     } femto_reset_t;
 
     #define RESET ((femto_reset_t*)0xf0000000)

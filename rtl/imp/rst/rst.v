@@ -25,7 +25,7 @@ module rst_controller (
      *  Name   | Address | Size | Access | Note
      *  RST    | 0       | 2    | W      | -
      *  CAUSE  | 2       | 2    | R      | -
-     *  INFO   | 4       | 4    | R      | Core fault PC/bus fault addr
+     *  INFO   | 4       | 4    | RW     | Addr upon fault
      *
      * RST
      *  (15:1) | RESET(0)
@@ -42,16 +42,19 @@ module rst_controller (
     assign fault    = req & invld;
 
     // rst info
-    reg[7:0]       rst_cause_r = `RST_CAUSE_POR;
-    reg[`XLEN-1:0] rst_info_r;
+    reg[7:0]       rst_cause = `RST_CAUSE_POR;
+    reg[`XLEN-1:0] rst_info;
     always @ (posedge clk) begin
-        if (~rst_ib)
-            rst_cause_r <= `RST_CAUSE_HW;
-        else if (req & ~invld & wdata[0])
-            rst_cause_r <= `RST_CAUSE_SW;
-        else if (soc_fault) begin
-            rst_cause_r <= soc_fault_cause;
-            rst_info_r <= soc_fault_addr;
+        if (~rst_ib) begin
+            rst_cause <= `RST_CAUSE_HW;
+        end else if (req && ~invld && w_rb) begin
+            if (addr==0 && wdata[0])
+                rst_cause <= `RST_CAUSE_SW;
+            else if (addr==4)
+                rst_info <= wdata;
+        end else if (soc_fault) begin
+            rst_cause <= soc_fault_cause;
+            rst_info <= soc_fault_addr;
         end
     end
 
@@ -62,9 +65,9 @@ module rst_controller (
         resp_r <= req & ~invld;
         if (req & ~invld) begin
             if (addr[1]) // CAUSE
-                rdata <= rst_cause_r;
+                rdata <= {24'd0, rst_cause};
             else if (addr[2]) // INFO
-                rdata <= rst_info_r;
+                rdata <= rst_info;
         end
     end
 
@@ -75,7 +78,7 @@ module rst_controller (
     always @ (posedge clk) begin
         if (~rst_ib) begin // external reset input: highest priority
             rst_r <= {`RST_WIDTH{1'b0}};
-        end else if (req & ~invld & wdata[0]) begin
+        end else if (req && ~invld && w_rb && addr==0 && wdata[0]) begin
             rst_r <= {`RST_WIDTH{1'b0}};
         end else if (soc_fault) begin
             rst_r <= {`RST_WIDTH{1'b0}};
