@@ -13,9 +13,9 @@ void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no, bool dmy_out, 
 
     QSPI->norcmd = cmd;
     QSPI->norcsr = QSPI_NORCSR_MODE((int)mode)             |
-                      QSPI_NORCSR_DMYCNT(dmy_cycle_no)        |
-                      QSPI_NORCSR_DMYPAT(dmy_out_pattern)     |
-                      (dmy_out ? QSPI_NORCSR_DMYDIR_MASK : 0u);
+                   QSPI_NORCSR_DMYCNT(dmy_cycle_no)        |
+                   QSPI_NORCSR_DMYPAT(dmy_out_pattern)     |
+                   (dmy_out ? QSPI_NORCSR_DMYDIR_MASK : 0u);
 }
 
 // GPIO
