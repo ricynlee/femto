@@ -67,7 +67,7 @@ module rst_controller (
         resp_r <= req & ~invld;
         if (req & ~invld) begin
             if (addr[1]) // CAUSE
-                rdata <= {24'd0, rst_cause};
+                rdata[15:0] <= {8'd0, rst_cause};
             else if (addr[2]) // INFO
                 rdata <= rst_info;
         end

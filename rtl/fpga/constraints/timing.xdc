@@ -1,21 +1,21 @@
 ## SRAM ##########################################################################################################
 create_clock -name sram_drv_clk -period 41.667
-create_generated_clock -name sram_addr0_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[0]} ]
-create_generated_clock -name sram_addr1_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[1]} ]
-create_generated_clock -name sram_addr2_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[2]} ]
-create_generated_clock -name sram_addr3_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[3]} ]
-create_generated_clock -name sram_addr4_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[4]} ]
-create_generated_clock -name sram_addr5_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[5]} ]
-create_generated_clock -name sram_addr6_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[6]} ]
-create_generated_clock -name sram_addr7_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[7]} ]
-create_generated_clock -name sram_addr8_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[8]} ]
-create_generated_clock -name sram_addr9_clk  -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[9]} ]
-create_generated_clock -name sram_addr10_clk -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[10]}]
-create_generated_clock -name sram_addr11_clk -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[11]}]
-create_generated_clock -name sram_addr12_clk -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[12]}]
-create_generated_clock -name sram_addr13_clk -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[13]}]
-create_generated_clock -name sram_addr14_clk -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[14]}]
-create_generated_clock -name sram_addr15_clk -source [get_pins femto/clk] -divide_by 1 [get_ports {sram_addr[15]}]
+create_generated_clock -name sram_addr0_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[0]} ]
+create_generated_clock -name sram_addr1_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[1]} ]
+create_generated_clock -name sram_addr2_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[2]} ]
+create_generated_clock -name sram_addr3_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[3]} ]
+create_generated_clock -name sram_addr4_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[4]} ]
+create_generated_clock -name sram_addr5_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[5]} ]
+create_generated_clock -name sram_addr6_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[6]} ]
+create_generated_clock -name sram_addr7_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[7]} ]
+create_generated_clock -name sram_addr8_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[8]} ]
+create_generated_clock -name sram_addr9_clk  -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[9]} ]
+create_generated_clock -name sram_addr10_clk -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[10]}]
+create_generated_clock -name sram_addr11_clk -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[11]}]
+create_generated_clock -name sram_addr12_clk -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[12]}]
+create_generated_clock -name sram_addr13_clk -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[13]}]
+create_generated_clock -name sram_addr14_clk -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[14]}]
+create_generated_clock -name sram_addr15_clk -source [get_pins clk_gen/clk_out] -divide_by 1 [get_ports {sram_addr[15]}]
 
 # setup required = 0
 # hold required = 10
@@ -76,7 +76,7 @@ set_output_delay -clock [get_clocks qspi_drv_clk] -max  2 [get_ports {qspi_sio[*
 set_output_delay -clock [get_clocks qspi_drv_clk] -min -5 [get_ports qspi_csb]
 set_output_delay -clock [get_clocks qspi_drv_clk] -max  5 [get_ports qspi_csb]
 
-create_generated_clock -name qspi_sck -source [get_pins femto/clk] -divide_by 2 -invert [get_ports qspi_sck]
+create_generated_clock -name qspi_sck -source [get_pins clk_gen/clk_out] -divide_by 2 -invert [get_ports qspi_sck]
 set_input_delay -clock [get_clocks qspi_sck] -min 0.667 [get_ports {qspi_sio[*]}]
 set_input_delay -clock [get_clocks qspi_sck] -max 6.667 [get_ports {qspi_sio[*]}]
 
