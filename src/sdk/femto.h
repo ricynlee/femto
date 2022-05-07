@@ -93,6 +93,18 @@
         QSPI_X4,
     };
 
+    enum femto_qspi_norcsr_mode_t {
+        NOR_MODE_111,
+        NOR_MODE_112,
+        NOR_MODE_114,
+        NOR_MODE_122,
+        NOR_MODE_144,
+        NOR_MODE_222,
+        NOR_MODE_444,
+        NOR_MODE_LLIM = NOR_MODE_111,
+        NOR_MODE_ULIM = NOR_MODE_444,
+    };
+
     #define QSPI_FIFO_DEPTH  (16u)
 
 // EIC
@@ -101,6 +113,9 @@
     } femto_eic_t;
 
     #define EIC ((femto_eic_t*)0x80000000)
+
+    #define EIC_IPFR_TMRF       (1u<<0)
+    #define EIC_IPFR_UARTF      (1u<<1)
 
 // UART
     typedef struct {

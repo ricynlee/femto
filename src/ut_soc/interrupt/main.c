@@ -8,8 +8,8 @@ void main(void) {
     undone = true;
     TIMER->tr = 6;
     TIMER->intcsr = TIMER_INTCSR_INTEN_MASK;
-    // EIC->ipfr = 2; // clr bit 1
-    enable_interrupt(true);
+    // EIC->ipfr = EIC_IPFR_TMRF; // clr ipf
+    enable_interrupt(true); // enable interrupt (core)
     while(undone);
     trigger_pass();
 }

@@ -19,6 +19,16 @@ module extint_controller (
     output reg                          resp,
     output wire                         fault
 );
+
+    /*
+     * Register map
+     *  Name   | Address | Size | Access | Note
+     *  IPF    | 0       | 4    | RW     | Interrupt pending flag, W1C
+     *
+     * IPF
+     *  EN(31) | (30:2) | UARTF(1) | TMRF(0)
+     */
+
     // interrupt posedge detection
     wire[`EXT_INT_SRC_NUM-1:0] ext_int_pulse;
     begin:PEDGE_DETECT

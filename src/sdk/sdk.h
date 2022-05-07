@@ -6,17 +6,7 @@
 #include "femto.h"
 
 // NOR
-typedef enum {
-    NOR_MODE_111,
-    NOR_MODE_112,
-    NOR_MODE_114,
-    NOR_MODE_122,
-    NOR_MODE_144,
-    NOR_MODE_222,
-    NOR_MODE_444,
-    NOR_MODE_LLIM = NOR_MODE_111,
-    NOR_MODE_ULIM = NOR_MODE_444,
-} nor_mode_t;
+typedef enum femto_qspi_norcsr_mode_t nor_mode_t;
 
 extern void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no, bool dmy_out, uint8_t dmy_out_pattern);
 

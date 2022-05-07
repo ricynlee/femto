@@ -300,7 +300,7 @@ unsigned get_interrupt_pending_flag(void) {
 }
 
 void clr_interrupt_pending_flag(unsigned bit_mask) {
-    EIC->ipfr = bit_mask;
+    EIC->ipfr = bit_mask & (EIC_IPFR_TMRF | EIC_IPFR_UARTF);
 }
 
 // RESET

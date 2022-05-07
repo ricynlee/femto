@@ -3,4 +3,4 @@ riscv-none-embed-objdump -d ..\..\out.elf -M no-aliases,numeric -S > ..\..\out.s
 REM riscv-none-embed-objdump -d ..\..\out.elf > ..\..\out.s
 riscv-none-embed-objcopy -O binary -S ..\..\out.elf ..\..\out.bin
 python ..\..\tools\bin2hdl.py ..\..\out.bin 32 > ..\..\rom.vh
-move ..\..\rom.vh ..\..\..\rtl\imp
+move ..\..\rom.vh ..\..\..\rtl\imp\rom
