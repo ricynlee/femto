@@ -2,8 +2,11 @@
 
 void go_uart_boot(void);
 void go_nor_boot(void);
+void say_hello(void);
 
 void main(void) {
+    say_hello();
+
     gpio_init();
     uart_clear_rxq();
 
@@ -76,4 +79,22 @@ void go_nor_boot(void) {
     led_flash_before_boot();
 
     func();
+}
+
+#define STR2ANL(s) (const uint8_t *)s, sizeof(s)-1 // string to array and length
+void say_hello(void) {
+    unsigned short rst_cause = get_reset_cause();
+    unsigned rst_info = get_reset_info();
+
+    uart_send_data(STR2ANL("femto Bootloader\n"));
+    uart_send_data(STR2ANL("Reset "));
+    while(!uart_write_txq((rst_cause & 0xfu) + '0'));
+    while(!uart_write_txq(','));
+    for (int i=7; i>=0; i--) {
+        char c = (rst_info >> (4*i)) & 0xfu;
+        c += (c < 10) ? '0' : 'a';
+        while(!uart_write_txq(c));
+    }
+    while(!uart_write_txq('\n'));
+    uart_send_data(STR2ANL("Send an SRAM app or wait for the NOR app\n"));
 }
