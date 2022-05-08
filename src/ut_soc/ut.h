@@ -1,7 +1,12 @@
 #ifndef _FEMTO_UT_H
 #define _FEMTO_UT_H
 
-    #define UT (*(volatile unsigned*)0x70000000)
+    #define UT (*((volatile unsigned*)(0x20000000u+0x40000u))) /* 256K offset of SRAM */
+
+/*
+ * Note that a word of SRAM is reused as UT function interface
+ * so these UT functions bring impacts on SRAM
+ */
 
 // PASS/FAIL
     enum {
@@ -20,5 +25,12 @@
         UT_QPI = 0x51345049u, // "Q4PI"
     };
     static void select_nor(unsigned type) { UT = type; }
+
+// Print
+    enum {
+        UT_PRN = 0x50524e00u, // PRN$
+    };
+    static void ut_putc(char c) { UT = (UT_PRN | c); }
+    static void ut_print(const char* const s) { for (const char* p=s; *p; p++) UT = (UT_PRN | (*p)); UT = (UT_PRN | '\n'); };
 
 #endif // _FEMTO_UT_H

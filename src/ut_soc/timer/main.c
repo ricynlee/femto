@@ -5,7 +5,7 @@
 
 const uint32_t itv = 64;
 
-int main(){
+void main(void) {
     TIMER->tr = itv;
 
     for (int i=0; i<24; i++);
@@ -23,5 +23,4 @@ int main(){
     while (TIMER->tr);
 
     trigger_pass();
-    return 0;
 }

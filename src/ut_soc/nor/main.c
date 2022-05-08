@@ -12,7 +12,7 @@ void test_144read();
 void test_222read();
 void test_444read();
 
-int main(){
+void main(void) {
     select_nor(UT_QSPI);
     test_read();
     test_111read();
@@ -28,7 +28,6 @@ int main(){
     test_444read();
 
     trigger_pass();
-    return 0;
 }
 
 /*****************************************************************************************/
@@ -45,548 +44,580 @@ enum {
 };
 
 void test_read(){
-    QSPINOR->norcmd = CMD_READ;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_111) | QSPINOR_NORCSR_DMYCNT(0);
+    QSPI->norcmd = CMD_READ;
+    QSPI->norcsr = QSPI_NORCSR_MODE(NOR_MODE_111) | QSPI_NORCSR_DMYCNT(0);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        QSPINOR->txd = CMD_READ; // cmd
-        QSPINOR->txd = 0x00u; // addr
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
+        QSPI->txd = CMD_READ; // cmd
+        QSPI->txd = 0x00u; // addr
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);  // send cmd
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK;                         // send addr
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK;                                                  // receive data
-        QSPINOR->ipcsr = 0;                                                                       // finish
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);  // send cmd
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK;                         // send addr
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK;                                                  // receive data
+        QSPI->ipcsr = 0;                                                                       // finish
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 
     { // non-blocking data interaction (w/ busy check)
         uint32_t val_from_bus = *((const uint16_t*)(NOR+4));
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->txd = CMD_READ;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->txd = CMD_READ;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x04u;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x04u;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = 0;
+        QSPI->ipcsr = 0;
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 }
 
 void test_111read(){
-    QSPINOR->norcmd = CMD_111READ;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_111) | QSPINOR_NORCSR_DMYCNT(DMY_111READ);
+    QSPI->norcmd = CMD_111READ;
+    QSPI->norcsr = QSPI_NORCSR_MODE(NOR_MODE_111) | QSPI_NORCSR_DMYCNT(DMY_111READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        QSPINOR->txd = CMD_111READ; // cmd
-        QSPINOR->txd = 0x00u; // addr
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
+        QSPI->txd = CMD_111READ; // cmd
+        QSPI->txd = 0x00u; // addr
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);    // send cmd
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK;                           // send addr
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_111READ);  // send dmy
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK;                                                    // receive data
-        QSPINOR->ipcsr = 0;                                                                         // finish
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);            // send cmd
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK;                                // send addr
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_111READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK;                                                      // receive data
+        QSPI->ipcsr = 0;                                                                        // finish
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 
     { // non-blocking data interaction (w/ busy check)
         uint32_t val_from_bus = *((const uint16_t*)(NOR+4));
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->txd = CMD_111READ;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->txd = CMD_111READ;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x04u;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x04u;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_111READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_111READ);  // send dmy
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = 0;
+        QSPI->ipcsr = 0;
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 }
 
 void test_112read(){
-    QSPINOR->norcmd = CMD_112READ;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_112) | QSPINOR_NORCSR_DMYCNT(DMY_112READ);
+    QSPI->norcmd = CMD_112READ;
+    QSPI->norcsr = QSPI_NORCSR_MODE(NOR_MODE_112) | QSPI_NORCSR_DMYCNT(DMY_112READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        QSPINOR->txd = CMD_112READ; // cmd
-        QSPINOR->txd = 0x00u; // addr
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
+        QSPI->txd = CMD_112READ; // cmd
+        QSPI->txd = 0x00u; // addr
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);            // send cmd
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK;                                   // send addr
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_112READ);  // send dmy
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2);                            // receive data
-        QSPINOR->ipcsr = 0;                                                                                 // finish
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);            // send cmd
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK;                                // send addr
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_112READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2);                            // receive data
+        QSPI->ipcsr = 0;                                                                        // finish
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 
     { // non-blocking data interaction (w/ busy check)
         uint32_t val_from_bus = *((const uint16_t*)(NOR+4));
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->txd = CMD_112READ;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->txd = CMD_112READ;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x04u;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x04u;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_112READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_112READ);  // send dmy
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = 0;
+        QSPI->ipcsr = 0;
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 }
 
 void test_122read(){
-    QSPINOR->norcmd = CMD_122READ;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_122) | QSPINOR_NORCSR_DMYCNT(DMY_122READ);
+    QSPI->norcmd = CMD_122READ;
+    QSPI->norcsr = QSPI_NORCSR_MODE(NOR_MODE_122) | QSPI_NORCSR_DMYCNT(DMY_122READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        QSPINOR->txd = CMD_122READ; // cmd
-        QSPINOR->txd = 0x00u; // addr
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
+        QSPI->txd = CMD_122READ; // cmd
+        QSPI->txd = 0x00u; // addr
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);            // send cmd
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2) | QSPINOR_IPCSR_DIR_MASK;   // send addr
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_122READ);  // send dmy
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2);                            // receive data
-        QSPINOR->ipcsr = 0;                                                                                 // finish
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);            // send cmd
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2) | QSPI_IPCSR_DIR_MASK;      // send addr
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_122READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2);                            // receive data
+        QSPI->ipcsr = 0;                                                                        // finish
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 
     { // non-blocking data interaction (w/ busy check)
         uint32_t val_from_bus = *((const uint16_t*)(NOR+4));
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->txd = CMD_122READ;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->txd = CMD_122READ;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x04u;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2);
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x04u;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_WID(QSPI_X2);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_122READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_122READ);  // send dmy
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = 0;
+        QSPI->ipcsr = 0;
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 }
 
 void test_114read(){
-    QSPINOR->norcmd = CMD_114READ;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_114) | QSPINOR_NORCSR_DMYCNT(DMY_114READ);
+    QSPI->norcmd = CMD_114READ;
+    QSPI->norcsr = QSPI_NORCSR_MODE(NOR_MODE_114) | QSPI_NORCSR_DMYCNT(DMY_114READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        QSPINOR->txd = CMD_114READ; // cmd
-        QSPINOR->txd = 0x00u; // addr
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
+        QSPI->txd = CMD_114READ; // cmd
+        QSPI->txd = 0x00u; // addr
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);            // send cmd
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X1) | QSPINOR_IPCSR_DIR_MASK;   // send addr
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_114READ);  // send dmy
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4);                            // receive data
-        QSPINOR->ipcsr = 0;                                                                                 // finish
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);            // send cmd
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X1) | QSPI_IPCSR_DIR_MASK;      // send addr
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_114READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4);                            // receive data
+        QSPI->ipcsr = 0;                                                                        // finish
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 
     { // non-blocking data interaction (w/ busy check)
         uint32_t val_from_bus = *((const uint16_t*)(NOR+4));
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->txd = CMD_114READ;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->txd = CMD_114READ;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x04u;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x04u;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_114READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_114READ);  // send dmy
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = 0;
+        QSPI->ipcsr = 0;
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 }
 
 void test_144read(){
-    QSPINOR->norcmd = CMD_144READ;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_144) | QSPINOR_NORCSR_DMYCNT(DMY_144READ);
+    QSPI->norcmd = CMD_144READ;
+    QSPI->norcsr = QSPI_NORCSR_MODE(NOR_MODE_144) | QSPI_NORCSR_DMYCNT(DMY_144READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        QSPINOR->txd = CMD_144READ; // cmd
-        QSPINOR->txd = 0x00u; // addr
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
+        QSPI->txd = CMD_144READ; // cmd
+        QSPI->txd = 0x00u; // addr
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);            // send cmd
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4) | QSPINOR_IPCSR_DIR_MASK;   // send addr
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_144READ);  // send dmy
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4);                            // receive data
-        QSPINOR->ipcsr = 0;                                                                         // finish
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);            // send cmd
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4) | QSPI_IPCSR_DIR_MASK;      // send addr
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_144READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4);                            // receive data
+        QSPI->ipcsr = 0;                                                                        // finish
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 
     { // non-blocking data interaction (w/ busy check)
         uint32_t val_from_bus = *((const uint16_t*)(NOR+4));
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->txd = CMD_144READ;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->txd = CMD_144READ;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x04u;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4) | QSPINOR_IPCSR_DIR_MASK;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x04u;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4) | QSPI_IPCSR_DIR_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_144READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_144READ);  // send dmy
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = 0;
+        QSPI->ipcsr = 0;
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 }
 
 void test_222read(){
-    QSPINOR->norcmd = CMD_222READ;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_222) | QSPINOR_NORCSR_DMYCNT(DMY_222READ);
+    QSPI->norcmd = CMD_222READ;
+    QSPI->norcsr = QSPI_NORCSR_MODE(NOR_MODE_222) | QSPI_NORCSR_DMYCNT(DMY_222READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        QSPINOR->txd = CMD_222READ; // cmd
-        QSPINOR->txd = 0x00u; // addr
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
+        QSPI->txd = CMD_222READ; // cmd
+        QSPI->txd = 0x00u; // addr
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2) | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);    // send cmd
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2) | QSPINOR_IPCSR_DIR_MASK;                           // send addr
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_222READ);                          // send dmy
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2);                                                    // receive data
-        QSPINOR->ipcsr = 0;                                                                                                         // finish
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2) | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);  // send cmd
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2) | QSPI_IPCSR_DIR_MASK;                      // send addr
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_222READ);                  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2);                                            // receive data
+        QSPI->ipcsr = 0;                                                                                                         // finish
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 
     { // non-blocking data interaction (w/ busy check)
         uint32_t val_from_bus = *((const uint16_t*)(NOR+4));
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->txd = CMD_222READ;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2) | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->txd = CMD_222READ;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2) | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x04u;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2) | QSPINOR_IPCSR_DIR_MASK;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x04u;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2) | QSPI_IPCSR_DIR_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_222READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_222READ);  // send dmy
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X2);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X2);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = 0;
+        QSPI->ipcsr = 0;
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 }
 
 void test_444read(){
-    QSPINOR->norcmd = CMD_444READ;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE(NOR_MODE_444) | QSPINOR_NORCSR_DMYCNT(DMY_444READ);
+    QSPI->norcmd = CMD_444READ;
+    QSPI->norcsr = QSPI_NORCSR_MODE(NOR_MODE_444) | QSPI_NORCSR_DMYCNT(DMY_444READ);
 
     { // blocking data interaction (no busy check)
         uint32_t val_from_bus = *((const uint32_t*)NOR);
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        QSPINOR->txd = CMD_444READ; // cmd
-        QSPINOR->txd = 0x00u; // addr
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
+        QSPI->txd = CMD_444READ; // cmd
+        QSPI->txd = 0x00u; // addr
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4) | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);    // send cmd
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4) | QSPINOR_IPCSR_DIR_MASK;                           // send addr
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_444READ);                          // send dmy
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4);                                                    // receive data
-        QSPINOR->ipcsr = 0;                                                                                                         // finish
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4) | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);  // send cmd
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4) | QSPI_IPCSR_DIR_MASK;                      // send addr
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_444READ);                  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4);                                            // receive data
+        QSPI->ipcsr = 0;                                                                                                         // finish
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<24) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<24) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 
     { // non-blocking data interaction (w/ busy check)
         uint32_t val_from_bus = *((const uint16_t*)(NOR+4));
 
-        QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
-        QSPINOR->txd = CMD_444READ;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4) | QSPINOR_IPCSR_DIR_MASK | QSPINOR_IPCSR_CNT(1);
+        QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
+        QSPI->txd = CMD_444READ;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4) | QSPI_IPCSR_DIR_MASK | QSPI_IPCSR_CNT(1);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x00u;
-        QSPINOR->txd = 0x04u;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4) | QSPINOR_IPCSR_DIR_MASK;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x00u;
+        QSPI->txd = 0x04u;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4) | QSPI_IPCSR_DIR_MASK;
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_DMY_MASK | QSPINOR_IPCSR_CNT(DMY_444READ);  // send dmy
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_DMY_MASK | QSPI_IPCSR_CNT(DMY_444READ);  // send dmy
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
-        QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK | QSPINOR_IPCSR_WID(QSPINOR_X4);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
+        QSPI->ipcsr = QSPI_IPCSR_SEL_MASK | QSPI_IPCSR_WID(QSPI_X4);
 
-        while(QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK); // wait while busy
+        while(QSPI->ipcsr & QSPI_IPCSR_BSY_MASK); // wait while busy
 
-        QSPINOR->ipcsr = 0;
+        QSPI->ipcsr = 0;
 
         uint32_t val_from_ip = 0;
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        val_from_ip = (QSPINOR->rxd<<8) | (val_from_ip>>8);
-        QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        val_from_ip = (QSPI->rxd<<8) | (val_from_ip>>8);
+        QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 
-        if (val_from_bus!=val_from_ip)
+        if (val_from_bus!=val_from_ip) {
+            ut_print(__func__);
             trigger_fail();
+        }
     }
 }

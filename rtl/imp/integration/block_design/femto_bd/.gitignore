@@ -1,0 +1,9 @@
+ui
+hdl
+hw_handoff
+sim
+synth
+*.dcp
+*.v
+*.vhdl
+*.xdc

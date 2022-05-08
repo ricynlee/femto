@@ -6,7 +6,7 @@
 #include "femto.h"
 
 // NOR
-typedef enum femto_nor_mode nor_mode_t;
+typedef enum femto_qspi_norcsr_mode_t nor_mode_t;
 
 extern void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no, bool dmy_out, uint8_t dmy_out_pattern);
 
@@ -32,40 +32,42 @@ extern bool uart_write_txq(uint8_t d);
 extern void uart_receive_data(uint8_t* const buf, size_t n);
 extern void uart_send_data(const uint8_t* const buf, size_t n);
 
-// QSPINOR
-typedef enum femto_qspinor_width qspinor_width_t;
+// QSPI
+typedef enum femto_qspi_width qspi_width_t;
 typedef enum {
     WHOLE_FIFO = 0, // send until fifo empty, or receive until fifo full
     DMY_CNT_16 = 0, // 0 stands for 16 dummy cycles
-} qspinor_cmd_cnt_t;
+} qspi_cmd_cnt_t;
 
-extern bool qspinor_rxq_ready(void);
-extern bool qspinor_txq_ready(void);
-extern void qspinor_clear_rxq(void);
-extern void qspinor_clear_txq(void);
-extern bool qspinor_read_rxq(uint8_t* const ptr_d);
-extern bool qspinor_write_txq(uint8_t d);
+extern bool qspi_rxq_ready(void);
+extern bool qspi_txq_ready(void);
+extern void qspi_clear_rxq(void);
+extern void qspi_clear_txq(void);
+extern bool qspi_read_rxq(uint8_t* const ptr_d);
+extern bool qspi_write_txq(uint8_t d);
 
-extern bool qspinor_is_busy(void);
-extern void qspinor_begin_receive(uint8_t n, qspinor_width_t width);
-extern void qspinor_begin_send(uint8_t n, qspinor_width_t width);
-extern void qspinor_send_dummy_cycle(uint8_t n, qspinor_width_t width, bool dmy_out, uint8_t dmy_out_pattern);
-extern void qspinor_finish(void);
+extern bool qspi_is_busy(void);
+extern void qspi_begin_receive(uint8_t n, qspi_width_t width);
+extern void qspi_begin_send(uint8_t n, qspi_width_t width);
+extern void qspi_send_dummy_cycle(uint8_t n, qspi_width_t width, bool dmy_out, uint8_t dmy_out_pattern);
+extern void qspi_finish(void);
 
-extern void qspinor_receive_data(uint8_t* const buf, size_t n, qspinor_width_t width);
-extern void qspinor_send_data(const uint8_t* const buf, size_t n, qspinor_width_t width);
+extern void qspi_receive_data(uint8_t* const buf, size_t n, qspi_width_t width);
+extern void qspi_send_data(const uint8_t* const buf, size_t n, qspi_width_t width);
 
 // TIMER
 extern void timer_set(uint32_t val);
 extern uint32_t timer_get(void);
 extern void timer_delay_us(uint32_t val);
 
+// EIC
+extern unsigned get_interrupt_pending_flag(void);
+extern void clr_interrupt_pending_flag(unsigned bit_mask);
+
 // RESET
 extern void reset_soc(void);
-extern void reset_core(void);
-extern void reset_uart(void);
-extern void reset_gpio(void);
-extern void reset_qspinor(void);
-extern void reset_timer(void);
+extern unsigned short get_reset_cause(void);
+extern unsigned get_reset_info(void);
+extern void set_reset_info(unsigned info);
 
 #endif // _FEMTO_SDK_H

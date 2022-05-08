@@ -2,4 +2,4 @@ riscv-none-embed-gcc -g -march=rv32ec -mabi=ilp32e -static --specs=nosys.specs -
 riscv-none-embed-objdump -d ..\..\out-rom.elf -M no-aliases,numeric -S > ..\..\out-rom.s
 riscv-none-embed-objcopy -O binary -S ..\..\out-rom.elf ..\..\out-rom.bin
 python ..\..\tools\bin2hdl.py ..\..\out-rom.bin 32 > ..\..\rom.vh
-move ..\..\rom.vh ..\..\..\rtl\imp
+move ..\..\rom.vh ..\..\..\rtl\imp\rom

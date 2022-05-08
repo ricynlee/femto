@@ -21,6 +21,12 @@
     <Option Name="ActiveSimSet" Val="sim_1"/>
     <Option Name="DefaultLib" Val="xil_defaultlib"/>
     <Option Name="ProjectType" Val="Default"/>
+    <Option Name="IPRepoPath" Val="$PPRDIR/../rtl/imp/integration/block_design/interface_def/femto_bus_ip_xact"/>
+    <Option Name="IPRepoPath" Val="$PPRDIR/../rtl/imp/integration/block_design/interface_def/femto_asram_bus_ip_xact"/>
+    <Option Name="IPRepoPath" Val="$PPRDIR/../rtl/imp/integration/block_design/interface_def/femto_qspi_bus_ip_xact"/>
+    <Option Name="IPRepoPath" Val="$PPRDIR/../rtl/imp/integration/block_design/interface_def/femto_faultinfo_bus_ip_xact"/>
+    <Option Name="IPRepoPath" Val="$PPRDIR/../rtl/imp/integration/block_design/interface_def/femto_gpio_bus_ip_xact"/>
+    <Option Name="IPRepoPath" Val="$PPRDIR/../rtl/imp/integration/block_design/interface_def/femto_uart_bus_ip_xact"/>
     <Option Name="IPOutputRepo" Val="$PCACHEDIR/ip"/>
     <Option Name="IPCachePermission" Val="read"/>
     <Option Name="IPCachePermission" Val="write"/>
@@ -31,20 +37,20 @@
     <Option Name="EnableBDX" Val="FALSE"/>
     <Option Name="DSAVendor" Val="xilinx"/>
     <Option Name="DSANumComputeUnits" Val="60"/>
-    <Option Name="WTXSimLaunchSim" Val="1748"/>
+    <Option Name="WTXSimLaunchSim" Val="1770"/>
     <Option Name="WTModelSimLaunchSim" Val="0"/>
     <Option Name="WTQuestaLaunchSim" Val="0"/>
     <Option Name="WTIesLaunchSim" Val="0"/>
     <Option Name="WTVcsLaunchSim" Val="0"/>
     <Option Name="WTRivieraLaunchSim" Val="0"/>
     <Option Name="WTActivehdlLaunchSim" Val="0"/>
-    <Option Name="WTXSimExportSim" Val="7"/>
-    <Option Name="WTModelSimExportSim" Val="7"/>
-    <Option Name="WTQuestaExportSim" Val="7"/>
-    <Option Name="WTIesExportSim" Val="7"/>
-    <Option Name="WTVcsExportSim" Val="7"/>
-    <Option Name="WTRivieraExportSim" Val="7"/>
-    <Option Name="WTActivehdlExportSim" Val="7"/>
+    <Option Name="WTXSimExportSim" Val="16"/>
+    <Option Name="WTModelSimExportSim" Val="16"/>
+    <Option Name="WTQuestaExportSim" Val="16"/>
+    <Option Name="WTIesExportSim" Val="16"/>
+    <Option Name="WTVcsExportSim" Val="16"/>
+    <Option Name="WTRivieraExportSim" Val="16"/>
+    <Option Name="WTActivehdlExportSim" Val="16"/>
     <Option Name="GenerateIPUpgradeLog" Val="TRUE"/>
     <Option Name="XSimRadix" Val="hex"/>
     <Option Name="XSimTimeUnit" Val="ns"/>
@@ -71,101 +77,215 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/core.vh">
-        <FileInfo>
-          <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
-      <File Path="$PPRDIR/../rtl/imp/core.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/bus_primitive.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/femto.v">
+      <File Path="$PPRDIR/../rtl/imp/core/core.vh">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/core/core.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/gpio.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/dbus_conn.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/sim/simpaths.vh">
-        <FileInfo>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
-      <File Path="$PPRDIR/../rtl/imp/ioring.v">
+      <File Path="$PPRDIR/../rtl/imp/interrupt/eic.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/primitive.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/eic_wrapper.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/qspinor.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/fault_encoder.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/rom.vh">
-        <FileInfo>
-          <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
-      <File Path="$PPRDIR/../rtl/imp/rom.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/femto.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/rst.v">
+      <File Path="$PPRDIR/../rtl/imp/gpio/gpio.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/sram.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/gpio_wrapper.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/tcm.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/ibus_conn.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/tmr.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/ioring.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/uart.v">
+      <File Path="$PPRDIR/../rtl/imp/integration/merger.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/pbus_conn.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/primitive/primitive.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/qspi/qspi.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/qspi_wrapper.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/rom/rom.vh">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/rom/rom.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/rom_wrapper.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/rst/rst.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/rst_wrapper.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/splitter.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/sram/sram.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/sram_wrapper.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/tcm/tcm.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/tcm_wrapper.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/tmr/tmr.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/tmr_wrapper.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/uart/uart.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/imp/integration/uart_wrapper.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -176,6 +296,12 @@
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/sim/simpaths.vh">
+        <FileInfo>
+          <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
@@ -218,14 +344,31 @@
     </FileSet>
     <FileSet Name="sim_1" Type="SimulationSrcs" RelSrcDir="$PSRCDIR/sim_1">
       <Filter Type="Srcs"/>
-      <File Path="$PPRDIR/../rtl/sim/MX25U51245G.v">
+      <File Path="$PPRDIR/../rtl/sim/periph/MX25U51245G.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
       <File Path="$PPRDIR/../rtl/sim/timescale.vh">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/sim/periph/dpinor.sv">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/sim/periph/qpinor.sv">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../rtl/sim/periph/sram.sv">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="simulation"/>
@@ -240,7 +383,6 @@
       <File Path="$PPRDIR/../rtl/sim/simtop.sv">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
@@ -249,21 +391,7 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../rtl/imp/femto.vh">
-        <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
-          <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
-      <File Path="$PPRDIR/../rtl/imp/core.vh">
-        <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
-          <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
-      <File Path="$PPRDIR/../rtl/imp/rom.vh">
+      <File Path="$PPRDIR/../rtl/sim/periph/uart_host.sv">
         <FileInfo>
           <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="synthesis"/>
@@ -314,19 +442,21 @@
     </Simulator>
   </Simulators>
   <Runs Version="1" Minor="10">
-    <Run Id="synth_1" Type="Ft3:Synth" SrcSet="sources_1" Part="xc7a35tcpg236-1" ConstrsSet="constrs_1" Description="Vivado Synthesis Defaults" WriteIncrSynthDcp="false" State="current" IncludeInArchive="true">
+    <Run Id="synth_1" Type="Ft3:Synth" SrcSet="sources_1" Part="xc7a35tcpg236-1" ConstrsSet="constrs_1" Description="Vivado Synthesis Defaults" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/synth_1" IncludeInArchive="true">
       <Strategy Version="1" Minor="2">
         <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2018"/>
         <Step Id="synth_design"/>
       </Strategy>
+      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
       <ReportStrategy Name="Vivado Synthesis Default Reports" Flow="Vivado Synthesis 2018"/>
       <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
     </Run>
-    <Run Id="clk_gen_synth_1" Type="Ft3:Synth" SrcSet="clk_gen" Part="xc7a35tcpg236-1" ConstrsSet="clk_gen" Description="Vivado Synthesis Defaults" WriteIncrSynthDcp="false" IncludeInArchive="true">
+    <Run Id="clk_gen_synth_1" Type="Ft3:Synth" SrcSet="clk_gen" Part="xc7a35tcpg236-1" ConstrsSet="clk_gen" Description="Vivado Synthesis Defaults" WriteIncrSynthDcp="false" Dir="$PRUNDIR/clk_gen_synth_1" IncludeInArchive="true">
       <Strategy Version="1" Minor="2">
         <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2018"/>
         <Step Id="synth_design"/>
       </Strategy>
+      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
       <ReportStrategy Name="Vivado Synthesis Default Reports" Flow="Vivado Synthesis 2018"/>
       <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
     </Run>

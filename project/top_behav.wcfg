@@ -11,13 +11,13 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="0fs"></ZoomStartTime>
-      <ZoomEndTime time="1755255258fs"></ZoomEndTime>
-      <Cursor1Time time="1000000000fs"></Cursor1Time>
+      <ZoomStartTime time="28903055848fs"></ZoomStartTime>
+      <ZoomEndTime time="33655426765fs"></ZoomEndTime>
+      <Cursor1Time time="29273631000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="201"></NameColumnWidth>
-      <ValueColumnWidth column_width="118"></ValueColumnWidth>
+      <ValueColumnWidth column_width="110"></ValueColumnWidth>
    </column_width_setting>
    <WVObjectSize size="3" />
    <wvobject fp_name="/simtop/led" type="array">
@@ -43,6 +43,39 @@
    <wvobject fp_name="group48" type="group">
       <obj_property name="label">Core</obj_property>
       <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/simtop/top/femto/core/interrupt" type="logic">
+         <obj_property name="ElementShortName">interrupt</obj_property>
+         <obj_property name="ObjectShortName">interrupt</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/ext_int_trigger" type="logic">
+         <obj_property name="ElementShortName">ext_int_trigger</obj_property>
+         <obj_property name="ObjectShortName">ext_int_trigger</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/ext_int_handled" type="logic">
+         <obj_property name="ElementShortName">ext_int_handled</obj_property>
+         <obj_property name="ObjectShortName">ext_int_handled</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/extint_controller/ext_int_flag" type="array">
+         <obj_property name="ElementShortName">ext_int_flag[3:0]</obj_property>
+         <obj_property name="ObjectShortName">ext_int_flag[3:0]</obj_property>
+      </wvobject>
+      <wvobject type="divider" fp_name="divider114">
+         <obj_property name="label">Pipeline</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/s1_vld" type="logic">
+         <obj_property name="ElementShortName">s1_vld</obj_property>
+         <obj_property name="ObjectShortName">s1_vld</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/s1_ir" type="array">
+         <obj_property name="ElementShortName">s1_ir[31:0]</obj_property>
+         <obj_property name="ObjectShortName">s1_ir[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/simtop/top/femto/core/s1_pc" type="array">
+         <obj_property name="ElementShortName">s1_pc[31:0]</obj_property>
+         <obj_property name="ObjectShortName">s1_pc[31:0]</obj_property>
+      </wvobject>
       <wvobject fp_name="/simtop/top/femto/core/s2_vld" type="logic">
          <obj_property name="ElementShortName">s2_vld</obj_property>
          <obj_property name="ObjectShortName">s2_vld</obj_property>

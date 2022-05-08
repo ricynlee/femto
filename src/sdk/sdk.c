@@ -11,11 +11,11 @@ void nor_init(nor_mode_t mode, uint8_t cmd, uint8_t dmy_cycle_no, bool dmy_out, 
         mode = NOR_MODE_ULIM;
     }
 
-    QSPINOR->norcmd = cmd;
-    QSPINOR->norcsr = QSPINOR_NORCSR_MODE((int)mode)             |
-                      QSPINOR_NORCSR_DMYCNT(dmy_cycle_no)        |
-                      QSPINOR_NORCSR_DMYPAT(dmy_out_pattern)     |
-                      (dmy_out ? QSPINOR_NORCSR_DMYDIR_MASK : 0u);
+    QSPI->norcmd = cmd;
+    QSPI->norcsr = QSPI_NORCSR_MODE((int)mode)             |
+                   QSPI_NORCSR_DMYCNT(dmy_cycle_no)        |
+                   QSPI_NORCSR_DMYPAT(dmy_out_pattern)     |
+                   (dmy_out ? QSPI_NORCSR_DMYDIR_MASK : 0u);
 }
 
 // GPIO
@@ -72,7 +72,7 @@ bool uart_rx_ready(void) {
 }
 
 bool uart_tx_ready(void) {
-    return (UART->txqsr & UART_TXQSR_RDY_MASK) ? true : false;
+    return (UART->txqcsr & UART_TXQCSR_RDY_MASK) ? true : false;
 }
 
 void uart_clear_rxq(void) {
@@ -113,171 +113,171 @@ void uart_send_data(const uint8_t* const buf, size_t n) {
     }
 }
 
-// QSPINOR
-bool qspinor_rxq_ready(void) {
-    return (QSPINOR->rxqcsr & QSPINOR_RXQCSR_CNT_MASK) ? true : false;
+// QSPI
+bool qspi_rxq_ready(void) {
+    return (QSPI->rxqcsr & QSPI_RXQCSR_CNT_MASK) ? true : false;
 }
 
-bool qspinor_txq_ready(void) {
-    return (QSPINOR->txqcsr & QSPINOR_RXQCSR_CNT_MASK) ? true : false;
+bool qspi_txq_ready(void) {
+    return (QSPI->txqcsr & QSPI_RXQCSR_CNT_MASK) ? true : false;
 }
 
-void qspinor_clear_rxq(void) {
-    QSPINOR->rxqcsr = QSPINOR_RXQCSR_CLR_MASK;
+void qspi_clear_rxq(void) {
+    QSPI->rxqcsr = QSPI_RXQCSR_CLR_MASK;
 }
 
-void qspinor_clear_txq(void) {
-    QSPINOR->txqcsr = QSPINOR_TXQCSR_CLR_MASK;
+void qspi_clear_txq(void) {
+    QSPI->txqcsr = QSPI_TXQCSR_CLR_MASK;
 }
 
-bool qspinor_read_rxq(uint8_t* const ptr_d) {
+bool qspi_read_rxq(uint8_t* const ptr_d) {
     if (!ptr_d) {
         return false;
     }
 
-    if (qspinor_rxq_ready()) {
-        *ptr_d = QSPINOR->rxd;
+    if (qspi_rxq_ready()) {
+        *ptr_d = QSPI->rxd;
         return true;
     } else {
         return false;
     }
 }
 
-bool qspinor_write_txq(uint8_t d) {
-    if (qspinor_txq_ready()) {
-        QSPINOR->txd = d;
+bool qspi_write_txq(uint8_t d) {
+    if (qspi_txq_ready()) {
+        QSPI->txd = d;
         return true;
     } else {
         return false;
     }
 }
 
-bool qspinor_is_busy(void) {
-    if (QSPINOR->ipcsr & QSPINOR_IPCSR_BSY_MASK) {
+bool qspi_is_busy(void) {
+    if (QSPI->ipcsr & QSPI_IPCSR_BSY_MASK) {
         return true;
     } else {
         return false;
     }
 }
 
-void qspinor_begin_receive(uint8_t n, qspinor_width_t width) {
-    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK     |
-                     QSPINOR_IPCSR_DIR(DIR_IN)  |
-                     QSPINOR_IPCSR_WID(width)   |
-                     QSPINOR_IPCSR_CNT(n)       ;
+void qspi_begin_receive(uint8_t n, qspi_width_t width) {
+    QSPI->ipcsr = QSPI_IPCSR_SEL_MASK     |
+                     QSPI_IPCSR_DIR(DIR_IN)  |
+                     QSPI_IPCSR_WID(width)   |
+                     QSPI_IPCSR_CNT(n)       ;
 }
 
-void qspinor_begin_send(uint8_t n, qspinor_width_t width) {
-    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK     |
-                     QSPINOR_IPCSR_DIR(DIR_OUT) |
-                     QSPINOR_IPCSR_WID(width)   |
-                     QSPINOR_IPCSR_CNT(n)       ;
+void qspi_begin_send(uint8_t n, qspi_width_t width) {
+    QSPI->ipcsr = QSPI_IPCSR_SEL_MASK     |
+                     QSPI_IPCSR_DIR(DIR_OUT) |
+                     QSPI_IPCSR_WID(width)   |
+                     QSPI_IPCSR_CNT(n)       ;
 }
 
-void qspinor_send_dummy_cycle(uint8_t n, qspinor_width_t width, bool dmy_out, uint8_t dmy_out_pattern) {
-    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK                        |
-                     QSPINOR_IPCSR_DMY_MASK                        |
-                     QSPINOR_IPCSR_DIR(dmy_out ? DIR_OUT : DIR_IN) |
-                     QSPINOR_IPCSR_DOP(dmy_out_pattern)            |
-                     QSPINOR_IPCSR_WID(width)                      |
-                     QSPINOR_IPCSR_CNT(n)                          ;
+void qspi_send_dummy_cycle(uint8_t n, qspi_width_t width, bool dmy_out, uint8_t dmy_out_pattern) {
+    QSPI->ipcsr = QSPI_IPCSR_SEL_MASK                        |
+                     QSPI_IPCSR_DMY_MASK                        |
+                     QSPI_IPCSR_DIR(dmy_out ? DIR_OUT : DIR_IN) |
+                     QSPI_IPCSR_DOP(dmy_out_pattern)            |
+                     QSPI_IPCSR_WID(width)                      |
+                     QSPI_IPCSR_CNT(n)                          ;
 }
 
-void qspinor_finish(void) {
-    QSPINOR->ipcsr = QSPINOR_IPCSR_SEL_MASK & ~QSPINOR_IPCSR_SEL_MASK;
+void qspi_finish(void) {
+    QSPI->ipcsr = QSPI_IPCSR_SEL_MASK & ~QSPI_IPCSR_SEL_MASK;
 }
 
-void qspinor_receive_data(uint8_t* const buf, size_t n, qspinor_width_t width) {
+void qspi_receive_data(uint8_t* const buf, size_t n, qspi_width_t width) {
     if (!buf || !n)
         return;
 
-    while (qspinor_is_busy());
-    qspinor_clear_rxq();
+    while (qspi_is_busy());
+    qspi_clear_rxq();
 
     for (size_t i=0, rxn; i<n; i+=rxn) {
         rxn = n-i;
-        if (rxn>QSPINOR_FIFO_DEPTH) {
-            rxn = QSPINOR_FIFO_DEPTH;
+        if (rxn>QSPI_FIFO_DEPTH) {
+            rxn = QSPI_FIFO_DEPTH;
         }
-        qspinor_begin_receive(rxn, width);
-        while (qspinor_is_busy());
+        qspi_begin_receive(rxn, width);
+        while (qspi_is_busy());
 
         for (size_t k=0; k<rxn; k++) {
-            buf[i+k] = QSPINOR->rxd;
+            buf[i+k] = QSPI->rxd;
         }
     }
 }
 
-void qspinor_send_data(const uint8_t* const buf, size_t n, qspinor_width_t width) {
+void qspi_send_data(const uint8_t* const buf, size_t n, qspi_width_t width) {
     if (!buf || !n)
         return;
 
-    while (qspinor_is_busy());
-    qspinor_clear_txq();
+    while (qspi_is_busy());
+    qspi_clear_txq();
 
     for (size_t i=0, txn; i<n; i+=txn) {
         txn = n-i;
-        if (txn>QSPINOR_FIFO_DEPTH) {
-            txn = QSPINOR_FIFO_DEPTH;
+        if (txn>QSPI_FIFO_DEPTH) {
+            txn = QSPI_FIFO_DEPTH;
         }
         for (size_t k=0; k<txn; k++) {
-            QSPINOR->txd = buf[i+k];
+            QSPI->txd = buf[i+k];
         }
 
-        qspinor_begin_send(txn, width);
-        while (qspinor_is_busy());
+        qspi_begin_send(txn, width);
+        while (qspi_is_busy());
     }
 }
 
 /* DO NOT USE
- *  Core speed too low: qspinor_receive_blob will probably block control flow!
+ *  Core speed too low: qspi_receive_blob will probably block control flow!
  */
-void qspinor_receive_blob(uint8_t* const buf, size_t n, qspinor_width_t width) __attribute__((optimize("O3")));
-void qspinor_receive_blob (uint8_t* const buf, size_t n, qspinor_width_t width) {
+void qspi_receive_blob(uint8_t* const buf, size_t n, qspi_width_t width) __attribute__((optimize("O3")));
+void qspi_receive_blob (uint8_t* const buf, size_t n, qspi_width_t width) {
     if (!buf || !n)
         return;
 
-    while (qspinor_is_busy());
-    qspinor_clear_rxq();
+    while (qspi_is_busy());
+    qspi_clear_rxq();
 
-    uint8_t rxn = (uint8_t)(n>=QSPINOR_FIFO_DEPTH ? WHOLE_FIFO : n);
-    qspinor_begin_receive(rxn, width);
+    uint8_t rxn = (uint8_t)(n>=QSPI_FIFO_DEPTH ? WHOLE_FIFO : n);
+    qspi_begin_receive(rxn, width);
 
     register size_t i=0;
     while (i<n) {
-        register size_t e = i+QSPINOR_RXQCSR_CNT(QSPINOR->rxqcsr);
+        register size_t e = i+QSPI_RXQCSR_CNT(QSPI->rxqcsr);
         for (e=(n<e?n:e); i<e; i++) {
-            buf[i] = QSPINOR->rxd;
+            buf[i] = QSPI->rxd;
         }
     }
 
-    while (qspinor_is_busy());
-    qspinor_clear_rxq();
+    while (qspi_is_busy());
+    qspi_clear_rxq();
 }
 
 /* DO NOT USE
- *  Core speed too low: qspinor_send_blob will probably block control flow!
+ *  Core speed too low: qspi_send_blob will probably block control flow!
  */
-void qspinor_send_blob(const uint8_t* const buf, size_t n, qspinor_width_t width) __attribute__((optimize("O3")));
-void qspinor_send_blob (const uint8_t* const buf, size_t n, qspinor_width_t width) {
+void qspi_send_blob(const uint8_t* const buf, size_t n, qspi_width_t width) __attribute__((optimize("O3")));
+void qspi_send_blob (const uint8_t* const buf, size_t n, qspi_width_t width) {
     if (!buf || !n)
         return;
 
-    while (qspinor_is_busy());
-    qspinor_clear_txq();
+    while (qspi_is_busy());
+    qspi_clear_txq();
 
-    uint8_t txn = (uint8_t)(n>=QSPINOR_FIFO_DEPTH ? WHOLE_FIFO : n);
-    qspinor_begin_send(txn, width);
+    uint8_t txn = (uint8_t)(n>=QSPI_FIFO_DEPTH ? WHOLE_FIFO : n);
+    qspi_begin_send(txn, width);
 
     register size_t i=0;
     while (i<n) {
-        register size_t e = i+QSPINOR_TXQCSR_CNT(QSPINOR->txqcsr);
+        register size_t e = i+QSPI_TXQCSR_CNT(QSPI->txqcsr);
         for (e=(n<e?n:e); i<e; i++) {
-            QSPINOR->txd = buf[i];
+            QSPI->txd = buf[i];
         }
     }
 
-    while (qspinor_is_busy());
+    while (qspi_is_busy());
 }
 
 // TIMER
@@ -294,27 +294,28 @@ void timer_delay_us(uint32_t val) {
     while(timer_get());
 }
 
+// EIC
+unsigned get_interrupt_pending_flag(void) {
+    return EIC->ipfr;
+}
+
+void clr_interrupt_pending_flag(unsigned bit_mask) {
+    EIC->ipfr = bit_mask & (EIC_IPFR_TMRF | EIC_IPFR_UARTF);
+}
+
 // RESET
 void reset_soc(void) {
-    RESET->rst = RESET_ALL;
+    RESET->rst = 1;
 }
 
-void reset_core(void) {
-    RESET->rst = RESET_CORE;
+unsigned short get_reset_cause(void) {
+    return RESET->cause;
 }
 
-void reset_uart(void) {
-    RESET->rst = RESET_UART;
+unsigned get_reset_info(void) {
+    return RESET->info;
 }
 
-void reset_gpio(void) {
-    RESET->rst = RESET_GPIO;
-}
-
-void reset_qspinor(void) {
-    RESET->rst = RESET_QSPINOR;
-}
-
-void reset_timer(void) {
-    RESET->rst = RESET_TIMER;
+void set_reset_info(unsigned info) {
+    RESET->info = info;
 }
