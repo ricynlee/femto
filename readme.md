@@ -1,3 +1,6 @@
+> Please note this is README of `femto` **advanced**  
+> 请注意本README仅适用于`femto` **advanced**  
+
 # Brief
 `femto` is a RISCV ISA-compatible light-weight soft-core MCU that can be implemented on an FPGA for DIY or educational purposes. `femto` is now released under MIT license. Here are some basic features of `femto`:  
 - Mono core
@@ -10,8 +13,7 @@
 - Support external interrupts
 - Single-cycle instructions in the majority 
 - SRAM/NOR/UART support
-- No cache
-- No debug support so far
+- **No** cache/debug support
 
 # Project tree
 femto
@@ -53,8 +55,7 @@ femto
 - 支持外部中断
 - 单周期指令居多
 - 内置MCU常用的SRAM/NOR/UART控制器模块
-- 无高速缓存(Cache)
-- 尚不支持调试
+- 无高速缓存(Cache),不支持调试
 
 # 目录树导航
 femto
