@@ -10,4 +10,4 @@ This is a demo featuring a modified femto. The demo shows a case of sound commun
 Please vide the video below for a general introduction of femto and the demo.  
 请点击下面的链接观看femto和演示项目简介。  
 
-[Intro in Chinese/简介](https://www.bilibili.com/video/BV1J44y1s77  
+[Intro in Chinese/简介](https://www.bilibili.com/video/BV1J44y1s77)  
