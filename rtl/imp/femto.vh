@@ -35,6 +35,9 @@
 `define ROM_BASE            (32'h0000_0000)
 `define ROM_SIZE            (4*1024) // 4KB, 2's exponent
 
+`define DBGTCM_BASE         (32'h0001_0000)
+`define DBGTCM_SIZE         (256) // 256, 2's exponent
+
 `define TCM_BASE            (32'h1000_0000)
 `define TCM_SIZE            (4*1024) // 4KB, 2's exponent
 
@@ -63,6 +66,9 @@
 
 `define TMR_BASE            (32'hb000_0000)
 `define TMR_SIZE            (8) // 8B valid address range
+
+`define ABSCMD_BASE         (32'hc000_0000)
+`define ABSCMD_SIZE         ()
 
 `define RST_BASE            (32'hf000_0000)
 `define RST_SIZE            (8) // 8B valid address range

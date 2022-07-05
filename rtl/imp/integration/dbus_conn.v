@@ -4,6 +4,8 @@
 module dbus_conn # (
     parameter ROM_BASE = `ROM_BASE,
     parameter ROM_SPAN = $clog2(`ROM_SIZE),
+    parameter DBGTCM_BASE = `DBGTCM_BASE,
+    parameter DBGTCM_SPAN = $clog2(`DBGTCM_SIZE),
     parameter TCM_BASE = `TCM_BASE,
     parameter TCM_SPAN = $clog2(`TCM_SIZE),
     parameter SRAM_BASE = `SRAM_BASE,
@@ -32,6 +34,14 @@ module dbus_conn # (
     output wire[`BUS_WIDTH-1:0] s_rom_wdata,
     input wire s_rom_resp,
     input wire[`BUS_WIDTH-1:0] s_rom_rdata,
+
+    output wire s_dbgtcm_req,
+    output wire[`XLEN-1:0] s_dbgtcm_addr,
+    output wire s_dbgtcm_w_rb,
+    output wire[$clog2(`BUS_ACC_CNT)-1:0] s_dbgtcm_acc,
+    output wire[`BUS_WIDTH-1:0] s_dbgtcm_wdata,
+    input wire s_dbgtcm_resp,
+    input wire[`BUS_WIDTH-1:0] s_dbgtcm_rdata,
 
     output wire s_tcm_req,
     output wire[`XLEN-1:0] s_tcm_addr,
@@ -77,7 +87,7 @@ module dbus_conn # (
     output wire[`XLEN-1:0] bus_fault_addr,
     input wire bus_halt // force halt bus
 );
-    localparam SLAVE_CNT = 6;
+    localparam SLAVE_CNT = 7;
 
     // req demux
     wire[SLAVE_CNT-1:0] bus_slave_sel;
@@ -87,32 +97,38 @@ module dbus_conn # (
     assign s_rom_w_rb = m_w_rb;
     assign s_rom_acc = m_acc;
     assign s_rom_wdata = m_wdata;
-    assign bus_slave_sel[1] = ((m_addr & ~{{(`XLEN-TCM_SPAN){1'b0}}, {TCM_SPAN{1'b1}}}) == TCM_BASE);
-    assign s_tcm_req = m_req & bus_slave_sel[1];
+    assign bus_slave_sel[1] = ((m_addr & ~{{(`XLEN-DBGTCM_SPAN){1'b0}}, {DBGTCM_SPAN{1'b1}}}) == DBGTCM_BASE);
+    assign s_dbgtcm_req = m_req & bus_slave_sel[1];
+    assign s_dbgtcm_addr = m_addr;
+    assign s_dbgtcm_w_rb = m_w_rb;
+    assign s_dbgtcm_acc = m_acc;
+    assign s_dbgtcm_wdata = m_wdata;
+    assign bus_slave_sel[2] = ((m_addr & ~{{(`XLEN-TCM_SPAN){1'b0}}, {TCM_SPAN{1'b1}}}) == TCM_BASE);
+    assign s_tcm_req = m_req & bus_slave_sel[2];
     assign s_tcm_addr = m_addr;
     assign s_tcm_w_rb = m_w_rb;
     assign s_tcm_acc = m_acc;
     assign s_tcm_wdata = m_wdata;
-    assign bus_slave_sel[2] = ((m_addr & ~{{(`XLEN-SRAM_SPAN){1'b0}}, {SRAM_SPAN{1'b1}}}) == SRAM_BASE);
-    assign s_sram_req = m_req & bus_slave_sel[2];
+    assign bus_slave_sel[3] = ((m_addr & ~{{(`XLEN-SRAM_SPAN){1'b0}}, {SRAM_SPAN{1'b1}}}) == SRAM_BASE);
+    assign s_sram_req = m_req & bus_slave_sel[3];
     assign s_sram_addr = m_addr;
     assign s_sram_w_rb = m_w_rb;
     assign s_sram_acc = m_acc;
     assign s_sram_wdata = m_wdata;
-    assign bus_slave_sel[3] = ((m_addr & ~{{(`XLEN-NOR_SPAN){1'b0}}, {NOR_SPAN{1'b1}}}) == NOR_BASE);
-    assign s_nor_req = m_req & bus_slave_sel[3];
+    assign bus_slave_sel[4] = ((m_addr & ~{{(`XLEN-NOR_SPAN){1'b0}}, {NOR_SPAN{1'b1}}}) == NOR_BASE);
+    assign s_nor_req = m_req & bus_slave_sel[4];
     assign s_nor_addr = m_addr;
     assign s_nor_w_rb = m_w_rb;
     assign s_nor_acc = m_acc;
     assign s_nor_wdata = m_wdata;
-    assign bus_slave_sel[4] = ((m_addr & ~{{(`XLEN-QSPI_SPAN){1'b0}}, {QSPI_SPAN{1'b1}}}) == QSPI_BASE);
-    assign s_qspi_req = m_req & bus_slave_sel[4];
+    assign bus_slave_sel[5] = ((m_addr & ~{{(`XLEN-QSPI_SPAN){1'b0}}, {QSPI_SPAN{1'b1}}}) == QSPI_BASE);
+    assign s_qspi_req = m_req & bus_slave_sel[5];
     assign s_qspi_addr = m_addr;
     assign s_qspi_w_rb = m_w_rb;
     assign s_qspi_acc = m_acc;
     assign s_qspi_wdata = m_wdata;
-    assign bus_slave_sel[5] = ((m_addr & ~{{(`XLEN-BRIDGE_SPAN){1'b0}}, {BRIDGE_SPAN{1'b1}}}) == BRIDGE_BASE);
-    assign s_bridge_req = m_req & bus_slave_sel[5];
+    assign bus_slave_sel[6] = ((m_addr & ~{{(`XLEN-BRIDGE_SPAN){1'b0}}, {BRIDGE_SPAN{1'b1}}}) == BRIDGE_BASE);
+    assign s_bridge_req = m_req & bus_slave_sel[6];
     assign s_bridge_addr = m_addr;
     assign s_bridge_w_rb = m_w_rb;
     assign s_bridge_acc = m_acc;
@@ -129,6 +145,7 @@ module dbus_conn # (
 
     assign m_rdata =
         s_rom_resp ? s_rom_rdata :
+        s_dbgtcm_resp ? s_dbgtcm_rdata :
         s_tcm_resp ? s_tcm_rdata :
         s_sram_resp ? s_sram_rdata :
         s_nor_resp ? s_nor_rdata :
@@ -136,5 +153,5 @@ module dbus_conn # (
         s_bridge_resp ? s_bridge_rdata :
         /* otherwise */ m_rdata_latch;
 
-    assign m_resp = ~bus_halt & |{s_rom_resp, s_tcm_resp, s_sram_resp, s_nor_resp, s_qspi_resp, s_bridge_resp};
+    assign m_resp = ~bus_halt & |{s_rom_resp, s_dbgtcm_resp, s_tcm_resp, s_sram_resp, s_nor_resp, s_qspi_resp, s_bridge_resp};
 endmodule
