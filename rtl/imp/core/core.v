@@ -576,8 +576,8 @@ module core (
                     (opcode==OPCODE_SYSTEM) ? ( // no ecall/ebreak
                         funct3[1:0]==2'b00 ? // mret
                             (funct3[2] || rs1 || rd || funct7!=7'b0011000 || rs2!=5'd2) :
-                        // csr ops, mcause/mtvec/mepc/mip/tdata1/tdata2 permitted all the time, dcsr/dpc permitted under debug mode
-                            ((funct3[2]==1'b0 && rs1[4]) || rd[4] || !(1 /* CSR addr check not actually performed */))
+                        // csr ops, mcause/mtvec/mepc/mip permitted
+                            ((funct3[2]==1'b0 && rs1[4]) || rd[4] || {csr_addr[11:7], csr_addr[5:3], csr_addr[1]}!=9'b001100000 || ^{csr_addr[6], csr_addr[2], csr_addr[0]})
                     ) :
                     /* undefined / unimplemented opcode */
                         1'b1
