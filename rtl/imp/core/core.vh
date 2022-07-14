@@ -29,6 +29,12 @@ localparam CSR_ADDR_MSTATUS = 12'h300,
            CSR_ADDR_MTVAL   = 12'h343,
            CSR_ADDR_MIP     = 12'h344;
 
+// trap csr field definition
+`define MIE  3  // mstatus.MIE - global int enable
+`define MPIE 7  // mstatus.MPIE - prev MIE
+`define MEIE 11 // mie.MEIE - ext int enable
+`define MEIP 11 // mip.MEIP - ext int pending
+
 /* trap csr notes
 
  * mstatus // mie & mpie function, other are WPRI fields
@@ -54,18 +60,40 @@ localparam CSR_ADDR_MSTATUS = 12'h300,
 
  */
 
+// debug/trigger csr addr encoding
+localparam CSR_ADDR_DCSR    = 12'h7b0,
+           CSR_ADDR_DPC     = 12'h7b1,
+           CSR_ADDR_TSELECT = 12'h7a0,
+           CSR_ADDR_TDATA1  = 12'h7a1,
+           CSR_ADDR_TDATA2  = 12'h7a2,
+           CSR_ADDR_TINFO   = 12'h7a4;
+
+/* debug/trigger csr notes
+ * dcsr
+ * dpc (pc upon debugger interrupting exec flow)
+ * tselect (hardwired to zero because only one trigger is supported, to be dbg mode sw-implemented)
+ * tdata1
+ * tdata2
+ * tinfo (hardwired because only type 2 is supported, to be dbg mode sw-implemented)
+ * Only one type-2 trigger is to be implemented, as hw instruction breakpoint.
+ */
+
 /***************************************** femto defined *****************************************/
 // ex/wb stage opcode
-localparam OP_UNDEF = 8'd0,
-           OP_STD   = 8'd1, // write/no change regfile
-           OP_JAL   = 8'd2,
-           OP_JALR  = 8'd3,
-           OP_LD    = 8'd4, // load
-           OP_LDU   = 8'd5, // load unsigned
-           OP_CSR   = 8'd6,
-           OP_TRAP  = 8'd7, // trap jump
-           OP_TRET  = 8'd8, // trap return
-           OP_TSUC  = 8'd9; // trap succesion (trap-upon-mret)
+localparam OP_UNDEF = 8'h0,
+           OP_STD   = 8'h1, // write/no change regfile
+           OP_JAL   = 8'h2,
+           OP_JALR  = 8'h3,
+           OP_LD    = 8'h4, // load
+           OP_LDU   = 8'h5, // load unsigned
+           OP_CSR   = 8'h6,
+
+           OP_TRAP     = 8'h7, // trap jump
+           OP_TRAP_RET = 8'h8, // trap return
+           OP_TRAP_SUC = 8'h9, // trap succesion (trap-upon-mret)
+
+           OP_DBGTRAP     = 8'ha, // dbg trap jump (into dbg mode)
+           OP_DBGTRAP_RET = 8'hb; // dbg trap return
 
 // ex/wb alu opcode
 localparam ALU_ADD  = 8'h1,
@@ -82,10 +110,15 @@ localparam ALU_ADD  = 8'h1,
            ALU_SL   = 8'hb;
 
 // implemented CSRs
-localparam CSR_NUM = 4;
+localparam CSR_NUM = 8;
 // bound with csr_addr to csr_index logic
-`define CSR_ADDR_TO_INDEX   {csr_addr[2], csr_addr[0]}
-localparam CSR_INDEX_MSTATUS = 2'b00,
-           CSR_INDEX_MTVEC   = 2'b11,
-           CSR_INDEX_MEPC    = 2'b01,
-           CSR_INDEX_MIP     = 2'b10;
+`define CSR_ADDR_TO_INDEX   {csr_addr[10] /*trap/dbg csr distinguisher*/, csr_addr[6]|csr_addr[4], csr_addr[0]}
+localparam CSR_INDEX_MSTATUS = 3'd0,
+           CSR_INDEX_MTVEC   = 3'd1,
+           CSR_INDEX_MIP     = 3'd2,
+           CSR_INDEX_MEPC    = 3'd3,
+
+           CSR_INDEX_TDATA2  = 3'd4,
+           CSR_INDEX_TDATA1  = 3'd5,
+           CSR_INDEX_DCSR    = 3'd6,
+           CSR_INDEX_DPC     = 3'd7;
