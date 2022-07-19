@@ -5,17 +5,16 @@ module core (
     input wire clk,
     input wire rstn,
 
-    // fault
-    output wire            core_fault,
-    output wire[`XLEN-1:0] core_fault_pc,
-
     // external interrupt
     input wire  ext_int_req,
     output wire ext_int_resp,
 
-    // external dbg trigger
+    // external dbg trigger(DM)
     input wire  ext_dbg_req,
     output wire ext_dbg_resp,
+
+    // dbg trap addr(DM)
+    input wire[`XLEN-1:0] dbg_trap_addr,
 
     // data bus interface
     output wire[`XLEN-1:0]                dbus_addr, // byte addr
@@ -45,26 +44,26 @@ module core (
     wire jmp, hld;
     wire[`XLEN-1:0] jmp_addr;
 
-    // data bus access
-    wire dbus_req;
-    wire dbus_req_w_rb;
-    wire[$clog2(`BUS_ACC_CNT)-1:0] dbus_req_acc;
-    wire[`XLEN-1:0] dbus_req_addr;
-    wire[`BUS_WIDTH-1:0] dbus_req_wdata;
-    wire dbus_req_launched;
-    wire dbus_resp_latched;
-    wire dbus_resp_w_rb;
-    wire[$clog2(`BUS_ACC_CNT)-1:0] dbus_resp_acc;
-    wire[`BUS_WIDTH-1:0] dbus_resp_data;
+    // data access
+    wire data_req;
+    wire data_req_w_rb;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] data_req_acc;
+    wire[`XLEN-1:0] data_req_addr;
+    wire[`BUS_WIDTH-1:0] data_req_wdata;
+    wire data_req_launched;
+    wire data_resp_latched;
+    wire data_resp_w_rb;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] data_resp_acc;
+    wire[`BUS_WIDTH-1:0] data_resp_data;
 
-    // instruction bus access
-    wire ibus_req;
-    wire[`XLEN-1:0] ibus_req_addr;
-    wire[$clog2(`BUS_ACC_CNT)-1:0] ibus_req_acc;
-    wire ibus_req_launched;
-    wire ibus_resp_latched;
-    wire[$clog2(`BUS_ACC_CNT)-1:0] ibus_resp_acc;
-    wire[`ILEN-1:0] ibus_resp_data;
+    // instruction access
+    wire instr_req;
+    wire[`XLEN-1:0] instr_req_addr;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] instr_req_acc;
+    wire instr_req_launched;
+    wire instr_resp_latched;
+    wire[$clog2(`BUS_ACC_CNT)-1:0] instr_resp_acc;
+    wire[`ILEN-1:0] instr_resp_data;
 
     // pipeline stages (pc, ir)
     wire s0_vld;
@@ -95,7 +94,7 @@ module core (
     wire[`XLEN-1:0] s1_csr_val;
     wire s1_jmp_req;
     wire[`XLEN-1:0] s1_jmp_lr; // jump link register/return address
-    wire s1_dbus_req;
+    wire s1_data_req;
 
     wire[3:0] s2_rd; // dest reg index
     wire[`XLEN-1:0] s2_alu_a, s2_alu_b;
@@ -149,20 +148,20 @@ module core (
         );
         assign dbus_busy = ~dbus_resp & dbus_busy_post;
 
-        assign ibus_req   = ibus_req & ~ibus_busy;
-        assign ibus_addr  = ibus_req_addr;
+        assign ibus_req   = instr_req & ~ibus_busy;
+        assign ibus_addr  = instr_req_addr;
         assign ibus_w_rb  = 1'b0;
-        assign ibus_acc   = ibus_req_acc;
+        assign ibus_acc   = instr_req_acc;
         assign ibus_wdata = 32'dx; // for error detection in simulation
 
-        assign dbus_req   = dbus_req & ~dbus_busy;
-        assign dbus_addr  = dbus_req_addr;
-        assign dbus_w_rb  = dbus_req_w_rb;
-        assign dbus_acc   = dbus_req_acc;
-        assign dbus_wdata = dbus_req_wdata;
+        assign dbus_req   = data_req & ~dbus_busy;
+        assign dbus_addr  = data_req_addr;
+        assign dbus_w_rb  = data_req_w_rb;
+        assign dbus_acc   = data_req_acc;
+        assign dbus_wdata = data_req_wdata;
 
-        assign ibus_req_launched = ibus_req;
-        assign dbus_req_launched = dbus_req;
+        assign instr_req_launched = ibus_req;
+        assign data_req_launched = dbus_req;
      end
 
     /**********************************************************************************************************************/
@@ -170,17 +169,17 @@ module core (
         wire    ibus_resp_w_rb, dbus_resp_w_rb;
         wire[$clog2(`BUS_ACC_CNT)-1:0]  ibus_resp_acc, dbus_resp_acc;
 
-        wire    ibus_req_not_cancelled; // jmp ignores the matching ibus_resp, so as to cancel ibus_req
+        wire    instr_req_not_cancelled; // jmp ignores the matching instr_resp, so as to cancel instr_req
         dff #(
             .WIDTH($clog2(`BUS_ACC_CNT) + 1),
             .VALID("sync"),
-            .CLEAR("sync") // so as to cancel ibus_req
+            .CLEAR("sync") // so as to cancel instr_req
         ) ibus_resp_dff (
-            .clk(clk                                    ),
-            .clr(jmp                                    ),
-            .vld(ibus_req                               ),
-            .in ({ibus_acc, 1'b1}                       ),
-            .out({ibus_resp_acc, ibus_req_not_cancelled})
+            .clk(clk                                     ),
+            .clr(jmp                                     ),
+            .vld(ibus_req                                ),
+            .in ({ibus_acc, 1'b1}                        ),
+            .out({ibus_resp_acc, instr_req_not_cancelled})
         );
         assign ibus_resp_w_rb = 1'b0; // Always read access
 
@@ -195,36 +194,36 @@ module core (
             .out({dbus_resp_acc, dbus_resp_w_rb})
         );
 
-        assign ibus_resp_latched = ibus_resp & ibus_req_not_cancelled;
-        assign ibus_resp_acc = ibus_resp_acc;
-        assign ibus_resp_data = ibus_rdata;
+        assign instr_resp_latched = ibus_resp & instr_req_not_cancelled;
+        assign instr_resp_acc = ibus_resp_acc;
+        assign instr_resp_data = ibus_rdata;
 
-        assign dbus_resp_latched = dbus_resp;
-        assign dbus_resp_acc = dbus_resp_acc;
-        assign dbus_resp_data = dbus_rdata;
-        assign dbus_resp_w_rb = dbus_resp_w_rb;
+        assign data_resp_latched = dbus_resp;
+        assign data_resp_acc = dbus_resp_acc;
+        assign data_resp_data = dbus_rdata;
+        assign data_resp_w_rb = dbus_resp_w_rb;
     end
 
     /**********************************************************************************************************************/
     begin:STAGE0 // instruction fetch
-        wire[`XLEN-1:0] if_next_req_addr = jmp ? jmp_addr : (ibus_req_acc==`BUS_ACC_2B) ? (ibus_req_addr+2) : (ibus_req_addr+4);
+        wire[`XLEN-1:0] if_next_req_addr = jmp ? jmp_addr : (instr_req_acc==`BUS_ACC_2B) ? (instr_req_addr+2) : (instr_req_addr+4);
         dff #(
             .WIDTH      (`XLEN    ),
             .INITIALIZER(`RESET_PC),
             .RESET      ("sync"   ),
             .VALID      ("sync"   )
         ) if_req_addr_dff ( // this is not called "pc" because the addr can be in the middle of an instruction
-            .clk (clk                    ),
-            .rstn(rstn                   ),
-            .vld (jmp | ibus_req_launched),
-            .in  (if_next_req_addr       ),
-            .out (ibus_req_addr          )
+            .clk (clk                     ),
+            .rstn(rstn                    ),
+            .vld (jmp | instr_req_launched),
+            .in  (if_next_req_addr        ),
+            .out (instr_req_addr          )
         );
 
-        wire ibus_got_16bit_rdata = (ibus_resp_acc==`BUS_ACC_2B);
+        wire instr_resp_got_16bit_rdata = (instr_resp_acc==`BUS_ACC_2B);
         wire[1:0] ifq_vacant_entry_in_16bit, ifq_filled_entry_in_16bit;
-        assign ibus_req = (ifq_vacant_entry_in_16bit != 2'd0);
-        assign ibus_req_acc = (ibus_req_addr[1] || ifq_filled_entry_in_16bit) ? `BUS_ACC_2B : `BUS_ACC_4B;
+        assign instr_req = (ifq_vacant_entry_in_16bit != 2'd0);
+        assign instr_req_acc = (instr_req_addr[1] || ifq_filled_entry_in_16bit) ? `BUS_ACC_2B : `BUS_ACC_4B;
 
         wire[`ILEN-1:0] if_ir_raw;
         instr_fetch_queue ifq(
@@ -232,15 +231,15 @@ module core (
             .rstn            (rstn),
             .clr             (jmp ),
 
-            .in_req                (ibus_resp_latched        ),
-            .in_16bit              (ibus_got_16bit_rdata     ),
-            .in                    (ibus_resp_data           ),
-            .vacant_16bit_entry_cnt(ifq_vacant_entry_in_16bit),
+            .in_req            (instr_resp_latched        ),
+            .in_16bit          (instr_resp_got_16bit_rdata),
+            .in                (instr_resp_data           ),
+            .vacant_16bit_entry(ifq_vacant_entry_in_16bit ),
 
-            .out_req               (s0_vld                   ),
-            .out_16bit             (s0_cif                   ),
-            .out                   (if_ir_raw                ),
-            .filled_16bit_entry_cnt(ifq_filled_entry_in_16bit)
+            .out_req           (s0_vld                   ),
+            .out_16bit         (s0_cif                   ),
+            .out               (if_ir_raw                ),
+            .filled_16bit_entry(ifq_filled_entry_in_16bit)
         );
 
         assign s0_vld = ~hld & ((ifq_filled_entry_in_16bit==2'd2) || (ifq_filled_entry_in_16bit && s0_cif)); // instruction fetch control
@@ -314,37 +313,37 @@ module core (
             PLC_NORMAL:
                 if (s1_vld & s1_jmp_req)
                     next_state = PLC_JUMP_P;
-                else if (s1_vld & s1_dbus_req)
+                else if (s1_vld & s1_data_req)
                     next_state = PLC_DATA_I;
                 else // do not infer latch
                     next_state = PLC_NORMAL;
             PLC_JUMP_P:
                 next_state = PLC_JUMP_I;
             PLC_JUMP_I:
-                if (ibus_req_launched)
+                if (instr_req_launched)
                     next_state = PLC_JUMP_E;
                 else
                     next_state = PLC_JUMP_I;
             PLC_JUMP_E:
-                if (ibus_resp_latched) begin
+                if (instr_resp_latched) begin
                     if (s1_vld & s1_jmp_req)
                         next_state = PLC_JUMP_P;
-                    else if (s1_vld & s1_dbus_req)
+                    else if (s1_vld & s1_data_req)
                         next_state = PLC_DATA_I;
                     else // do not infer latch
                         next_state = PLC_NORMAL;
                 end else
                     next_state = PLC_JUMP_E;
             PLC_DATA_I:
-                if (dbus_req_launched)
+                if (data_req_launched)
                     next_state = PLC_DATA_E;
                 else
                     next_state = PLC_DATA_I;
             PLC_DATA_E:
-                if (dbus_resp_latched) begin
+                if (data_resp_latched) begin
                     if (s1_vld & s1_jmp_req)
                         next_state = PLC_JUMP_P;
-                    else if (s1_vld & s1_dbus_req)
+                    else if (s1_vld & s1_data_req)
                         next_state = PLC_DATA_I;
                     else // do not infer latch
                         next_state = PLC_NORMAL;
@@ -356,8 +355,8 @@ module core (
 
         assign jmp = state==PLC_JUMP_P;
         assign hld = (state==PLC_JUMP_P || state==PLC_JUMP_I || state==PLC_DATA_I) ||
-                     (state==PLC_JUMP_E && ~ibus_resp_latched) ||
-                     (state==PLC_DATA_E && ~dbus_resp_latched);
+                     (state==PLC_JUMP_E && ~instr_resp_latched) ||
+                     (state==PLC_DATA_E && ~data_resp_latched);
     end // PIPELINE
 
     /**********************************************************************************************************************/
@@ -376,31 +375,31 @@ module core (
         // x regfile
         wire[`XLEN-1:0] x[0:15];
         regfile regfile(
-            .clk   (clk           ),
-            .wreq  (regfile_w_req  ),
+            .clk   (clk          ),
+            .wreq  (regfile_w_req),
             .windex(regfile_w_idx),
-            .wdata (regfile_w_data ),
-            .x0    (x[0 ]         ),
-            .x1    (x[1 ]         ),
-            .x2    (x[2 ]         ),
-            .x3    (x[3 ]         ),
-            .x4    (x[4 ]         ),
-            .x5    (x[5 ]         ),
-            .x6    (x[6 ]         ),
-            .x7    (x[7 ]         ),
-            .x8    (x[8 ]         ),
-            .x9    (x[9 ]         ),
-            .x10   (x[10]         ),
-            .x11   (x[11]         ),
-            .x12   (x[12]         ),
-            .x13   (x[13]         ),
-            .x14   (x[14]         ),
-            .x15   (x[15]         )
+            .wdata (regfile_w_dat),
+            .x0    (x[0 ]        ),
+            .x1    (x[1 ]        ),
+            .x2    (x[2 ]        ),
+            .x3    (x[3 ]        ),
+            .x4    (x[4 ]        ),
+            .x5    (x[5 ]        ),
+            .x6    (x[6 ]        ),
+            .x7    (x[7 ]        ),
+            .x8    (x[8 ]        ),
+            .x9    (x[9 ]        ),
+            .x10   (x[10]        ),
+            .x11   (x[11]        ),
+            .x12   (x[12]        ),
+            .x13   (x[13]        ),
+            .x14   (x[14]        ),
+            .x15   (x[15]        )
         );
 
-        wire[$clog2(`BUS_ACC_CNT)-1:0] s1_dbus_req_acc;
-        wire s1_dbus_req_w_rb;
-        wire[`BUS_WIDTH-1:0] s1_dbus_req_wdata;
+        wire[$clog2(`BUS_ACC_CNT)-1:0] s1_data_req_acc;
+        wire s1_data_req_w_rb;
+        wire[`BUS_WIDTH-1:0] s1_data_req_wdata;
         begin:DECODE
             // decoder
             wire[31:0] i_type_imm = {{20{s1_ir[31]}}, s1_ir[31:20]};
@@ -566,10 +565,10 @@ module core (
                 /* to set interrupt mepc */
                     s1_pc;
 
-            assign s1_dbus_req = (opcode==OPCODE_LOAD || opcode==OPCODE_STORE) && !interrupt;
-            assign s1_dbus_req_acc = (funct3[1:0]==2'd0 ? `BUS_ACC_1B : funct3[1:0]==2'd1 ? `BUS_ACC_2B : `BUS_ACC_4B);
-            assign s1_dbus_req_w_rb = (opcode==OPCODE_STORE);
-            assign s1_dbus_req_wdata = rs2_val;
+            assign s1_data_req = (opcode==OPCODE_LOAD || opcode==OPCODE_STORE) && !interrupt;
+            assign s1_data_req_acc = (funct3[1:0]==2'd0 ? `BUS_ACC_1B : funct3[1:0]==2'd1 ? `BUS_ACC_2B : `BUS_ACC_4B);
+            assign s1_data_req_w_rb = (opcode==OPCODE_STORE);
+            assign s1_data_req_wdata = rs2_val;
 
             assign s1_iif = /* not processed upon interrupt */
                 ~interrupt && (
@@ -593,7 +592,7 @@ module core (
                         (opcode==OPCODE_SYSTEM) ? ( // no ecall/ebreak
                             funct3[1:0]==2'b00 ? // mret
                                 (funct3[2] || rs1 || rd || funct7!=7'b0011000 || rs2!=5'd2) :
-                            // csr ops, mstatus/mtvec/mepc/mip/dpc/dcsr/tdata1/tdata2 permitted (no csr addr validity check here)
+                            // csr ops, no csr addr validity check here
                                 ((funct3[2]==1'b0 && rs1[4]) || rd[4])
                         ) :
                         /* undefined / unimplemented opcode */
@@ -606,23 +605,23 @@ module core (
             .RESET("sync"),
             .VALID("sync"),
             .CLEAR("sync")
-        ) dbus_req_dff (
-            .clk (clk              ),
-            .rstn(rstn             ),
-            .clr (dbus_req_launched   ),
-            .vld (s1_vld & s1_dbus_req),
-            .in  (s1_dbus_req         ),
-            .out (dbus_req            )
+        ) data_req_dff (
+            .clk (clk                 ),
+            .rstn(rstn                ),
+            .clr (data_req_launched   ),
+            .vld (s1_vld & s1_data_req),
+            .in  (s1_data_req         ),
+            .out (data_req            )
         );
 
         dff #(
             .WIDTH($clog2(`BUS_ACC_CNT)+1+`BUS_WIDTH),
             .VALID("sync")
-        ) dbus_req_info_dff (
+        ) data_req_info_dff (
             .clk(clk),
             .vld(s1_vld),
-            .in ({s1_dbus_req_acc,s1_dbus_req_w_rb,s1_dbus_req_wdata}),
-            .out({dbus_req_acc,   dbus_req_w_rb,   dbus_req_wdata   })
+            .in ({s1_data_req_acc,s1_data_req_w_rb,s1_data_req_wdata}),
+            .out({data_req_acc,   data_req_w_rb,   data_req_wdata   })
         );
     end // STAGE1
 
@@ -663,25 +662,25 @@ module core (
 
         // jump/data addr control
         assign jmp_addr = {alu_r[`XLEN-1:1], ((s2_op==OP_JALR) ? 1'b0 : alu_r[0])}; // jmp_addr[0] clamped 1'b0 upon JALR
-        assign dbus_req_addr = alu_r;
+        assign data_req_addr = alu_r;
 
         // regfile w access
         assign regfile_w_req = s2_vld && regfile_w_idx;
         assign regfile_w_idx = s2_rd;
         assign regfile_w_data =
             (s2_op==OP_LD) ? (
-                (dbus_resp_acc==`BUS_ACC_1B) ?
-                    {{24{dbus_resp_data[7]}}, dbus_resp_data[7:0]} :
-                (dbus_resp_acc==`BUS_ACC_2B) ?
-                    {{16{dbus_resp_data[15]}}, dbus_resp_data[15:0]} :
+                (data_resp_acc==`BUS_ACC_1B) ?
+                    {{24{data_resp_data[7]}}, data_resp_data[7:0]} :
+                (data_resp_acc==`BUS_ACC_2B) ?
+                    {{16{data_resp_data[15]}}, data_resp_data[15:0]} :
                 /*otherwise*/
-                    dbus_resp_data
+                    data_resp_data
             ) :
             (s2_op==OP_LDU) ? (
-                (dbus_resp_acc==`BUS_ACC_1B) ?
-                    {24'd0, dbus_resp_data[7:0]} :
-                /*dbus_resp_acc==`BUS_ACC_2B*/
-                    {16'd0, dbus_resp_data[15:0]}
+                (data_resp_acc==`BUS_ACC_1B) ?
+                    {24'd0, data_resp_data[7:0]} :
+                /*data_resp_acc==`BUS_ACC_2B*/
+                    {16'd0, data_resp_data[15:0]}
             ) :
             (s2_op==OP_JAL || s2_op==OP_JALR) ?
                 s2_jmp_lr :
@@ -719,11 +718,11 @@ module core (
                     if (s2_op==OP_CSR) begin
                         csr[csr_w_idx] <= csr_w_data;
                     end else if (s2_op==OP_TRAP_SUC) begin
-                        // csr[CSR_IDX_MCAUSE] <= MCAUSE_MEXTINT;
+                        // csr[CSR_IDX_MCAUSE] <= MCAUSE_EXT_INT;
                         csr[CSR_IDX_MSTATUS][`MIE] <= 1'b0;
                     end else if (s2_op==OP_TRAP) begin
                         csr[CSR_IDX_MEPC] <= s2_jmp_lr;
-                        // csr[CSR_IDX_MCAUSE] <= MCAUSE_MEXTINT;
+                        // csr[CSR_IDX_MCAUSE] <= MCAUSE_EXT_INT;
                         csr[CSR_IDX_MSTATUS][`MIE ] <= 1'b0;
                         csr[CSR_IDX_MSTATUS][`MPIE] <= csr_r_data[CSR_IDX_MSTATUS][`MIE];
                     end else if (s2_op==OP_TRAP_RET) begin
@@ -740,39 +739,32 @@ module core (
         end // INTERRUPT
 
         begin:EXCEPTION // exception control
-            assign exception
+            dff #(
+                .RESET("sync" ),
+                .CLEAR("sync" ),
+                .VALID("async")
+            )(
+                .clk(clk),
+                .rstn(rstn),
+                .clr(s1_vld),
+                .vld(s2_vld),
+                .in(|{s2}),
+                .out()
+    input wire              vld,
+    input wire [WIDTH-1:0]  in,
+    output wire [WIDTH-1:0] out
+);
+
         end // EXCEPTION
 
         begin:DEBUG // dbg/trigger control
             assign
         end // DEBUG
     end // STAGE2
-
-    /**********************************************************************************************************************/
-    // fault propagation
-    dff #(
-        .RESET("sync")
-    ) core_fault_dff (
-        .clk (clk                   ),
-        .rstn(rstn                  ),
-        .in  (s1_vld & s1_iif),
-        .out (core_fault            )
-    );
-
-    dff #(
-        .WIDTH(`XLEN ),
-        .VALID("sync")
-    ) core_fault_pc_dff (
-        .clk (clk                   ),
-        .vld (s1_vld & s1_iif),
-        .in  (s1_pc                 ),
-        .out (core_fault_pc         )
-    );
-
 endmodule
 
 /**********************************************************************************************************************/
-module alu(
+module alu( // thoroughly combinatorial alu
     input wire[7:0]        op,
     input wire[`XLEN-1:0]  a,
     input wire[`XLEN-1:0]  b,
@@ -781,6 +773,7 @@ module alu(
     localparam SHIFTWIDTH = $clog2(`XLEN);
     wire[SHIFTWIDTH-1:0] shift = b[SHIFTWIDTH-1:0];
 
+    // thanks, synthesizer
     wire[`XLEN-1:0] sra_r = $signed(a)>>>shift,
                     lt_r  = $signed(a)<$signed(b);
 
@@ -866,8 +859,8 @@ module instr_fetch_queue (
 
     input wire          clr,
 
-    output wire[1:0]    vacant_16bit_entry_cnt,
-    output wire[1:0]    filled_16bit_entry_cnt
+    output wire[1:0]    vacant_16bit_entry, // number
+    output wire[1:0]    filled_16bit_entry  // number
 );
     generate
         for(genvar i=0;i<2;i=i+1) begin:pingpong
@@ -900,7 +893,7 @@ module instr_fetch_queue (
     // note: both fifos' depth are 2, and we'are not expecting "one:2, the other:0" situation
     // note: actual capacity of the queue is 4 entries, but we would reserve 2 for an incoming (outgoing) 32-bit instruction for safety
     //       while the instruction is being written into (read from) fifos, we cannot see full (empty) flag change
-    assign vacant_16bit_entry_cnt =
+    assign vacant_16bit_entry =
         (pingpong[0].full & pingpong[1].full) ?
             2'd0 : // actually 0
         ((pingpong[0].full & pingpong[1].almost_full) | (pingpong[1].full & pingpong[0].almost_full)) ?
@@ -912,7 +905,7 @@ module instr_fetch_queue (
         /* ~pingpong[0].almost_full & ~pingpong[1].almost_full */
             2'd2;  // actually >=4
 
-    assign filled_16bit_entry_cnt =
+    assign filled_16bit_entry =
         (pingpong[0].empty & pingpong[1].empty) ?
             2'd0 : // actually 0
         ((pingpong[0].empty & pingpong[1].almost_empty) | (pingpong[1].empty & pingpong[0].almost_empty)) ?

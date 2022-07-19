@@ -90,45 +90,46 @@ localparam CSR_ADDR_DCSR    = 12'h7b0,
 
 /***************************************** femto defined *****************************************/
 // ex/wb stage opcode
-localparam OP_UNDEF = 8'h0,
-           OP_STD   = 8'h1, // write/no change regfile
-           OP_JAL   = 8'h2,
-           OP_JALR  = 8'h3,
-           OP_LD    = 8'h4, // load
-           OP_LDU   = 8'h5, // load unsigned
-           OP_CSR   = 8'h6,
+localparam OP_UNDEF = 4'h0,
+           OP_STD   = 4'h1, // write/no change regfile
+           OP_JAL   = 4'h2,
+           OP_JALR  = 4'h3,
+           OP_LD    = 4'h4, // load
+           OP_LDU   = 4'h5, // load unsigned
+           OP_CSR   = 4'h6,
 
-           OP_TRAP     = 8'h7, // trap jump
-           OP_TRAP_RET = 8'h8, // trap return
-           OP_TRAP_SUC = 8'h9, // trap succesion (trap-upon-mret)
+           OP_TRAP     = 4'h7, // trap jump
+           OP_TRAP_RET = 4'h8, // trap return
+           OP_TRAP_SUC = 4'h9, // trap succesion (trap-upon-mret)
 
-           OP_DBGTRAP     = 8'ha, // dbg trap jump (into dbg mode)
-           OP_DBGTRAP_RET = 8'hb; // dbg trap return
+           OP_DBGTRAP     = 4'ha, // dbg trap jump (into dbg mode)
+           OP_DBGTRAP_RET = 4'hb; // dbg trap return
 
 // ex/wb alu opcode
-localparam ALU_ADD  = 8'h1,
-           ALU_SUB  = 8'h2,
-           ALU_AND  = 8'h3,
-           ALU_OR   = 8'h4,
+localparam ALU_ADD  = 4'h1,
+           ALU_SUB  = 4'h2,
+           ALU_AND  = 4'h3,
+           ALU_OR   = 4'h4,
            ALU_SET  = ALU_OR,
-           ALU_CLR  = 8'h5,
-           ALU_XOR  = 8'h6,
-           ALU_LT   = 8'h7,
-           ALU_LTU  = 8'h8,
-           ALU_SRL  = 8'h9,
-           ALU_SRA  = 8'ha,
-           ALU_SL   = 8'hb;
+           ALU_CLR  = 4'h5,
+           ALU_XOR  = 4'h6,
+           ALU_LT   = 4'h7,
+           ALU_LTU  = 4'h8,
+           ALU_SRL  = 4'h9,
+           ALU_SRA  = 4'ha,
+           ALU_SL   = 4'hb;
 
 // implemented CSRs
 localparam CSR_NUM = 10;
 // bound with csr_addr to csr_index logic
-`define CSR_ADDR_TO_IDX   {csr_addr[10] /*trap/dbg csr distinguisher*/, csr_addr[6]|csr_addr[4], csr_addr[0]}
-localparam CSR_IDX_MSTATUS = 3'd0,
-           CSR_IDX_MTVEC   = 3'd1,
-           CSR_IDX_MIP     = 3'd2,
-           CSR_IDX_MEPC    = 3'd3,
-           CSR_IDX_MTVAL
-           CSR_IDX_TDATA2  = 3'd4,
-           CSR_IDX_TDATA1  = 3'd5,
-           CSR_IDX_DCSR    = 3'd6,
-           CSR_IDX_DPC     = 3'd7;
+`define CSR_ADDR_TO_IDX   {csr_addr[10] /*trap/dbg csr distinguisher*/, (csr_addr[10] ? csr_addr[4] : csr_addr[6]), csr_addr[1:0]}
+localparam CSR_IDX_MSTATUS = 4'd0 ,
+           CSR_IDX_MTVEC   = 4'd1 ,
+           CSR_IDX_MIP     = 4'd4 ,
+           CSR_IDX_MEPC    = 4'd5 ,
+           CSR_IDX_MCAUSE  = 4'd6 ,
+           CSR_IDX_MTVAL   = 4'd7 ,
+           CSR_IDX_TDATA1  = 4'd9 ,
+           CSR_IDX_TDATA2  = 4'd10,
+           CSR_IDX_DCSR    = 4'd12,
+           CSR_IDX_DPC     = 4'd13;
