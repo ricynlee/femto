@@ -221,9 +221,9 @@ module core (
         );
 
         wire instr_resp_got_16bit_rdata = (instr_resp_acc==`BUS_ACC_2B);
-        wire[1:0] ifq_vacant_entry_in_16bit, ifq_filled_entry_in_16bit;
-        assign instr_req = (ifq_vacant_entry_in_16bit != 2'd0);
-        assign instr_req_acc = (instr_req_addr[1] || ifq_filled_entry_in_16bit) ? `BUS_ACC_2B : `BUS_ACC_4B;
+        wire[1:0] ifq_vacant_16bit_entry, ifq_filled_16bit_entry;
+        assign instr_req = (ifq_vacant_16bit_entry != 2'd0);
+        assign instr_req_acc = (instr_req_addr[1] || ifq_filled_16bit_entry) ? `BUS_ACC_2B : `BUS_ACC_4B;
 
         wire[`ILEN-1:0] if_ir_raw;
         instr_fetch_queue ifq(
@@ -234,15 +234,15 @@ module core (
             .in_req            (instr_resp_latched        ),
             .in_16bit          (instr_resp_got_16bit_rdata),
             .in                (instr_resp_data           ),
-            .vacant_16bit_entry(ifq_vacant_entry_in_16bit ),
+            .vacant_16bit_entry(ifq_vacant_16bit_entry ),
 
             .out_req           (s0_vld                   ),
             .out_16bit         (s0_cif                   ),
             .out               (if_ir_raw                ),
-            .filled_16bit_entry(ifq_filled_entry_in_16bit)
+            .filled_16bit_entry(ifq_filled_16bit_entry)
         );
 
-        assign s0_vld = ~hld & ((ifq_filled_entry_in_16bit==2'd2) || (ifq_filled_entry_in_16bit && s0_cif)); // instruction fetch control
+        assign s0_vld = ~hld & ((ifq_filled_16bit_entry==2'd2) || (ifq_filled_16bit_entry && s0_cif)); // instruction fetch control
 
         instr_decompressor instr_decompressor(
             .in_instr(if_ir_raw),
