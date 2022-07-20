@@ -90,20 +90,28 @@ localparam CSR_ADDR_DCSR    = 12'h7b0,
 
 /***************************************** femto defined *****************************************/
 // ex/wb stage opcode
-localparam OP_UNDEF = 4'h0,
-           OP_STD   = 4'h1, // write/no change regfile
-           OP_JAL   = 4'h2,
-           OP_JALR  = 4'h3,
-           OP_LD    = 4'h4, // load
-           OP_LDU   = 4'h5, // load unsigned
-           OP_CSR   = 4'h6,
+localparam OP_UNDEF = {1'b0, 4'h0},
+           OP_NOP   = {1'b0, 4'h1}, // nothing done (id stage has done the job): BRANCH, FENCE.I
+           OP_CAL   = {1'b0, 4'h1}, // write regfile with alu output(note nop instruction has OP_CAL): CAL, IMMCAL, LUI, AUIPC
+           OP_JAL   = {1'b0, 4'h2}, // set lr: JAL
+           OP_JALR  = {1'b0, 4'h3}, // clear lsb of jmp addr(alu output) and set lr: JALR
+           OP_LD    = {1'b0, 4'h4}, // write regfile with dbus resp(sign-extend high bits): LOAD signed
+           OP_LDU   = {1'b0, 4'h5}, // write regfile with dbus resp(clear high bits): LOAD unsigned
+           OP_CSR   = {1'b0, 4'h6}, // exchange data between csr and regfile: CSRx
+           OP_MRET  = {1'b0, 4'h7}, // return from machine trap, update trap CSR: MRET
+           OP_DRET  = {1'b0, 4'h8}, // return from debug mode, update debug CSR: DRET
 
            OP_TRAP     = 4'h7, // trap jump
-           OP_TRAP_RET = 4'h8, // trap return
            OP_TRAP_SUC = 4'h9, // trap succesion (trap-upon-mret)
 
            OP_DBGTRAP     = 4'ha, // dbg trap jump (into dbg mode)
-           OP_DBGTRAP_RET = 4'hb; // dbg trap return
+/* ex/wb stage opcode notes
+ * jump requests are initiated id stage but jump occurs a clock later
+ * jump addr are calculated in ex/wb stage and is right a clock later than coresponding jump requests
+ * alu output is always seen as jump addr but is only effective when there is a pending jump request
+ *
+ * msb of ex/wb opcode indicates if this is a true instruction or an uninstructed operation like a trap
+ */
 
 // ex/wb alu opcode
 localparam ALU_ADD  = 4'h1,

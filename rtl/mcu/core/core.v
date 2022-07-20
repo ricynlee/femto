@@ -234,11 +234,11 @@ module core (
             .in_req            (instr_resp_latched        ),
             .in_16bit          (instr_resp_got_16bit_rdata),
             .in                (instr_resp_data           ),
-            .vacant_16bit_entry(ifq_vacant_16bit_entry ),
+            .vacant_16bit_entry(ifq_vacant_16bit_entry    ),
 
-            .out_req           (s0_vld                   ),
-            .out_16bit         (s0_cif                   ),
-            .out               (if_ir_raw                ),
+            .out_req           (s0_vld                ),
+            .out_16bit         (s0_cif                ),
+            .out               (if_ir_raw             ),
             .filled_16bit_entry(ifq_filled_16bit_entry)
         );
 
@@ -456,6 +456,7 @@ module core (
             assign s1_rd =
                 interrupt ?
                     4'd0 /* interrupt/return seen as an instruction where rd=0 */ :
+                (opcode==OPCODE)
                 (opcode==OPCODE_BRANCH || opcode==OPCODE_STORE || opcode==OPCODE_FENCE) /* rd not available */ ?
                     4'd0 /* available yet should not be used for FENCE.I/FENCE */ :
                 /* rd available */
@@ -773,24 +774,20 @@ module alu( // thoroughly combinatorial alu
     localparam SHIFTWIDTH = $clog2(`XLEN);
     wire[SHIFTWIDTH-1:0] shift = b[SHIFTWIDTH-1:0];
 
-    // thanks, synthesizer
-    wire[`XLEN-1:0] sra_r = $signed(a)>>>shift,
-                    lt_r  = $signed(a)<$signed(b);
-
     `include "core.vh"
 
     assign r =
-        op==ALU_SUB ? (a-b     ):
-        op==ALU_AND ? (a&b     ):
-        op==ALU_OR  ? (a|b     ):
-        op==ALU_CLR ? (a & ~b  ):
-        op==ALU_XOR ? (a^b     ):
-        op==ALU_LTU ? (a<b     ):
-        op==ALU_LT  ? (lt_r    ):
-        op==ALU_SRL ? (a>>shift):
-        op==ALU_SRA ? (sra_r   ):
-        op==ALU_SL  ? (a<<shift):
-        /* ALU_ADD */ (a+b     );
+        op==ALU_SUB ? (a-b                  ):
+        op==ALU_AND ? (a&b                  ):
+        op==ALU_OR  ? (a|b                  ):
+        op==ALU_CLR ? (a & ~b               ):
+        op==ALU_XOR ? (a^b                  ):
+        op==ALU_LTU ? (a<b                  ):
+        op==ALU_LT  ? ($signed(a)<$signed(b)):
+        op==ALU_SRL ? (a>>shift             ):
+        op==ALU_SRA ? ($signed(a)>>>shift   ):
+        op==ALU_SL  ? (a<<shift             ):
+        /* ALU_ADD */ (a+b                  );
 endmodule
 
 /**********************************************************************************************************************/
@@ -960,8 +957,8 @@ module instr_decompressor( // conpressed instruction expansion
     wire[2:0] funct3 = in_instr[15:13];
     wire[4:0] rd_rs1 = in_instr[11:7];
     wire[4:0] rs2 = in_instr[6:2];
-    wire[2:0] rd_q_rs1_q = in_instr[9:7];
-    wire[2:0] rd_q_rs2_q = in_instr[4:2];
+    wire[2:0] rd_a_rs1_a = in_instr[9:7]; // rd' or rs1', apostrophe
+    wire[2:0] rd_a_rs2_a = in_instr[4:2]; // rd' or rs2', apostrophe
 
     assign out_iif = out_cif &&
         (
@@ -993,9 +990,9 @@ module instr_decompressor( // conpressed instruction expansion
 
     assign out_ir =
         (opcode==OPCODE_C0) ? (
-            funct3==3'b000 ? {{2'd0,in_instr[10:7],in_instr[12:11],in_instr[5],in_instr[6],2'd0},5'd2/*x2*/,3'b000,{2'b01,rd_q_rs2_q},OPCODE_IMMCAL} : //c.addi4spn
-            funct3==3'b010 ? {{5'd0,in_instr[5],in_instr[12:10],in_instr[6],2'd0},{2'b01,rd_q_rs1_q},3'b010,{2'b01,rd_q_rs2_q},OPCODE_LOAD} : //c.lw
-            /*funct3==3'b110*/ {{5'd0,in_instr[5],in_instr[12]},{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b010,{in_instr[11:10],in_instr[6],2'd0},OPCODE_STORE} //c.sw
+            funct3==3'b000 ? {{2'd0,in_instr[10:7],in_instr[12:11],in_instr[5],in_instr[6],2'd0},5'd2/*x2*/,3'b000,{2'b01,rd_a_rs2_a},OPCODE_IMMCAL} : //c.addi4spn
+            funct3==3'b010 ? {{5'd0,in_instr[5],in_instr[12:10],in_instr[6],2'd0},{2'b01,rd_a_rs1_a},3'b010,{2'b01,rd_a_rs2_a},OPCODE_LOAD} : //c.lw
+            /*funct3==3'b110*/ {{5'd0,in_instr[5],in_instr[12]},{2'b01,rd_a_rs2_a},{2'b01,rd_a_rs1_a},3'b010,{in_instr[11:10],in_instr[6],2'd0},OPCODE_STORE} //c.sw
         ) :
         (in_instr[1:0]==OPCODE_C1) ? (
             funct3==3'b000 ? {{{7{in_instr[12]}},in_instr[6:2]},rd_rs1,3'b000,rd_rs1,OPCODE_IMMCAL} : //c.addi
@@ -1006,19 +1003,19 @@ module instr_decompressor( // conpressed instruction expansion
                                {{{15{in_instr[12]}},in_instr[6:2]},rd_rs1,OPCODE_LUI} //c.lui
             ) :
             funct3==3'b100 ? (
-                in_instr[11:10]==2'b00 ? {7'b0000000,in_instr[6:2],{2'b01,rd_q_rs1_q},3'b101,{2'b01,rd_q_rs1_q},OPCODE_IMMCAL} : //c.srli
-                in_instr[11:10]==2'b01 ? {7'b0100000,in_instr[6:2],{2'b01,rd_q_rs1_q},3'b101,{2'b01,rd_q_rs1_q},OPCODE_IMMCAL} : //c.srai
-                in_instr[11:10]==2'b10 ? {{{7{in_instr[12]}},in_instr[6:2]},{2'b01,rd_q_rs1_q},3'b111,{2'b01,rd_q_rs1_q},OPCODE_IMMCAL} : //c.andi
+                in_instr[11:10]==2'b00 ? {7'b0000000,in_instr[6:2],{2'b01,rd_a_rs1_a},3'b101,{2'b01,rd_a_rs1_a},OPCODE_IMMCAL} : //c.srli
+                in_instr[11:10]==2'b01 ? {7'b0100000,in_instr[6:2],{2'b01,rd_a_rs1_a},3'b101,{2'b01,rd_a_rs1_a},OPCODE_IMMCAL} : //c.srai
+                in_instr[11:10]==2'b10 ? {{{7{in_instr[12]}},in_instr[6:2]},{2'b01,rd_a_rs1_a},3'b111,{2'b01,rd_a_rs1_a},OPCODE_IMMCAL} : //c.andi
                 /*in_instr[11:10]==2'b11*/ (
-                    in_instr[6:5]==2'b00 ? {7'b0100000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b000,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.sub
-                    in_instr[6:5]==2'b01 ? {7'b0000000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b100,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.xor
-                    in_instr[6:5]==2'b10 ? {7'b0000000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b110,{2'b01,rd_q_rs1_q},OPCODE_CAL} : //c.or
-                                 /*2'b11*/ {7'b0000000,{2'b01,rd_q_rs2_q},{2'b01,rd_q_rs1_q},3'b111,{2'b01,rd_q_rs1_q},OPCODE_CAL}   //c.and
+                    in_instr[6:5]==2'b00 ? {7'b0100000,{2'b01,rd_a_rs2_a},{2'b01,rd_a_rs1_a},3'b000,{2'b01,rd_a_rs1_a},OPCODE_CAL} : //c.sub
+                    in_instr[6:5]==2'b01 ? {7'b0000000,{2'b01,rd_a_rs2_a},{2'b01,rd_a_rs1_a},3'b100,{2'b01,rd_a_rs1_a},OPCODE_CAL} : //c.xor
+                    in_instr[6:5]==2'b10 ? {7'b0000000,{2'b01,rd_a_rs2_a},{2'b01,rd_a_rs1_a},3'b110,{2'b01,rd_a_rs1_a},OPCODE_CAL} : //c.or
+                                 /*2'b11*/ {7'b0000000,{2'b01,rd_a_rs2_a},{2'b01,rd_a_rs1_a},3'b111,{2'b01,rd_a_rs1_a},OPCODE_CAL}   //c.and
                 )
             ) :
             funct3==3'b101 ? {{in_instr[12],in_instr[8],in_instr[10:9],in_instr[6],in_instr[7],in_instr[2],in_instr[11],in_instr[5:3],{9{in_instr[12]}}},5'd0/*x0*/,OPCODE_JAL} : //c.j
-            funct3==3'b110 ? {{{4{in_instr[12]}},in_instr[6:5],in_instr[2]},5'd0/*x0*/,{2'b01,rd_q_rs1_q},3'b000,{in_instr[11:10],in_instr[4:3],in_instr[12]},OPCODE_BRANCH} : //c.beqz
-            /*funct3==3'b111*/ {{{4{in_instr[12]}},in_instr[6:5],in_instr[2]},5'd0/*x0*/,{2'b01,rd_q_rs1_q},3'b001,{in_instr[11:10],in_instr[4:3],in_instr[12]},OPCODE_BRANCH} //c.bnez
+            funct3==3'b110 ? {{{4{in_instr[12]}},in_instr[6:5],in_instr[2]},5'd0/*x0*/,{2'b01,rd_a_rs1_a},3'b000,{in_instr[11:10],in_instr[4:3],in_instr[12]},OPCODE_BRANCH} : //c.beqz
+            /*funct3==3'b111*/ {{{4{in_instr[12]}},in_instr[6:5],in_instr[2]},5'd0/*x0*/,{2'b01,rd_a_rs1_a},3'b001,{in_instr[11:10],in_instr[4:3],in_instr[12]},OPCODE_BRANCH} //c.bnez
         ) :
         (in_instr[1:0]==OPCODE_C2) ? (
             funct3==3'b000 ? {7'b0000000,in_instr[6:2],rd_rs1,3'b001,rd_rs1,OPCODE_IMMCAL} : //c.slli
