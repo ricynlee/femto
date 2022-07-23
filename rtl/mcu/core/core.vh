@@ -17,6 +17,8 @@ localparam OPCODE_IMMCAL = 7'b0010011,
            OPCODE_FENCE  = 7'b0001111,
            OPCODE_SYSTEM = 7'b1110011;
 
+localparam ILLEGAL_INSTR = {`ILEN{1'b0}};
+
 // trap csr addr encoding
 localparam CSR_ADDR_MSTATUS = 12'h300,
            CSR_ADDR_MIE     = 12'h304,
@@ -90,42 +92,45 @@ localparam CSR_ADDR_DCSR    = 12'h7b0,
 
 /***************************************** femto defined *****************************************/
 // ex/wb stage opcode
-localparam OP_UNDEF = {1'b0, 4'h0},
-           OP_NOP   = {1'b0, 4'h1}, // nothing done (id stage has done the job): BRANCH, FENCE.I
-           OP_CAL   = {1'b0, 4'h1}, // write regfile with alu output(note nop instruction has OP_CAL): CAL, IMMCAL, LUI, AUIPC
-           OP_JAL   = {1'b0, 4'h2}, // set lr: JAL
-           OP_JALR  = {1'b0, 4'h3}, // clear lsb of jmp addr(alu output) and set lr: JALR
-           OP_LD    = {1'b0, 4'h4}, // write regfile with dbus resp(sign-extend high bits): LOAD signed
-           OP_LDU   = {1'b0, 4'h5}, // write regfile with dbus resp(clear high bits): LOAD unsigned
-           OP_CSR   = {1'b0, 4'h6}, // exchange data between csr and regfile: CSRx
-           OP_MRET  = {1'b0, 4'h7}, // return from machine trap, update trap CSR: MRET
-           OP_DRET  = {1'b0, 4'h8}, // return from debug mode, update debug CSR: DRET
+localparam OP_UNDEF = 4'h0,
+           OP_NOP   = 4'h1, // nothing done (id stage has done the job): BRANCH, FENCE
+           OP_CAL   = 4'h2, // write regfile with alu output(note nop instruction has OP_CAL): CAL, IMMCAL, LUI, AUIPC [ALU]
+           OP_JAL   = 4'h3, // set lr: JAL, FENCE.I [ALU]
+           OP_JALR  = 4'h4, // clear lsb of jmp addr(alu output) and set lr: JALR [ALU]
+           OP_LD    = 4'h5, // write regfile with dbus resp(sign-extend high bits): LOAD signed
+           OP_LDU   = 4'h6, // write regfile with dbus resp(clear high bits): LOAD unsigned
+           OP_CSR   = 4'h7, // exchange data between csr and regfile: CSRx [ALU]
+           OP_MRET  = 4'h8, // return from machine trap, update trap CSR: MRET [ALU]
+           OP_DRET  = 4'h9, // return from debug mode, update debug CSR: DRET [ALU]
+           OP_EBRK  = 4'ha, // software breakpoint: EBREAK
 
-           OP_TRAP     = 4'h7, // trap jump
-           OP_TRAP_SUC = 4'h9, // trap succesion (trap-upon-mret)
+           OP_ILLI  = 4'hb, // illegal instruction
+           OP_TRAP  = 4'hc, // trap jump [ALU]
+           OP_TRAPS = 4'hd, // trap succesion (trap-upon-mret) [ALU]
+           OP_DBG   = 4'he; // dbg trap jump (into dbg mode) [ALU]
 
-           OP_DBGTRAP     = 4'ha, // dbg trap jump (into dbg mode)
 /* ex/wb stage opcode notes
  * jump requests are initiated id stage but jump occurs a clock later
  * jump addr are calculated in ex/wb stage and is right a clock later than coresponding jump requests
  * alu output is always seen as jump addr but is only effective when there is a pending jump request
- *
- * msb of ex/wb opcode indicates if this is a true instruction or an uninstructed operation like a trap
  */
 
 // ex/wb alu opcode
-localparam ALU_ADD  = 4'h1,
-           ALU_SUB  = 4'h2,
-           ALU_AND  = 4'h3,
-           ALU_OR   = 4'h4,
-           ALU_SET  = ALU_OR,
-           ALU_CLR  = 4'h5,
-           ALU_XOR  = 4'h6,
-           ALU_LT   = 4'h7,
-           ALU_LTU  = 4'h8,
-           ALU_SRL  = 4'h9,
-           ALU_SRA  = 4'ha,
-           ALU_SL   = 4'hb;
+localparam ALU_NOP = 4'h0,
+           ALU_A   = 4'h1, // a direct to output
+           ALU_B   = 4'h2, // b direct to output
+           ALU_ADD = 4'h3,
+           ALU_SUB = 4'h4,
+           ALU_AND = 4'h5,
+           ALU_OR  = 4'h6,
+           ALU_SET = ALU_OR, // set bits where there are corresponding 1's
+           ALU_CLR = 4'h7, // clear bits where there are corresponding 1's
+           ALU_XOR = 4'h8,
+           ALU_LT  = 4'h9, // larger than, signed
+           ALU_LTU = 4'ha, // larger than, unsigned
+           ALU_SRL = 4'hb, // shift right, logical
+           ALU_SRA = 4'hc, // shift right, arithemetic
+           ALU_SL  = 4'hd; // shift left
 
 // implemented CSRs
 localparam CSR_NUM = 10;
