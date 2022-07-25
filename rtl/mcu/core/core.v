@@ -82,14 +82,10 @@ module core (
     wire[`XLEN-1:0] s2_pc;
 
     // cross pipeline stage signals
-    wire s0_iif; // illegal instruction flag
-    wire s1_iif;
-    wire s2_iif;
-
     wire[3:0] s1_rd; // dest reg index
     wire[`XLEN-1:0] s1_alu_a, s1_alu_b;
-    wire[7:0] s1_alu_op; // alu operation
-    wire[7:0] s1_op; // instruction operation
+    wire[3:0] s1_alu_op; // alu operation
+    wire[3:0] s1_op; // instruction operation
     wire[$clog2(CSR_NUM)-1:0] s1_csr; // dest csr index
     wire[`XLEN-1:0] s1_csr_val;
     wire s1_jmp_req;
@@ -98,8 +94,8 @@ module core (
 
     wire[3:0] s2_rd; // dest reg index
     wire[`XLEN-1:0] s2_alu_a, s2_alu_b;
-    wire[7:0] s2_alu_op; // alu operation
-    wire[7:0] s2_op; // instruction operation
+    wire[3:0] s2_alu_op; // alu operation
+    wire[3:0] s2_op; // instruction operation
     wire[`XLEN-1:0] s2_jmp_lr; // jump link register/return address
     wire[$clog2(CSR_NUM)-1:0] s2_csr; // dest csr index
     wire[`XLEN-1:0] s2_csr_val;
@@ -115,7 +111,7 @@ module core (
     wire[`XLEN-1:0] csr_r_data[0:CSR_NUM-1];
 
     // trap/dbg control signals
-    wire interrupt, succesional_interrupt;
+    wire interrupt, succesional_interrupt /* successional interrupt upon mret */;
     wire exception;
     wire trigger;
 
@@ -247,8 +243,7 @@ module core (
         instr_decompressor instr_decompressor(
             .in_instr(if_ir_raw),
             .out_ir  (s0_ir    ),
-            .out_cif (s0_cif   ),
-            .out_iif (s0_iif   )
+            .out_cif (s0_cif   )
         );
 
         wire[`XLEN-1:0] if_next_pc = jmp ? jmp_addr : (s0_pc + (s0_cif ? 2 : 4));
@@ -361,17 +356,6 @@ module core (
 
     /**********************************************************************************************************************/
     begin:STAGE1 // instruction expansion & decoding
-        wire s1_iif_from_prev_stage, s1_iif_from_curr_stage;
-        dff #(
-            .WIDTH(1),
-            .VALID("sync")
-        ) s1_partial_iif_dff (
-            .clk(clk                   ),
-            .vld(s0_vld                ),
-            .in (s0_iif                ),
-            .out(s1_iif_from_prev_stage)
-        );
-
         // x regfile
         wire[`XLEN-1:0] x[0:15];
         regfile regfile(
@@ -418,7 +402,7 @@ module core (
             wire[31:0] csr_uimm = {27'd0, rs1};
 
             wire[$clog2(CSR_NUM)-1:0] csr_index;
-            wire[`XLEN-1:0] rs1_val, rs2_val;
+            wire[`XLEN-1:0] rs1_val, rs2_val, next_pc;
 
             assign csr_index = `CSR_ADDR_TO_IDX;
 
@@ -434,8 +418,11 @@ module core (
                 /* otherwise */
                     x[rs2[3:0]];
 
+            assign next_pc = s1_pc + (s1_cif ? 2 : 4);
+
+            // TODO: under debug mode there is no interrupt, exception or debug trap
+
             // signals for following stage
-            assign s1_iif = s1_iif_from_prev_stage | s1_iif_from_curr_stage;
             always @ (*) begin
                 if (interrupt) begin
                     s1_op = OP_TRAP;
@@ -479,15 +466,128 @@ module core (
                     s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
                     s1_data_req_w_rb = 1'bx;
                     s1_data_req_wdata = {`XLEN{1'bx}};
-                end else if (s1_ir==32'b000000000001_00000_000_00000_11100111) begin // EBREAK
+                end else if (s1_ir==32'b000000000001_00000_000_00000_1110011) begin // EBREAK
+                    s1_op = OP_EBRK;
+                    s1_alu_op = ALU_A;
+                    s1_alu_a = dbg_trap_addr;
+                    s1_alu_b = {`XLEN{1'bx}};
+                    s1_rd = 4'd0;
+                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csr_val = {`XLEN{1'bx}};
+                    s1_jmp_req = 1'b1;
+                    s1_jmp_lr = {`XLEN{1'bx}};
+                    s1_data_req = 1'b0;
+                    s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
+                    s1_data_req_w_rb = 1'bx;
+                    s1_data_req_wdata = {`XLEN{1'bx}};
+                end else if (opcode==OPCODE_LUI) begin // LUI, rd[4] ignored
+                    s1_op = OP_CAL;
+                    s1_alu_op = ALU_A;
+                    s1_alu_a = u_type_imm;
+                    s1_alu_b = {`XLEN{1'bx}};
+                    s1_rd = rd[3:0];
+                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csr_val = {`XLEN{1'bx}};
+                    s1_jmp_req = 1'b0;
+                    s1_jmp_lr = {`XLEN{1'bx}};
+                    s1_data_req = 1'b0;
+                    s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
+                    s1_data_req_w_rb = 1'bx;
+                    s1_data_req_wdata = {`XLEN{1'bx}};
+                end else if (opcode==OPCODE_AUIPC) begin // AUIPC, rd[4] ignored
+                    s1_op = OP_CAL;
+                    s1_alu_op = ALU_ADD;
+                    s1_alu_a = u_type_imm;
+                    s1_alu_b = s1_pc;
+                    s1_rd = rd[3:0];
+                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csr_val = {`XLEN{1'bx}};
+                    s1_jmp_req = 1'b0;
+                    s1_jmp_lr = {`XLEN{1'bx}};
+                    s1_data_req = 1'b0;
+                    s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
+                    s1_data_req_w_rb = 1'bx;
+                    s1_data_req_wdata = {`XLEN{1'bx}};
+                end else if (opcode==JAL) begin // JAL, rd[4] ignored
+                    s1_op = OP_JAL;
+                    s1_alu_op = ALU_ADD;
+                    s1_alu_a = j_type_imm;
+                    s1_alu_b = s1_pc;
+                    s1_rd = rd[3:0];
+                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csr_val = {`XLEN{1'bx}};
+                    s1_jmp_req = 1'b1;
+                    s1_jmp_lr = next_pc;
+                    s1_data_req = 1'b0;
+                    s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
+                    s1_data_req_w_rb = 1'bx;
+                    s1_data_req_wdata = {`XLEN{1'bx}};
+                end else if (opcode==JALR && funct3==3'b000) begin // JALR, r*[4] ignored
+                    s1_op = OP_JALR;
+                    s1_alu_op = ALU_ADD;
+                    s1_alu_a = j_type_imm;
+                    s1_alu_b = rs1_val;
+                    s1_rd = rd[3:0];
+                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csr_val = {`XLEN{1'bx}};
+                    s1_jmp_req = 1'b1;
+                    s1_jmp_lr = next_pc;
+                    s1_data_req = 1'b0;
+                    s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
+                    s1_data_req_w_rb = 1'bx;
+                    s1_data_req_wdata = {`XLEN{1'bx}};
+                end else if (opcode==BRANCH) begin
+                    s1_op = OP_NOP;
+                    if (funct3==3'b000) begin
 
-                end else case (opcode)
-                    OPCODE_SYSTEM:
-                        case (funct3)
-                            default: // 000
-                                if
-                        endcase
-                endcase
+                    end
+                endcase end else if () begin
+
+                end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             end
 
 

@@ -102,7 +102,7 @@ localparam OP_UNDEF = 4'h0,
            OP_CSR   = 4'h7, // exchange data between csr and regfile: CSRx [ALU]
            OP_MRET  = 4'h8, // return from machine trap, update trap CSR: MRET [ALU]
            OP_DRET  = 4'h9, // return from debug mode, update debug CSR: DRET [ALU]
-           OP_EBRK  = 4'ha, // software breakpoint: EBREAK
+           OP_EBRK  = 4'ha, // software breakpoint, enter debug mode, update debug CSR: EBREAK
 
            OP_ILLI  = 4'hb, // illegal instruction
            OP_TRAP  = 4'hc, // trap jump [ALU]
