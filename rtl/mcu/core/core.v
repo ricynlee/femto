@@ -283,11 +283,11 @@ module core (
         );
 
         localparam PLC_NORMAL = 0, // pipeline control(PLC)
-                   PLC_JUMP_P = 1, // jump preparing
-                   PLC_JUMP_I = 2, // jump initiating
-                   PLC_JUMP_E = 3, // jump executing
-                   PLC_DATA_I = 4, // data req initiating
-                   PLC_DATA_E = 5, // data req executing
+                   PLC_JUMP_CACL = 1, // jump addr caculation
+                   PLC_JUMP_INIT = 2, // jump req initiating
+                   PLC_JUMP_EXEC = 3, // jump req executing
+                   PLC_DATA_INIT = 4, // data req initiating
+                   PLC_DATA_EXEC = 5, // data req executing
                    PLC_BUTT   = 6;
 
         wire[7:0] state; // pipeline control FSM
@@ -307,51 +307,53 @@ module core (
         always @ (*) case(state)
             PLC_NORMAL:
                 if (s1_vld & s1_jmp_req)
-                    next_state = PLC_JUMP_P;
+                    next_state = PLC_JUMP_CACL;
                 else if (s1_vld & s1_data_req)
-                    next_state = PLC_DATA_I;
+                    next_state = PLC_DATA_INIT;
                 else // do not infer latch
                     next_state = PLC_NORMAL;
-            PLC_JUMP_P:
-                next_state = PLC_JUMP_I;
-            PLC_JUMP_I:
+            PLC_JUMP_CACL:
+                next_state = PLC_JUMP_INIT;
+            PLC_JUMP_INIT:
                 if (instr_req_launched)
-                    next_state = PLC_JUMP_E;
+                    next_state = PLC_JUMP_EXEC;
                 else
-                    next_state = PLC_JUMP_I;
-            PLC_JUMP_E:
+                    next_state = PLC_JUMP_INIT;
+            PLC_JUMP_EXEC:
                 if (instr_resp_latched) begin
                     if (s1_vld & s1_jmp_req)
-                        next_state = PLC_JUMP_P;
+                        next_state = PLC_JUMP_CACL;
                     else if (s1_vld & s1_data_req)
-                        next_state = PLC_DATA_I;
+                        next_state = PLC_DATA_INIT;
                     else // do not infer latch
                         next_state = PLC_NORMAL;
                 end else
-                    next_state = PLC_JUMP_E;
-            PLC_DATA_I:
+                    next_state = PLC_JUMP_EXEC;
+            PLC_DATA_INIT:
                 if (data_req_launched)
-                    next_state = PLC_DATA_E;
+                    next_state = PLC_DATA_EXEC;
                 else
-                    next_state = PLC_DATA_I;
-            PLC_DATA_E:
+                    next_state = PLC_DATA_INIT;
+            PLC_DATA_EXEC:
                 if (data_resp_latched) begin
-                    if (s1_vld & s1_jmp_req)
-                        next_state = PLC_JUMP_P;
+                    if (s2_vld & s2_data_except)
+                        next_state = PLC_JUMP_INIT;
+                    else if (s1_vld & s1_jmp_req)
+                        next_state = PLC_JUMP_CACL;
                     else if (s1_vld & s1_data_req)
-                        next_state = PLC_DATA_I;
+                        next_state = PLC_DATA_INIT;
                     else // do not infer latch
                         next_state = PLC_NORMAL;
                 end else
-                    next_state = PLC_DATA_E;
+                    next_state = PLC_DATA_EXEC;
             default:
                 next_state = PLC_NORMAL;
         endcase
 
-        assign jmp = state==PLC_JUMP_P;
-        assign hld = (state==PLC_JUMP_P || state==PLC_JUMP_I || state==PLC_DATA_I) ||
-                     (state==PLC_JUMP_E && ~instr_resp_latched) ||
-                     (state==PLC_DATA_E && ~data_resp_latched);
+        assign jmp = state==PLC_JUMP_CACL || s2_data_except;
+        assign hld = (state==PLC_JUMP_CACL || state==PLC_JUMP_INIT || state==PLC_DATA_INIT) ||
+                     (state==PLC_JUMP_EXEC && ~instr_resp_latched) ||
+                     (state==PLC_DATA_EXEC && ~data_resp_latched);
     end // PIPELINE
 
     /**********************************************************************************************************************/
@@ -399,26 +401,24 @@ module core (
             wire[31:0] shamt = {27'd0, rs2};
             wire[6:0]  opcode = s1_ir[6:0];
             wire[11:0] csr_addr = s1_ir[31:20];
-            wire[31:0] csr_uimm = {27'd0, rs1};
+            wire[31:0] csr_zimm = {27'd0, rs1};
 
-            wire[$clog2(CSR_NUM)-1:0] csr_index;
-            wire[`XLEN-1:0] rs1_val, rs2_val, next_pc;
-
-            assign csr_index = `CSR_ADDR_TO_IDX;
-
-            assign rs1_val =
+            // decoding
+            wire[`XLEN-1:0] rs1_val =
                 (regfile_w_req && rs1[3:0]==regfile_w_idx) ?
                     regfile_w_data :
                 /* otherwise */
                     x[rs1[3:0]];
 
-            assign rs2_val =
+            wire[`XLEN-1:0] rs2_val =
                 (regfile_w_req && rs2[3:0]==regfile_w_idx) ?
                     regfile_w_data :
                 /* otherwise */
                     x[rs2[3:0]];
 
-            assign next_pc = s1_pc + (s1_cif ? 2 : 4);
+            wire[`XLEN-1:0] jmp_lr = s1_pc + (s1_cif ? 2 : 4);
+
+            wire[$clog2(CSR_NUM)-1:0] csr_index = `CSR_ADDR_TO_IDX;
 
             // TODO: under debug mode there is no interrupt, exception or debug trap
 
@@ -517,7 +517,7 @@ module core (
                     s1_csr = {$clog2(CSR_NUM){1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b1;
-                    s1_jmp_lr = next_pc;
+                    s1_jmp_lr = jmp_lr;
                     s1_data_req = 1'b0;
                     s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
                     s1_data_req_w_rb = 1'bx;
@@ -531,7 +531,7 @@ module core (
                     s1_csr = {$clog2(CSR_NUM){1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b1;
-                    s1_jmp_lr = next_pc;
+                    s1_jmp_lr = jmp_lr;
                     s1_data_req = 1'b0;
                     s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
                     s1_data_req_w_rb = 1'bx;
@@ -603,7 +603,7 @@ module core (
                 (opcode==OPCODE_STORE) ?
                     s_type_imm :
                 (opcode==OPCODE_SYSTEM) ?
-                    csr_uimm :
+                    csr_zimm :
                 /* otherwise */
                     shamt;
 
@@ -817,7 +817,7 @@ module core (
         );
 
         // jump/data addr control
-        assign jmp_addr = {alu_r[`XLEN-1:1], ((s2_op==OP_JALR) ? 1'b0 : alu_r[0])}; // jmp_addr[0] clamped 1'b0 upon JALR
+        assign jmp_addr = {alu_r[`XLEN-1:1], 1'b0}; // jmp_addr[0] clamped 0
         assign data_req_addr = alu_r;
 
         // regfile w access
@@ -932,19 +932,19 @@ module alu( // thoroughly combinatorial alu
     `include "core.vh"
 
     assign r =
-        op==ALU_NOP ? ({`XLEN{1'b0}}        ):
-        op==ALU_A   ? (a                    ):
+        op==ALU_ZERO ? ({`XLEN{1'b0}}        ):
+        op==ALU_A    ? (a                    ):
         /* op==ALU_B   ? (b                    ): */ // reserved for future use
-        op==ALU_SUB ? (a-b                  ):
-        op==ALU_AND ? (a&b                  ):
-        op==ALU_OR  ? (a|b                  ):
-        op==ALU_CLR ? (a & ~b               ):
-        op==ALU_XOR ? (a^b                  ):
-        op==ALU_LTU ? (a<b                  ):
-        op==ALU_LT  ? ($signed(a)<$signed(b)):
-        op==ALU_SRL ? (a>>shift             ):
-        op==ALU_SRA ? ($signed(a)>>>shift   ):
-        op==ALU_SL  ? (a<<shift             ):
+        op==ALU_SUB  ? (a-b                  ):
+        op==ALU_AND  ? (a&b                  ):
+        op==ALU_OR   ? (a|b                  ):
+        op==ALU_CLR  ? (a & ~b               ):
+        op==ALU_XOR  ? (a^b                  ):
+        op==ALU_LTU  ? (a<b                  ):
+        op==ALU_LT   ? ($signed(a)<$signed(b)):
+        op==ALU_SRL  ? (a>>shift             ):
+        op==ALU_SRA  ? ($signed(a)>>>shift   ):
+        op==ALU_SL   ? (a<<shift             ):
         /* ALU_ADD */ (a+b                  );
 endmodule
 

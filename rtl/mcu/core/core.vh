@@ -91,46 +91,102 @@ localparam CSR_ADDR_DCSR    = 12'h7b0,
  */
 
 /***************************************** femto defined *****************************************/
-// ex/wb stage opcode
-localparam OP_UNDEF = 4'h0,
-           OP_NOP   = 4'h1, // nothing done (id stage has done the job): BRANCH, FENCE
-           OP_CAL   = 4'h2, // write regfile with alu output(note nop instruction has OP_CAL): CAL, IMMCAL, LUI, AUIPC [ALU]
-           OP_JAL   = 4'h3, // set lr: JAL, FENCE.I [ALU]
-           OP_JALR  = 4'h4, // clear lsb of jmp addr(alu output) and set lr: JALR [ALU]
-           OP_LD    = 4'h5, // write regfile with dbus resp(sign-extend high bits): LOAD signed
-           OP_LDU   = 4'h6, // write regfile with dbus resp(clear high bits): LOAD unsigned
-           OP_CSR   = 4'h7, // exchange data between csr and regfile: CSRx [ALU]
-           OP_MRET  = 4'h8, // return from machine trap, update trap CSR: MRET [ALU]
-           OP_DRET  = 4'h9, // return from debug mode, update debug CSR: DRET [ALU]
-           OP_EBRK  = 4'ha, // software breakpoint, enter debug mode, update debug CSR: EBREAK
+// alu opcode
+`define OP_ALU_IDX 3:0
+localparam OP_ALU_ZERO = 4'h0,
+           OP_ALU_A    = 4'h1, // a direct to output
+           OP_ALU_B    = 4'h2, // b direct to output
+           OP_ALU_ADD  = 4'h3,
+           OP_ALU_SUB  = 4'h4,
+           OP_ALU_AND  = 4'h5,
+           OP_ALU_OR   = 4'h6,
+           OP_ALU_SET  = ALU_OR, // set bits where there are corresponding 1's
+           OP_ALU_CLR  = 4'h7, // clear bits where there are corresponding 1's
+           OP_ALU_XOR  = 4'h8,
+           OP_ALU_LT   = 4'h9, // larger than, signed
+           OP_ALU_LTU  = 4'ha, // larger than, unsigned
+           OP_ALU_SRL  = 4'hb, // shift right, logical
+           OP_ALU_SRA  = 4'hc, // shift right, arithemetic
+           OP_ALU_SL   = 4'hd; // shift left
+           
+// x regfile opcode
+`define OP_X_IDX 6:4
+localparam OP_X_FROM_ALU = 3'd0,
+           OP_X_FROM_SD  = 3'd1, // signed data
+           OP_X_FROM_UD  = 3'd2, // unsigned data
+           OP_X_FROM_CSR = 3'd3,
+           OP_X_FROM_LR  = 3'd4; // return address/next PC, for link register
 
-           OP_ILLI  = 4'hb, // illegal instruction
-           OP_TRAP  = 4'hc, // trap jump [ALU]
-           OP_TRAPS = 4'hd, // trap succesion (trap-upon-mret) [ALU]
-           OP_DBG   = 4'he; // dbg trap jump (into dbg mode) [ALU]
+localparam OP_WR_CSR = OP_X_FROM_CSR; // alias
+
+// interrupt opcode
+`define OP_INT_IDX 9:7
+localparam OP_INT_NONE = 3'd0, // normal exec
+           OP_INT_INT  = 3'd1, // interrupt
+           OP_INT_INTS = 3'd2, // interrupt succession
+           OP_INT_DBG  = 3'd3, // debug exception (implemented as interrupt)
+           OP_INT_MRET = 3'd4,
+           OP_INT_DRET = 3'd5;
+
+// opcode by instruction decoder
+localparam OP_INT  = {OP_INT_INT,  OP_X_FROM_ALU, OP_ALU_ZERO},
+           OP_INTS = {OP_INT_INTS, OP_X_FROM_ALU, OP_ALU_ZERO},
+
+           OP_MRET = {OP_INT_MRET, OP_X_FROM_ALU, OP_ALU_ZERO},
+           OP_DRET = {OP_INT_DRET, OP_X_FROM_ALU, OP_ALU_ZERO},
+
+           OP_LUI     = {OP_INT_NONE, OP_X_FROM_ALU, OP_ALU_A   },
+           OP_AUIPC   = {OP_INT_NONE, OP_X_FROM_ALU, OP_ALU_ADD },
+           OP_JAL     = {OP_INT_NONE, OP_X_FROM_LR,  OP_ALU_ZERO},
+           OP_JALR    = {OP_INT_NONE, OP_X_FROM_LR,  OP_ALU_ZERO},
+           OP_BEQ     = {OP_INT_NONE, },
+           OP_BNE     = {OP_INT_NONE, },
+           OP_BLT     = {OP_INT_NONE, },
+           OP_BGE     = {OP_INT_NONE, },
+           OP_BLTU    = {OP_INT_NONE, },
+           OP_BGEU    = {OP_INT_NONE, },
+           OP_LB      = {OP_INT_NONE, },
+           OP_LH      = {OP_INT_NONE, },
+           OP_LW      = {OP_INT_NONE, },
+           OP_LBU     = {OP_INT_NONE, },
+           OP_LHU     = {OP_INT_NONE, },
+           OP_SB      = {OP_INT_NONE, },
+           OP_SH      = {OP_INT_NONE, },
+           OP_SW      = {OP_INT_NONE, },
+           OP_ADDI    = {OP_INT_NONE, },
+           OP_SLTI    = {OP_INT_NONE, },
+           OP_SLTIU   = {OP_INT_NONE, },
+           OP_XORI    = {OP_INT_NONE, },
+           OP_ORI     = {OP_INT_NONE, },
+           OP_ANDI    = {OP_INT_NONE, },
+           OP_SLLI    = {OP_INT_NONE, },
+           OP_SRLI    = {OP_INT_NONE, },
+           OP_SRAI    = {OP_INT_NONE, },
+           OP_ADD     = {OP_INT_NONE, },
+           OP_SUB     = {OP_INT_NONE, },
+           OP_SLL     = {OP_INT_NONE, },
+           OP_SLT     = {OP_INT_NONE, },
+           OP_SLTU    = {OP_INT_NONE, },
+           OP_XOR     = {OP_INT_NONE, },
+           OP_SRL     = {OP_INT_NONE, },
+           OP_SRA     = {OP_INT_NONE, },
+           OP_OR      = {OP_INT_NONE, },
+           OP_AND     = {OP_INT_NONE, },
+           OP_FENCE   = {OP_INT_NONE, },
+           OP_FENCE_I = {OP_INT_NONE, },
+           OP_EBREAK  = {OP_INT_DBG, OP_X_FROM_ALU, OP_ALU_NOP},
+           OP_CSRRW   = {OP_INT_NONE, },
+           OP_CSRRS   = {OP_INT_NONE, },
+           OP_CSRRC   = {OP_INT_NONE, },
+           OP_CSRRWI  = {OP_INT_NONE, },
+           OP_CSRRSI  = {OP_INT_NONE, },
+           OP_CSRRCI  = {OP_INT_NONE, };
 
 /* ex/wb stage opcode notes
  * jump requests are initiated id stage but jump occurs a clock later
  * jump addr are calculated in ex/wb stage and is right a clock later than coresponding jump requests
  * alu output is always seen as jump addr but is only effective when there is a pending jump request
  */
-
-// ex/wb alu opcode
-localparam ALU_NOP = 4'h0,
-           ALU_A   = 4'h1, // a direct to output
-           ALU_B   = 4'h2, // b direct to output
-           ALU_ADD = 4'h3,
-           ALU_SUB = 4'h4,
-           ALU_AND = 4'h5,
-           ALU_OR  = 4'h6,
-           ALU_SET = ALU_OR, // set bits where there are corresponding 1's
-           ALU_CLR = 4'h7, // clear bits where there are corresponding 1's
-           ALU_XOR = 4'h8,
-           ALU_LT  = 4'h9, // larger than, signed
-           ALU_LTU = 4'ha, // larger than, unsigned
-           ALU_SRL = 4'hb, // shift right, logical
-           ALU_SRA = 4'hc, // shift right, arithemetic
-           ALU_SL  = 4'hd; // shift left
 
 // implemented CSRs
 localparam CSR_NUM = 10;
