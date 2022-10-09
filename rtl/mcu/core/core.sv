@@ -14,27 +14,25 @@ module core (
     output wire ext_dbg_resp,
 
     // dbg trap addr(DM)
-    input wire[`XLEN-1:0] dbg_trap_addr,
+    input wire[31:0] dbg_trap_addr,
 
-    // data bus interface
-    output wire[`XLEN-1:0]                dbus_addr, // byte addr
-    output wire                           dbus_w_rb,
-    output wire[$clog2(`BUS_ACC_CNT)-1:0] dbus_acc,
-    input wire[`BUS_WIDTH-1:0]            dbus_rdata,
-    output wire[`BUS_WIDTH-1:0]           dbus_wdata,
-    output wire                           dbus_req,
-    input wire                            dbus_resp,
-    input wire                            dbus_fault,
+    // data bus interface (ahblite-like)
+    output wire[31:0]   d_haddr,
+    output wire         d_hprot, // data/instruction access indicator
+    output wire[1:0]    d_hsize,
+    output wire[31:0]   d_hwdata,
+    input wire[31:0]    d_hrdata,
+    input wire          d_hresp,
+    input wire          d_hready,
 
-    // instruction bus interface
-    output wire[`XLEN-1:0]                ibus_addr, // byte addr
-    output wire                           ibus_w_rb,
-    output wire[$clog2(`BUS_ACC_CNT)-1:0] ibus_acc,
-    input wire[`BUS_WIDTH-1:0]            ibus_rdata,
-    output wire[`BUS_WIDTH-1:0]           ibus_wdata,
-    output wire                           ibus_req,
-    input wire                            ibus_resp,
-    input wire                            ibus_fault
+    // instruction bus interface (ahblite-like)
+    output wire[31:0]   i_haddr,
+    output wire         i_hprot, // data/instruction access indicator
+    output wire[1:0]    i_hsize,
+    output wire[31:0]   i_hwdata,
+    input wire[31:0]    i_hrdata,
+    input wire          i_hresp,
+    input wire          i_hready
 );
 
     `include "core.vh"
@@ -81,12 +79,12 @@ module core (
     wire[`ILEN-1:0] s2_ir;
     wire[`XLEN-1:0] s2_pc;
 
+    /**********************************************************************************************************************/
     // cross pipeline stage signals
     wire[3:0] s1_rd; // dest reg index
     wire[`XLEN-1:0] s1_alu_a, s1_alu_b;
-    wire[3:0] s1_alu_op; // alu operation
-    wire[3:0] s1_op; // instruction operation
-    wire[$clog2(CSR_NUM)-1:0] s1_csr; // dest csr index
+    wire[`ALU_OP_WIDTH-1:0] s1_alu_op; // opcode
+    wire[`CSR_IDX_WIDTH-1:0] s1_csrd; // dest csr index
     wire[`XLEN-1:0] s1_csr_val;
     wire s1_jmp_req;
     wire[`XLEN-1:0] s1_jmp_lr; // jump link register/return address
@@ -94,10 +92,9 @@ module core (
 
     wire[3:0] s2_rd; // dest reg index
     wire[`XLEN-1:0] s2_alu_a, s2_alu_b;
-    wire[3:0] s2_alu_op; // alu operation
-    wire[3:0] s2_op; // instruction operation
+    wire[`OP_WIDTH:0] s2_op; // instruction operation
     wire[`XLEN-1:0] s2_jmp_lr; // jump link register/return address
-    wire[$clog2(CSR_NUM)-1:0] s2_csr; // dest csr index
+    wire[`CSR_IDX_WIDTH-1:0] s2_csrd; // dest csr index
     wire[`XLEN-1:0] s2_csr_val;
 
     // regfile signals
@@ -106,7 +103,7 @@ module core (
     wire[`XLEN-1:0] regfile_w_data;
 
     // csr signals
-    wire[$clog2(CSR_NUM)-1:0] csr_w_idx;
+    wire[`CSR_IDX_WIDTH-1:0] csr_w_idx;
     wire[`XLEN-1:0] csr_w_data;
     wire[`XLEN-1:0] csr_r_data[0:CSR_NUM-1];
 
@@ -304,7 +301,7 @@ module core (
             .out (state     )
         );
 
-        always @ (*) case(state)
+        always_comb case(state)
             PLC_NORMAL:
                 if (s1_vld & s1_jmp_req)
                     next_state = PLC_JUMP_CACL;
@@ -365,22 +362,7 @@ module core (
             .wreq  (regfile_w_req),
             .windex(regfile_w_idx),
             .wdata (regfile_w_dat),
-            .x0    (x[0 ]        ),
-            .x1    (x[1 ]        ),
-            .x2    (x[2 ]        ),
-            .x3    (x[3 ]        ),
-            .x4    (x[4 ]        ),
-            .x5    (x[5 ]        ),
-            .x6    (x[6 ]        ),
-            .x7    (x[7 ]        ),
-            .x8    (x[8 ]        ),
-            .x9    (x[9 ]        ),
-            .x10   (x[10]        ),
-            .x11   (x[11]        ),
-            .x12   (x[12]        ),
-            .x13   (x[13]        ),
-            .x14   (x[14]        ),
-            .x15   (x[15]        )
+            .x0    (x            )
         );
 
         wire[$clog2(`BUS_ACC_CNT)-1:0] s1_data_req_acc;
@@ -418,33 +400,39 @@ module core (
 
             wire[`XLEN-1:0] jmp_lr = s1_pc + (s1_cif ? 2 : 4);
 
-            wire[$clog2(CSR_NUM)-1:0] csr_index = `CSR_ADDR_TO_IDX;
+            wire[`CSR_IDX_WIDTH-1:0] csr_index = `CSR_ADDR_TO_IDX;
 
             // TODO: under debug mode there is no interrupt, exception or debug trap
 
             // signals for following stage
             always @ (*) begin
                 if (interrupt) begin
-                    s1_op = OP_TRAP;
-                    s1_alu_op = ALU_A;
-                    s1_alu_a = csr_r_data[CSR_IDX_MTVEC];
-                    s1_alu_b = {`XLEN{1'bx}};
-                    s1_rd = 4'd0;
-                    s1_csr = {$clog2(CSR_NUM){1'bx}};
-                    s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b1;
                     s1_jmp_lr = {`XLEN{1'bx}};
+                end
+
+                if (interrupt) begin
                     s1_data_req = 1'b0;
                     s1_data_req_acc = {$clog2(`BUS_ACC_CNT){1'bx}};
                     s1_data_req_w_rb = 1'bx;
                     s1_data_req_wdata = {`XLEN{1'bx}};
+                end
+
+                if (interrupt) begin
+                    s1_op = {OP_INT_INT, };
+                    s1_alu_op = ALU_A;
+                    s1_alu_a = csr_r_data[CSR_IDX_MTVEC];
+                    s1_alu_b = {`XLEN{1'bx}};
+                    s1_rd = 4'd0;
+                    s1_csrd = {`CSR_IDX_WIDTH{1'bx}};
+                    s1_csr_val = {`XLEN{1'bx}};
                 end else if (s1_ir==32'b0011000_00010_00000_000_00000_1110011) begin // MRET
                     s1_op = OP_MRET;
                     s1_alu_op = ALU_A;
                     s1_alu_a = (succesional_interrupt ? csr_r_data[CSR_IDX_MTVEC] /* successional traps */ : csr_r_data[CSR_IDX_MEPC]);
                     s1_alu_b = {`XLEN{1'bx}};
                     s1_rd = 4'd0;
-                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csrd = {`CSR_IDX_WIDTH{1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b1;
                     s1_jmp_lr = {`XLEN{1'bx}};
@@ -458,7 +446,7 @@ module core (
                     s1_alu_a = csr_r_data[CSR_IDX_DPC];
                     s1_alu_b = {`XLEN{1'bx}};
                     s1_rd = 4'd0;
-                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csrd = {`CSR_IDX_WIDTH{1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b1;
                     s1_jmp_lr = {`XLEN{1'bx}};
@@ -472,7 +460,7 @@ module core (
                     s1_alu_a = dbg_trap_addr;
                     s1_alu_b = {`XLEN{1'bx}};
                     s1_rd = 4'd0;
-                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csrd = {`CSR_IDX_WIDTH{1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b1;
                     s1_jmp_lr = {`XLEN{1'bx}};
@@ -486,7 +474,7 @@ module core (
                     s1_alu_a = u_type_imm;
                     s1_alu_b = {`XLEN{1'bx}};
                     s1_rd = rd[3:0];
-                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csrd = {`CSR_IDX_WIDTH{1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b0;
                     s1_jmp_lr = {`XLEN{1'bx}};
@@ -500,7 +488,7 @@ module core (
                     s1_alu_a = u_type_imm;
                     s1_alu_b = s1_pc;
                     s1_rd = rd[3:0];
-                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csrd = {`CSR_IDX_WIDTH{1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b0;
                     s1_jmp_lr = {`XLEN{1'bx}};
@@ -514,7 +502,7 @@ module core (
                     s1_alu_a = j_type_imm;
                     s1_alu_b = s1_pc;
                     s1_rd = rd[3:0];
-                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csrd = {`CSR_IDX_WIDTH{1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b1;
                     s1_jmp_lr = jmp_lr;
@@ -528,7 +516,7 @@ module core (
                     s1_alu_a = j_type_imm;
                     s1_alu_b = rs1_val;
                     s1_rd = rd[3:0];
-                    s1_csr = {$clog2(CSR_NUM){1'bx}};
+                    s1_csrd = {`CSR_IDX_WIDTH{1'bx}};
                     s1_csr_val = {`XLEN{1'bx}};
                     s1_jmp_req = 1'b1;
                     s1_jmp_lr = jmp_lr;
@@ -617,7 +605,7 @@ module core (
                 /* rd available */
                     rd[3:0];
 
-            assign s1_csr = csr_index;
+            assign s1_csrd = csr_index;
 
             assign s1_csr_val = csr_r_data[csr_index];
 
@@ -800,8 +788,8 @@ module core (
         ) s2_misc_dff (
             .clk(clk),
             .vld(s1_vld),
-            .in ({s1_rd,s1_alu_a,s1_alu_b,s1_alu_op,s1_op,s1_jmp_lr,s1_csr,s1_csr_val}),
-            .out({s2_rd,s2_alu_a,s2_alu_b,s2_alu_op,s2_op,s2_jmp_lr,s2_csr,s2_csr_val})
+            .in ({s1_rd,s1_alu_a,s1_alu_b,s1_alu_op,s1_op,s1_jmp_lr,s1_csrd,s1_csr_val}),
+            .out({s2_rd,s2_alu_a,s2_alu_b,s2_alu_op,s2_op,s2_jmp_lr,s2_csrd,s2_csr_val})
         );
 
         // ALU
@@ -846,7 +834,7 @@ module core (
                 alu_r;
 
         // csr w access : only user csr access instructions are handled, not for trap entry/mret
-        assign csr_w_idx = s2_csr;
+        assign csr_w_idx = s2_csrd;
         assign csr_w_data = alu_r;
 
         begin:CSR // csr control
@@ -956,41 +944,16 @@ module regfile(
     input wire[3:0]        windex,
     input wire[`XLEN-1:0]  wdata,
 
-    output wire[`XLEN-1:0] x0,
-    output wire[`XLEN-1:0] x1,
-    output wire[`XLEN-1:0] x2,
-    output wire[`XLEN-1:0] x3,
-    output wire[`XLEN-1:0] x4,
-    output wire[`XLEN-1:0] x5,
-    output wire[`XLEN-1:0] x6,
-    output wire[`XLEN-1:0] x7,
-    output wire[`XLEN-1:0] x8,
-    output wire[`XLEN-1:0] x9,
-    output wire[`XLEN-1:0] x10,
-    output wire[`XLEN-1:0] x11,
-    output wire[`XLEN-1:0] x12,
-    output wire[`XLEN-1:0] x13,
-    output wire[`XLEN-1:0] x14,
-    output wire[`XLEN-1:0] x15
+    output wire[`XLEN-1:0] x[0:15]
 );
 
     reg[`XLEN-1:0] xr[1:15];
-    assign x0  = 0;
-    assign x1  = xr[1 ];
-    assign x2  = xr[2 ];
-    assign x3  = xr[3 ];
-    assign x4  = xr[4 ];
-    assign x5  = xr[5 ];
-    assign x6  = xr[6 ];
-    assign x7  = xr[7 ];
-    assign x8  = xr[8 ];
-    assign x9  = xr[9 ];
-    assign x10 = xr[10];
-    assign x11 = xr[11];
-    assign x12 = xr[12];
-    assign x13 = xr[13];
-    assign x14 = xr[14];
-    assign x15 = xr[15];
+    assign x[0]  = {`XLEN{1'b0}};
+    generate
+        for (genvar i=1 /*not 0*/; i<16; i=i+1) begin
+            assign x[i] = xr[i];
+        end
+    endgenerate
 
     always @ (posedge clk) begin
         if (wreq && windex) begin

@@ -17,15 +17,6 @@
 `define EXT_INT_SRC_TMR     (0)
 `define EXT_INT_SRC_UART    (1)
 
-/* bus */
-`define BUS_WIDTH           (`XLEN) // bus width
-
-`define BUS_ACC_1B          (2'd0)
-`define BUS_ACC_2B          (2'd1)
-`define BUS_ACC_4B          (2'd2)
-`define BUS_ACC_CNT         (2'd3)
-`define BUS_ACC_WIDTH       ($clog2(`BUS_ACC_CNT))
-
 /* io ring */
 `define IOR_DIR_IN          (1'b0)
 `define IOR_DIR_OUT         (~`IOR_DIR_IN)
