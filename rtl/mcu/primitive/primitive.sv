@@ -119,7 +119,7 @@ module fifo # ( // fully sync, first-word-fall-through
 
     integer elem_cnt;
 
-    always @ (posedge clk) begin
+    always_ff @ (posedge clk) begin
         if (rstn==0) begin
             wptr <= 0;
             rptr <= 0;
