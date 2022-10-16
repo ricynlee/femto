@@ -1,13 +1,14 @@
 `include "timescale.vh"
 
-module dff_srcv #( // D-type flip-flop w/ sync rst, clr, vld
+module dff #( // D-type flip-flop w/ sync rst, set, vld
     parameter   WIDTH = 1,
     parameter   INITV = {WIDTH{1'b0}} // reset value
 )(
     input wire              clk,
     input wire              rstn,
-    input wire              clr,
+    input wire              set,
     input wire              vld,
+    input wire [WIDTH-1:0]  setv,
     input wire [WIDTH-1:0]  in,
     output wire [WIDTH-1:0] out
 );
@@ -16,57 +17,9 @@ module dff_srcv #( // D-type flip-flop w/ sync rst, clr, vld
     always_ff @ (posedge clk) begin
         if (~rstn)
             d <= INTV;
-        else if (clr)
-            d <= {WIDTH{1'b0}};
+        else if (set)
+            d <= setv;
         else if (vld)
-            d <= in;
-    end
-    assign out = d;
-endmodule
-
-module dff_ar_scv #( // D-type flip-flop w/ async rst & sync clr, vld
-    parameter   WIDTH = 1,
-    parameter   INITV = {WIDTH{1'b0}} // reset value
-)(
-    input wire              clk,
-    input wire              rstn,
-    input wire              clr,
-    input wire              vld,
-    input wire [WIDTH-1:0]  in,
-    output wire [WIDTH-1:0] out
-);
-    reg [WIDTH-1:0] d = INTV;
-
-    always_ff @ (posedge clk, negedge rstn) begin
-        if (~rstn)
-            d <= INTV;
-        else if (clr)
-            d <= {WIDTH{1'b0}};
-        else
-            d <= in;
-    end
-    assign out = d;
-endmodule
-
-module dff_arc_sv #( // D-type flip-flop w/ async rst, clr & sync vld
-    parameter   WIDTH = 1,
-    parameter   INITV = {WIDTH{1'b0}} // reset value
-)(
-    input wire              clk,
-    input wire              rstn,
-    input wire              clr,
-    input wire              vld,
-    input wire [WIDTH-1:0]  in,
-    output wire [WIDTH-1:0] out
-);
-    reg [WIDTH-1:0] d = INTV;
-
-    always_ff @ (posedge clk, negedge rstn, posedge clr) begin
-        if (~rstn)
-            d <= INTV;
-        else if (clr)
-            d <= {WIDTH{1'b0}};
-        else
             d <= in;
     end
     assign out = d;
