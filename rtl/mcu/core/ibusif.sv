@@ -7,10 +7,10 @@ module ibusif (
     // processor interface
     input wire          jmp_req,
     input wire[31:0]    jmp_addr,
-    input wire          instr_req,
+    input wire          instr_req, // typically vld of pipeline stage 0
+    input wire          instr_size, // 1 - requesting 16-bit data, 0 - requesting 32-bit data
+
     output wire[31:0]   instr,
-    output wire[31:0]   instr_pc,
-    output wire         instr_c,
 
     // bus interface
     output wire[31:0]   i_haddr,
@@ -26,8 +26,13 @@ module ibusif (
     wire ibus_busy;
     wire ibus_req;
     wire ibus_resp;
-    wire ibus_resp_hsize; // bit 0 only
+    wire[1:0] ibus_resp_size;
     wire[31:0] ibus_req_addr;
+    wire[31:0] ibus_resp_data;
+    wire[1:0] ibus_req_size;
+    
+    wire[1:0] ifq_vacant_16bit_entry;
+    wire[1:0] ifq_filled_16bit_entry;
     
     begin: GEN_bus_busy
         wire bus_req_asserted;
@@ -57,15 +62,19 @@ module ibusif (
         );
         assign ibus_resp = i_hready & ibus_prev_req_vld & ~jmp_req;
 
-        dff ibus_prev_req_hsize_dff ( // only bit 0 covered as 16/32 bit indicator
+        dff #(
+            .WIDTH(2)
+        ) ibus_prev_req_hsize_dff (
             .clk(clk            ),
             .rstn(1'b1          ), // no need to reset
             .set(1'b0),
             .vld(ibus_req),
             .setv(1'b0),
-            .in (i_hsize[0]     ),
-            .out(ibus_resp_hsize)
+            .in (ibus_req_size[0]     ),
+            .out(ibus_resp_size)
         );
+        
+        assign ibus_resp_data = i_hrdata;
     end
 
     begin: GEN_ibus_req_addr
@@ -91,23 +100,24 @@ module ibusif (
     end
 
     begin: GEN_ibus_req
-        
+        // if ibus_req_addr is 16-bit aligned or only 16-bit space is left, 16-bit access is made
+        assign ibus_req_size = (ibus_req_addr[1] || (ifq_vacant_16bit_entry==2'd1)) ? 2'b01 /* 16-bit access */ : 2'b10 /* 32-bit access */;
+        assign ibus_req = (jmp || ifq_vacant_16bit_entry) && ~ibus_busy;
     end
-        instr_fetch_queue ifq(
-            .clk             (clk ),
-            .rstn            (rstn),
-            .clr             (jmp_req ),
 
-            .in_req            (ibus_resp        ),
-            .in_16bit          (ibus_resp_hsize), // hsize==1'b1 indicates 16-bit rdata
-            .in                (i_hrdata           ),
-            .vacant_16bit_entry(    ),
+    instr_fetch_queue ifq(
+        .clk             (clk ),
+        .rstn            (rstn),
+        .clr             (jmp_req ),
 
-            .out_req           (s0_vld                ),
-            .out_16bit         (s0_cif                ),
-            .out               (if_ir_raw             ),
-            .filled_16bit_entry(  )
-        );
+        .in_req            (ibus_resp        ),
+        .in_16bit          (ibus_resp_size[0]), // hsize[0]==1'b1 indicates 16-bit rdata
+        .in                (ibus_resp_data           ),
+        .vacant_16bit_entry(ifq_vacant_16bit_entry),
 
-
+        .out_req           (instr_req                ),
+        .out_16bit         (instr_size                ),
+        .out               (instr             ),
+        .filled_16bit_entry(ifq_filled_16bit_entry)
+    );
 endmodule
