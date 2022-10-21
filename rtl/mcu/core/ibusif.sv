@@ -6,19 +6,20 @@ module ibusif (
 
     // processor interface
     input wire        jmp_req,
-    input wire [31:0] jmp_addr,
+    input wire [31:0] jmp_addr, // pipeline's id stage shall ensure jmp_addr is 2-aligned
 
     input wire       instr_fetch,      // typically vld of pipeline stage 0
     input wire [1:0] instr_fetch_size, // bit 0: 1 - requesting 16-bit data, 0 - requesting 32-bit data
 
-    output wire [ 1:0] instr_vld_size,       // 2'b00 - not vld, 2'b01 - 16-bit instr vld, 2'b1x - 32-bit instr vld
-    output wire [31:0] instr,
-    output wire        instr_contains_fault, // instr contains bus fault
+    output wire [ 1:0] instr_vld_size,  // 2'b00 - not vld, 2'b01 - 16 bits vld, 2'b1x - 32 bits vld
+    output wire [31:0] instr,           // not actual instruction 'cause it can be a partial (16/32) one
+    output wire        instr_has_fault, // instr's corresponding bus access triggered bus fault
 
     // bus interface (ahblite-like)
     output wire [31:0] haddr,
     output wire        hprot,   // data/instruction access indicator
     output wire [ 1:0] hsize,
+    output wire        hwrite,
     output wire [31:0] hwdata,
     output wire        htrans,  // indicate whether the transfer is valid, bit 1 of AHB HTRANS
     input  wire [31:0] hrdata,
@@ -106,9 +107,9 @@ module ibusif (
                 .out (pred_addr)
             );
             assign next_addr     = {pred_addr[31:2] + 30'd1, 2'b00};  // always move to 4-aligned addr
-            assign next_jmp_addr = htrans ? {jmp_addr[31:2] + 30'd1, 2'b00} : jmp_addr;  // always move to 4-aligned addr
+            assign next_jmp_addr = htrans ? {jmp_addr[31:2] + 30'd1, 2'b00} : {jmp_addr[31:1], 1'b0};  // always move to 4-aligned addr
 
-            assign haddr         = jmp_req ? jmp_addr : pred_addr;  // not called "pc" because addr can be in the middle of an instruction
+            assign haddr         = jmp_req ? {jmp_addr[31:1], 1'b0} : pred_addr;  // not called "pc" because addr can be in the middle of an instruction
         end
     endgenerate
 
@@ -147,11 +148,12 @@ module ibusif (
                 .out (ifq_has_bus_fault)
             );
 
-            assign instr_contains_fault = (ifq_filled_16bit_entry <= ifq_has_bus_fault);
-            assign instr_vld_size       = ifq_filled_16bit_entry;
+            assign instr_has_fault = (ifq_filled_16bit_entry <= ifq_has_bus_fault);
+            assign instr_vld_size  = ifq_filled_16bit_entry;
         end
     endgenerate
 
     assign hprot  = 1'b0;  // always set "opcode fetch"
     assign hwdata = 32'dx;  // for simulation only
+    assign hwrite = 1'b0;  // always set "read"
 endmodule
