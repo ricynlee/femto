@@ -27,13 +27,12 @@ module ibusif (
     input  wire        hready
 );
 
-    wire       bus_busy;  // trans req would be ignored
-
+    wire       trans_busy;  // trans req would be ignored
     wire       trans_resp;
     wire [1:0] trans_resp_size;
 
     generate
-        if (1) begin : GEN_trans_busy
+        if (0) begin : GEN_trans_busy_init_forced
             wire init_force_busy;
             dff #(
                 .INITV(1'b1)
@@ -47,17 +46,9 @@ module ibusif (
                 .out (init_force_busy)
             );
 
-            wire trans_req_asserted;
-            dff trans_req_asserted_dff (
-                .clk (clk),
-                .rstn(rstn),
-                .set (htrans),
-                .setv(1'b1),
-                .vld (hready),
-                .in  (1'b0),
-                .out (trans_req_asserted)
-            );
-            assign bus_busy = (trans_req_asserted & ~hready) | init_force_busy;
+            assign trans_busy = ~hready | init_force_busy;
+        end else begin : GEN_trans_busy
+            assign trans_busy = ~hready;
         end
     endgenerate
 
@@ -119,7 +110,7 @@ module ibusif (
             wire [1:0] ifq_filled_16bit_entry;
             wire [1:0] ifq_has_bus_fault;
             assign hsize  = haddr[1] ? 2'b01  /* force 16-bit access */ : 2'b10;
-            assign htrans = ~bus_busy && (jmp_req || (!ifq_has_bus_fault && ifq_vacant_16bit_entry));
+            assign htrans = ~trans_busy && (jmp_req || (!ifq_has_bus_fault && ifq_vacant_16bit_entry));
             instr_fetch_queue ifq (
                 .clk (clk),
                 .rstn(rstn),

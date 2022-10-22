@@ -18,12 +18,13 @@ module tb_ibusif;
     /* input  */logic [ 1:0] instr_fetch_size;  // bit 0: 1 - requesting 16-bit data, 0 - requesting 32-bit data
     /* output */logic [ 1:0] instr_vld_size;  // 2'b00 - not vld, 2'b01 - 16-bit instr vld, 2'b1x - 32-bit instr vld
     /* output */logic [31:0] instr;
-    /* output */logic        instr_contains_fault;  // instr contains bus fault
+    /* output */logic        instr_has_fault;  // instr contains bus fault
     /* output */logic [31:0] haddr;
     /* output */logic        hprot;  // data/instruction access indicator
     /* output */logic [ 1:0] hsize;
     /* output */logic [31:0] hwdata;
     /* output */logic        htrans;  // indicate whether the transfer is valid, bit 1 of AHB HTRANS
+    /* output */logic        hwrite;
     /* input  */logic [31:0] hrdata;
     /* input  */logic        hresp;
     /* input  */logic        hready;
@@ -80,11 +81,12 @@ module tb_ibusif;
 
         .instr_vld_size      (instr_vld_size),       // 2'b00 - not vld, 2'b01 - 16-bit instr vld, 2'b1x - 32-bit instr vld
         .instr               (instr),
-        .instr_contains_fault(instr_contains_fault), // instr contains bus fault
+        .instr_has_fault(instr_has_fault), // instr contains bus fault
 
         .haddr (haddr),
         .hprot (hprot),   // data/instruction access indicator
         .hsize (hsize),
+        .hwrite(hwrite),
         .hwdata(hwdata),
         .htrans(htrans),  // indicate whether the transfer is valid, bit 1 of AHB HTRANS
         .hrdata(hrdata),
