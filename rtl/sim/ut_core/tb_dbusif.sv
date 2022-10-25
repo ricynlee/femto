@@ -14,11 +14,11 @@ module tb_dbusif;
         #200 rstn = 1;
     end
 
-    /* input  */logic       acc_req;
-    /* input  */logic       acc_w_rb;
-    /* input  */logic[1:0]  acc_size;
-    /* input  */logic[31:0] acc_addr;
-    /* input  */logic[31:0] acc_wdata;
+    /* input  */logic       acc_req = 0;
+    /* input  */logic       acc_w_rb = 0;
+    /* input  */logic[1:0]  acc_size = 0;
+    /* input  */logic[31:0] acc_addr = 0;
+    /* input  */logic[31:0] acc_wdata = 0;
     /* output */logic       data_vld; // r/w access done
     /* output */logic[31:0] data;
     /* output */logic       data_has_fault; // resp's correspoding acess
@@ -48,5 +48,42 @@ module tb_dbusif;
             end
         end
     end
+
+    initial begin
+        wait(rstn==1);
+        @(posedge clk) begin
+            acc_req   = 1;
+            acc_w_rb  = 0;
+            acc_size  = 0;
+            acc_addr  = 0;
+        end
+        @(posedge clk) begin
+            acc_req   = 0;
+            acc_wdata = 0;
+        end
+        wait(data_vld);
+    end
+
+    dbusif dbusif (
+        .clk           (clk           ),
+        .rstn          (rstn          ),
+        .acc_req       (acc_req       ),
+        .acc_w_rb      (acc_w_rb      ),
+        .acc_size      (acc_size      ),
+        .acc_addr      (acc_addr      ),
+        .acc_wdata     (acc_wdata     ),
+        .data_vld      (data_vld      ),
+        .data          (data          ),
+        .data_has_fault(data_has_fault),
+        .haddr         (haddr         ),
+        .hprot         (hprot         ),
+        .hsize         (hsize         ),
+        .hwrite        (hwrite        ),
+        .hwdata        (hwdata        ),
+        .htrans        (htrans        ),
+        .hrdata        (hrdata        ),
+        .hresp         (hresp         ),
+        .hready        (hready        )
+    );
 
 endmodule
