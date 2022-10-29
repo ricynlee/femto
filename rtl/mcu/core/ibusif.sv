@@ -1,19 +1,17 @@
-`include "femto.vh"
-
 module ibusif (
     input wire clk,
     input wire rstn,
 
-    // processor interface
+    // pipeline ctrl interface
     input wire        jmp_req,
     input wire [31:0] jmp_addr, // pipeline's id stage shall ensure jmp_addr is 2-aligned
 
-    input wire       instr_fetch,      // typically vld of pipeline stage 0
-    input wire [1:0] instr_fetch_size, // bit 0: 1 - requesting 16-bit data, 0 - requesting 32-bit data
-
-    output wire [ 1:0] instr_vld_size,  // 2'b00 - not vld, 2'b01 - 16 bits vld, 2'b1x - 32 bits vld
-    output wire [31:0] instr,           // not actual instruction 'cause it can be a partial (16/32) one
-    output wire        instr_has_fault, // instr's corresponding bus access triggered bus fault
+    // pipeline if interface
+    output wire [ 1:0] vld_size,  // 2'b00 - not vld, 2'b01 - 16 bits vld, 2'b1x - 32 bits vld
+    output wire [31:0] data,
+    output wire        bus_err,   // data's corresponding bus access triggered bus fault
+    input  wire        pop,       // pop data out, typically vld of pipeline stage 0
+    input  wire [ 1:0] pop_size,  // bit 0: 1 - requesting 16-bit data, 0 - requesting 32-bit data
 
     // bus interface (ahblite-like)
     output wire [31:0] haddr,
@@ -108,9 +106,9 @@ module ibusif (
         if (1) begin : GEN_trans_req
             wire [1:0] ifq_vacant_16bit_entry;
             wire [1:0] ifq_filled_16bit_entry;
-            wire [1:0] ifq_has_bus_fault;
+            wire [1:0] ifq_has_bus_err;
             assign hsize  = haddr[1] ? 2'b01  /* force 16-bit access */ : 2'b10;
-            assign htrans = ~trans_busy && (jmp_req || (!ifq_has_bus_fault && ifq_vacant_16bit_entry));
+            assign htrans = ~trans_busy && (jmp_req || (!ifq_has_bus_err && ifq_vacant_16bit_entry));
             instr_fetch_queue ifq (
                 .clk (clk),
                 .rstn(rstn),
@@ -121,26 +119,26 @@ module ibusif (
                 .in                (hrdata),
                 .vacant_16bit_entry(ifq_vacant_16bit_entry),
 
-                .out_req           (instr_fetch),
-                .out_16bit         (instr_fetch_size[0]),
-                .out               (instr),
+                .out_req           (pop),
+                .out_16bit         (pop_size[0]),
+                .out               (data),
                 .filled_16bit_entry(ifq_filled_16bit_entry)
             );
 
             dff #(
                 .WIDTH(2)
-            ) ibus_fault_status_dff (
+            ) ibus_err_status_dff (
                 .clk (clk),
                 .rstn(rstn),
-                .set (jmp_req),           // clear fault
+                .set (jmp_req),          // clear fault
                 .setv(2'b00),
-                .vld (hresp),             // thanks to ahblite spec, hresp comes 1 hclk earlier than hready
+                .vld (hresp),            // thanks to ahblite spec, hresp comes 1 hclk earlier than hready
                 .in  (trans_resp_size),
-                .out (ifq_has_bus_fault)
+                .out (ifq_has_bus_err)
             );
 
-            assign instr_has_fault = (ifq_filled_16bit_entry <= ifq_has_bus_fault);
-            assign instr_vld_size  = ifq_filled_16bit_entry;
+            assign bus_err  = (ifq_filled_16bit_entry <= ifq_has_bus_err);
+            assign vld_size = ifq_filled_16bit_entry;
         end
     endgenerate
 
