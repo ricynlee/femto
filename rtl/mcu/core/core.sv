@@ -14,25 +14,79 @@ module core (
     input wire[31:0] dbg_trap_addr,
 
     // data bus interface (ahblite-like)
-    output wire[31:0]   d_haddr,
-    output wire         d_hprot, // data/instruction access indicator
-    output wire[1:0]    d_hsize,
-    output wire[31:0]   d_hwdata,
-    output wire         d_htrans, // indicate whether the transfer is valid, bit 1 of AHB HTRANS
-    input wire[31:0]    d_hrdata,
-    input wire          d_hresp,
-    input wire          d_hready,
+    output wire [31:0] d_haddr,
+    output wire        d_hprot,   // data/instruction access indicator
+    output wire [ 1:0] d_hsize,
+    output wire        d_hwrite,
+    output wire [31:0] d_hwdata,
+    output wire        d_htrans,  // indicate whether the transfer is valid, bit 1 of AHB HTRANS
+    input  wire [31:0] d_hrdata,
+    input  wire        d_hresp,
+    input  wire        d_hready
 
     // instruction bus interface (ahblite-like)
-    output wire[31:0]   i_haddr,
-    output wire         i_hprot, // data/instruction access indicator
-    output wire[1:0]    i_hsize,
-    output wire[31:0]   i_hwdata,
-    output wire         i_htrans, // indicate whether the transfer is valid, bit 1 of AHB HTRANS
-    input wire[31:0]    i_hrdata,
-    input wire          i_hresp,
-    input wire          i_hready
+    output wire [31:0] i_haddr,
+    output wire        i_hprot,   // data/instruction access indicator
+    output wire [ 1:0] i_hsize,
+    output wire        i_hwrite,
+    output wire [31:0] i_hwdata,
+    output wire        i_htrans,  // indicate whether the transfer is valid, bit 1 of AHB HTRANS
+    input  wire [31:0] i_hrdata,
+    input  wire        i_hresp,
+    input  wire        i_hready
 );
+
+    ibusif ibusif (
+        .clk (clk),
+        .rstn(rstn),
+        .jmp_req (jmp),
+        .jmp_addr('h00000002),
+        .instr_fetch     (instr_fetch),      // typically vld of pipeline stage 0
+        .instr_fetch_size(instr_fetch_size), // bit 0: 1 - requesting 16-bit data, 0 - requesting 32-bit data
+        .instr_vld_size      (instr_vld_size),       // 2'b00 - not vld, 2'b01 - 16-bit instr vld, 2'b1x - 32-bit instr vld
+        .instr               (instr),
+        .instr_has_fault(instr_has_fault), // instr contains bus fault
+        .haddr (haddr),
+        .hprot (hprot),   // data/instruction access indicator
+        .hsize (hsize),
+        .hwrite(hwrite),
+        .hwdata(hwdata),
+        .htrans(htrans),  // indicate whether the transfer is valid, bit 1 of AHB HTRANS
+        .hrdata(hrdata),
+        .hresp (hresp),
+        .hready(hready)
+    );
+
+    instr_decompressor instr_decompressor ( // conpressed instruction expansion
+        .in_instr(),
+        .out_instr(),
+        .instr_compressed()
+    );
+
+
+
+
+    dbusif dbusif (
+        .clk           (clk           ),
+        .rstn          (rstn          ),
+        .acc_req       (acc_req       ),
+        .acc_w_rb      (acc_w_rb      ),
+        .acc_size      (acc_size      ),
+        .acc_addr      (acc_addr      ),
+        .acc_wdata     (acc_wdata     ),
+        .data_vld      (data_vld      ),
+        .data          (data          ),
+        .data_has_fault(data_has_fault),
+        .haddr         (haddr         ),
+        .hprot         (hprot         ),
+        .hsize         (hsize         ),
+        .hwrite        (hwrite        ),
+        .hwdata        (hwdata        ),
+        .htrans        (htrans        ),
+        .hrdata        (hrdata        ),
+        .hresp         (hresp         ),
+        .hready        (hready        )
+    );
 
     `include "core.vh"
 

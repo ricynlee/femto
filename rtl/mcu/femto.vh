@@ -5,13 +5,14 @@
 `define SYSCLK_FREQ         (24000000) // 24MHz
 
 /* core */
-`define ILEN                (32) // max instruction len
-`define XLEN                (32) // pc/xreg width
+// ILEN: 32
+// XLEN: 32
+// IALIGN: 16
 
 `define RESET_PC            (32'h0000_0000)
 
 /* interrupt */
-`define INT_RST_EN          (1'b0) // interrupt enabled or not at rst
+`define RESET_IE          (1'b0) // interrupt enabled or not at rst
 `define EXT_INT_SRC_NUM     (2)    // <=XLEN
 
 `define EXT_INT_SRC_TMR     (0)

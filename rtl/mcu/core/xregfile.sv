@@ -3,13 +3,13 @@ module xregfile(
 
     input wire             wreq,
     input wire[3:0]        windex,
-    input wire[`XLEN-1:0]  wdata,
+    input wire[31:0]  wdata,
 
-    output wire[`XLEN-1:0] x[0:15]
+    output wire[31:0] x[0:15]
 );
 
-    reg[`XLEN-1:0] xr[1:15];
-    assign x[0]  = {`XLEN{1'b0}};
+    reg[31:0] xr[1:15];
+    assign x[0]  = 32'd0;
     generate
         for (genvar i=1 /*not 0*/; i<16; i=i+1) begin
             assign x[i] = xr[i];

@@ -8,10 +8,9 @@ module dbusif (
     input wire[1:0]  acc_size,
     input wire[31:0] acc_addr,
     input wire[31:0] acc_wdata,
-    
     output wire       data_vld, // r/w access done
     output wire[31:0] data,
-    output wire       data_has_fault, // resp's correspoding acess
+    output wire       bus_err, // resp's correspoding acess
 
     // bus interface (ahblite-like)
     output wire [31:0] haddr,
