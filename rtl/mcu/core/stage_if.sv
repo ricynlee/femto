@@ -7,9 +7,9 @@ module stage_if (
     output wire        ibusif_pop,
     output wire [ 1:0] ibusif_pop_size,  // only bit 0 matters as aligned with ibusif
     input  wire [31:0] ibusif_data,
-    input  wire        ibusif_bus_err,   // bus access to instr caused fault
+    input  wire        ibusif_err,   // bus access to instr caused fault
 
-    // id interface
+    // if-id interface
     output wire [31:0] stage_if_pc,
     output wire [31:0] stage_if_ir,
     output wire        stage_if_c,   // compressed flag
@@ -31,7 +31,7 @@ module stage_if (
         .out_instr       (stage_if_ir),
         .instr_compressed(stage_if_c)
     );
-    assign stage_if_e   = ibusif_bus_err;
+    assign stage_if_e   = ibusif_err;
     assign stage_if_vld = ~hld & (ibusif_vld_size[1]  /*32b*/ || (ibusif_vld_size[0] & instr_compressed));
     dff #(
         .WIDTH(32),

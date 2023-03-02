@@ -5,17 +5,22 @@ localparam OPCODE_C0 = 2'b00,
            OPCODE_C2 = 2'b10,
            OPCODE_NC = 2'b11; // non-compressed
 
-localparam OPCODE_IMMCAL = 7'b0010011,
-           OPCODE_LUI    = 7'b0110111,
-           OPCODE_AUIPC  = 7'b0010111,
-           OPCODE_CAL    = 7'b0110011,
-           OPCODE_JAL    = 7'b1101111,
-           OPCODE_JALR   = 7'b1100111,
-           OPCODE_BRANCH = 7'b1100011,
-           OPCODE_LOAD   = 7'b0000011,
-           OPCODE_STORE  = 7'b0100011,
-           OPCODE_FENCE  = 7'b0001111,
-           OPCODE_SYSTEM = 7'b1110011;
+localparam OPCODE_IMMCAL = 5'b00100, // high 5 bits only 'cause low 2 bits are always OPCODE_NC
+           OPCODE_LUI    = 5'b01101,
+           OPCODE_AUIPC  = 5'b00101,
+           OPCODE_CAL    = 5'b01100,
+           OPCODE_JAL    = 5'b11011,
+           OPCODE_JALR   = 5'b11001,
+           OPCODE_BRANCH = 5'b11000,
+           OPCODE_LOAD   = 5'b00000,
+           OPCODE_STORE  = 5'b01000,
+           OPCODE_FENCE  = 5'b00011,
+           OPCODE_SYSTEM = 5'b11100;
+
+`define MRET   32'b0011000_00010_00000_000_00000_1110011
+`define DRET   32'h0111101_10010_00000_000_00000_1110011
+`define EBREAK 32'b0000000_00001_00000_000_00000_1110011
+
 
 localparam ILLEGAL_INSTR = {`ILEN{1'b0}};
 
@@ -92,22 +97,18 @@ localparam CSR_ADDR_DCSR    = 12'h7b0,
 
 /***************************************** femto defined *****************************************/
 // alu opcode
-`define ALU_OP_WIDTH 4
-localparam ALU_ZERO = 4'h0,
-           ALU_A    = 4'h1, // a direct to output
-           ALU_B    = 4'h2, // b direct to output
-           ALU_ADD  = 4'h3,
-           ALU_SUB  = 4'h4,
-           ALU_AND  = 4'h5,
-           ALU_OR   = 4'h6,
-           ALU_SET  = ALU_OR, // set bits where there are corresponding 1's
-           ALU_CLR  = 4'h7, // clear bits where there are corresponding 1's
-           ALU_XOR  = 4'h8,
-           ALU_LT   = 4'h9, // larger than, signed
-           ALU_LTU  = 4'ha, // larger than, unsigned
-           ALU_SRL  = 4'hb, // shift right, logical
-           ALU_SRA  = 4'hc, // shift right, arithemetic
-           ALU_SL   = 4'hd; // shift left
+localparam ALU_PASS = 4'h0,
+           ALU_ADD  = 4'h1,
+           ALU_SUB  = 4'h2,
+           ALU_AND  = 4'h3,
+           ALU_ANDN = 4'h4, // clear bits
+           ALU_OR   = 4'h5, // set bits 
+           ALU_XOR  = 4'h6,
+           ALU_LT   = 4'h7, // larger than, signed
+           ALU_LTU  = 4'h8, // larger than, unsigned
+           ALU_SRL  = 4'h9, // shift right, logical
+           ALU_SRA  = 4'ha, // shift right, arithemetic
+           ALU_SL   = 4'hb; // shift left
 
 // x regfile write opcode
 `define X_OP_WIDTH 3
@@ -135,14 +136,14 @@ localparam OP_INT_NONE = 3'd0, // normal exec
 // implemented CSRs
 // bound with csr_addr to csr_index logic
 `define CSR_IDX_WIDTH 4
-`define CSR_ADDR_TO_IDX   {csr_addr[10] /*trap/dbg csr distinguisher*/, (csr_addr[4] ^ csr_addr[2]), csr_addr[1:0]}
-localparam CSR_IDX_MSTATUS = 4'b0000,
-           CSR_IDX_MEPC    = 4'b0001,
-           CSR_IDX_MCAUSE  = 4'b0010,
-           CSR_IDX_MTVAL   = 4'b0011,
-           CSR_IDX_MIP     = 4'b0100,
-           CSR_IDX_MTVEC   = 4'b0101,
-           CSR_IDX_TDATA1  = 4'b1001,
-           CSR_IDX_TDATA2  = 4'b1010,
-           CSR_IDX_DCSR    = 4'b1100,
-           CSR_IDX_DPC     = 4'b1101;
+`define CSR_ADDR_TO_IDX   {~csr_addr[10] /*trap/dbg csr distinguisher*/, (csr_addr[4] ^ csr_addr[2]), csr_addr[1:0]}
+localparam CSR_IDX_MSTATUS = 4'b1000,
+           CSR_IDX_MEPC    = 4'b1001,
+           CSR_IDX_MCAUSE  = 4'b1010,
+           CSR_IDX_MTVAL   = 4'b1011,
+           CSR_IDX_MIP     = 4'b1100,
+           CSR_IDX_MTVEC   = 4'b1101,
+           CSR_IDX_TDATA1  = 4'b0001,
+           CSR_IDX_TDATA2  = 4'b0010,
+           CSR_IDX_DCSR    = 4'b0100,
+           CSR_IDX_DPC     = 4'b0101;

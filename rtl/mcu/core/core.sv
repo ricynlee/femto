@@ -394,6 +394,19 @@ module core (
 
 
 
+            // instruction identification
+            wire lui = (opcode[6:2]==OPCODE_LUI);
+            wire auipc = (opcode[6:2]==OPCODE_AUIPC);
+            wire jal = (opcode[6:2]==OPCODE_JAL);
+            wire jalr = (opcode[6:2]==OPCODE_JALR /* && funct3==3'b000 */ );
+            wire beq = (opcode[6:2]==OPCODE_BRANCH && funct3==3'b000);
+            wire bne = (opcode[6:2]==OPCODE_BRANCH && funct3==3'b001);
+            wire blt = (opcode[6:2]==OPCODE_BRANCH && funct3==3'b100);
+            wire bge = (opcode[6:2]==OPCODE_BRANCH && funct3==3'b101);
+            wire bltu = (opcode[6:2]==OPCODE_BRANCH && funct3==3'b110);
+            wire bgeu = (opcode[6:2]==OPCODE_BRANCH && funct3==3'b111);
+            wire lb = (opcode[6:2]==OPCODE_LOAD && funct==3'b000);
+            wire lh = (opcode[6:2]==OPCODE_LOAD && funct==3'b001);
 
 
 

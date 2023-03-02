@@ -3,14 +3,14 @@ module dbusif (
     input rstn,
 
     // processor interface
-    input wire       acc_req, // (data) access, pipeline ensures no overlapping reqs
-    input wire       acc_w_rb,
-    input wire[1:0]  acc_size,
-    input wire[31:0] acc_addr,
-    input wire[31:0] acc_wdata,
-    output wire       data_vld, // r/w access done
-    output wire[31:0] data,
-    output wire       bus_err, // resp's correspoding acess
+    input wire       data_req, // data access, pipeline ensures no overlapping reqs
+    input wire       data_w_rb,
+    input wire[1:0]  data_size,
+    input wire[31:0] data_addr,
+    input wire[31:0] data_wd, // write data
+    output wire[31:0] data_rd, // read data
+    output wire       data_done, // r/w access done
+    output wire       data_err, // bus access has error
 
     // bus interface (ahblite-like)
     output wire [31:0] haddr,
@@ -23,16 +23,16 @@ module dbusif (
     input  wire        hresp,
     input  wire        hready
 );
-    assign haddr = acc_addr;
+    assign haddr = data_addr;
     assign hprot = 1'b1; // always set "data access"
-    assign hsize = acc_size;
-    assign hwrite = acc_w_rb;
-    assign htrans = acc_req;
+    assign hsize = data_size;
+    assign hwrite = data_w_rb;
+    assign htrans = data_req;
 
-    assign hwdata = acc_wdata; // pipeline ensures: one clk later than acc_req
+    assign hwdata = data_wd; // pipeline ensures: one clk later than data_req
 
-    assign data = hrdata;
-    assign data_has_fault = hresp;
+    assign data_rd = hrdata;
+    assign data_err = hresp;
 
     generate
         if (1) begin : GEN_data_vld
@@ -46,7 +46,7 @@ module dbusif (
                 .in  (1'b0),
                 .out (prev_trans_req_vld)
             );
-            assign data_vld = hready & prev_trans_req_vld;
+            assign data_done = hready & prev_trans_req_vld;
         end
     endgenerate
 endmodule

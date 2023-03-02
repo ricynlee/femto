@@ -8,7 +8,7 @@ module ibusif (
 
     // pipeline if interface
     output wire [ 1:0] vld_size,  // 2'b00 - not vld, 2'b01 - 16 bits vld, 2'b1x - 32 bits vld
-    output wire [31:0] data,
+    output wire [31:0] data, // raw data containing instructions
     output wire        bus_err,   // data's corresponding bus access triggered bus fault
     input  wire        pop,       // pop data out, typically vld of pipeline stage 0
     input  wire [ 1:0] pop_size,  // bit 0: 1 - requesting 16-bit data, 0 - requesting 32-bit data

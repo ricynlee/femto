@@ -8,7 +8,7 @@ module xregfile(
     output wire[31:0] x[0:15]
 );
 
-    reg[31:0] xr[1:15];
+    reg[`XLEN-1:0] xr[1:15];
     assign x[0]  = 32'd0;
     generate
         for (genvar i=1 /*not 0*/; i<16; i=i+1) begin

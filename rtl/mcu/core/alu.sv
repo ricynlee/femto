@@ -1,8 +1,11 @@
-module alu( // thoroughly combinatorial alu
+module alu(
+    input wire  clk,
+    input wire rstn,
     input wire[7:0]        op,
     input wire[`XLEN-1:0]  a,
     input wire[`XLEN-1:0]  b,
-    output wire[`XLEN-1:0] r
+    output wire[`XLEN-1:0] r,
+    output wire bsy
 );
     localparam SHIFTWIDTH = $clog2(`XLEN);
     wire[SHIFTWIDTH-1:0] shift = b[SHIFTWIDTH-1:0];
@@ -11,8 +14,6 @@ module alu( // thoroughly combinatorial alu
 
     assign r =
         op==ALU_ZERO ? ({`XLEN{1'b0}}        ):
-        op==ALU_A    ? (a                    ):
-        /* op==ALU_B   ? (b                    ): */ // reserved for future use
         op==ALU_SUB  ? (a-b                  ):
         op==ALU_AND  ? (a&b                  ):
         op==ALU_OR   ? (a|b                  ):
@@ -24,4 +25,8 @@ module alu( // thoroughly combinatorial alu
         op==ALU_SRA  ? ($signed(a)>>>shift   ):
         op==ALU_SL   ? (a<<shift             ):
         /* ALU_ADD */ (a+b                  );
+        
+    assign bsy = 1'b0;
 endmodule
+
+
