@@ -97,18 +97,18 @@ localparam CSR_ADDR_DCSR    = 12'h7b0,
 
 /***************************************** femto defined *****************************************/
 // alu opcode
-localparam ALU_PASS = 4'h0,
-           ALU_ADD  = 4'h1,
-           ALU_SUB  = 4'h2,
-           ALU_AND  = 4'h3,
-           ALU_ANDN = 4'h4, // clear bits
-           ALU_OR   = 4'h5, // set bits 
-           ALU_XOR  = 4'h6,
-           ALU_LT   = 4'h7, // larger than, signed
-           ALU_LTU  = 4'h8, // larger than, unsigned
-           ALU_SRL  = 4'h9, // shift right, logical
-           ALU_SRA  = 4'ha, // shift right, arithemetic
-           ALU_SL   = 4'hb; // shift left
+localparam ALU_PASS = 4'b1111, // pass alu_b to alu_r
+           ALU_ADD  = 4'b0000,
+           ALU_SUB  = 4'b1000,
+           ALU_AND  = 4'b0111,
+           ALU_CLR  = 4'b1011, // clear bits
+           ALU_OR   = 4'b0110, // set bits 
+           ALU_XOR  = 4'b0100,
+           ALU_LT   = 4'b0010, // larger than, signed
+           ALU_LTU  = 4'b0011, // larger than, unsigned
+           ALU_SRL  = 4'b0101, // shift right, logical
+           ALU_SRA  = 4'b1101, // shift right, arithemetic
+           ALU_SL   = 4'b0001; // shift left
 
 // x regfile write opcode
 `define X_OP_WIDTH 3

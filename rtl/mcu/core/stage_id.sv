@@ -2,6 +2,9 @@ module stage_id (
     input wire clk,
     input wire rstn,
 
+    // dbg interface
+    input wire dm_haltreq, // resumereq is software-implemented
+
     // if-id interface
     input wire [31:0] stage_if_pc,
     input wire [31:0] stage_if_ir,
@@ -20,8 +23,10 @@ module stage_id (
 
     // pipeline ctrl interface
     output wire        jmp,
-    output wire [31:0] jmp_addr,
     output wire        hld,
+
+    // alu interface
+    input wire alu_bsy, // alu busy
 
     // xregfile-id interface
     input wire[31:0] x[0:15],
@@ -29,7 +34,14 @@ module stage_id (
     input wire x_wreq,
     input wire [3:0] x_windex,
 
+    // csregfile-id interface
+    input wire[31:0] csr[0:15],
+    input wire [31:0] csr_wdata,
+    input wire csr_wreq,
+    input wire [3:0] csr_windex,
+
     // id-ex interface
+    input wire stage_ex_bsy,
     output wire [31:0] stage_id_pc,
     output wire [31:0] stage_id_ir,
     output wire        stage_id_c,   // compressed flag
@@ -47,10 +59,9 @@ module stage_id (
 );
 
 generate
-if (1)begin: IF2ID
+if (1)begin: GEN_if_to_id
     dff #(
-        .WIDTH(32+32+1+1),
-        .INITV({(32+32+1+1){1'd0}})
+        .WIDTH(32+32+1+1)
     ) stage_id_dff (
         .clk (clk),
         .rstn(rstn),
@@ -61,93 +72,195 @@ if (1)begin: IF2ID
         .out ({stage_id_pc, stage_id_ir, stage_id_c, stage_id_e})
     );
     
+    wire stage_id_vld_held;
     dff #(
         .WIDTH(1),
         .INITV(1'b0)
     ) stage_id_vld_dff (
         .clk (clk),
         .rstn(rstn),
-        .set (jmp | hld),
+        .set (jmp),
         .setv(1'b0),
-        .vld (1'b1 /* ~hld */), // set has higher priority than vld
+        .vld (~hld),
         .in  (stage_if_vld),
-        .out (stage_id_vld)
+        .out (stage_id_vld_held)
     );
+    assign stage_id_vld = stage_id_vld_held & ~hld;
 end // IF2ID
 endgenerate
 
     generate
-        if (1) begin: DECODE
+        if (1) begin: GEN_decode
+            wire [31:0] pc = stage_id_pc;
+            wire [31:0] ir = stage_id_ir; // instruction register
+            wire c = stage_id_c; // compressed flag
+            wire e = stage_id_e; // error flag
+
+            wire mip_meip = csr[CSR_IDX_MIP][`MEIP];
+            wire mstatus_mie = csr[CSR_IDX_MSTATUS[`MIE];
+
             // directly derived from riscv doc
-            wire[31:0] i_type_imm = {{20{stage_id_ir[31]}}, stage_id_ir[31:20]};
-            wire[31:0] s_type_imm = {{20{stage_id_ir[31]}}, stage_id_ir[31:25], stage_id_ir[11:7]};
-            wire[31:0] b_type_imm = {{20{stage_id_ir[31]}}, stage_id_ir[7], stage_id_ir[30:25], stage_id_ir[11:8], 1'b0};
-            wire[31:0] u_type_imm = {stage_id_ir[31:12], 12'd0};
-            wire[31:0] j_type_imm = {{11{stage_id_ir[31]}}, stage_id_ir[31], stage_id_ir[19:12], stage_id_ir[20], stage_id_ir[30:21], 1'b0};
-            wire[6:0]  funct7 = stage_id_ir[31:25];
-            wire[2:0]  funct3 = stage_id_ir[14:12];
-            wire[4:0]  rs2_index = stage_id_ir[24:20];
-            wire[4:0]  rs1_index = stage_id_ir[19:15];
-            wire[4:0]  rd_index = stage_id_ir[11:7];
-            wire[31:0] shamt = {27'd0, rs2};
-            wire[6:0]  opcode = stage_id_ir[6:0];
-            wire[11:0] csr_addr = stage_id_ir[31:20];
-            wire[31:0] csr_zimm = {27'd0, rs1};
+            wire[31:0] i_type_imm = {{20{ir[31]}}, ir[31:20]};
+            wire[31:0] s_type_imm = {{20{ir[31]}}, ir[31:25], ir[11:7]};
+            wire[31:0] b_type_imm = {{20{ir[31]}}, ir[7], ir[30:25], ir[11:8], 1'b0};
+            wire[31:0] u_type_imm = {ir[31:12], 12'd0};
+            wire[31:0] j_type_imm = {{11{ir[31]}}, ir[31], ir[19:12], ir[20], ir[30:21], 1'b0};
+            wire[6:0]  funct7 = ir[31:25];
+            wire[2:0]  funct3 = ir[14:12];
+            wire[4:0]  rs2_index = ir[24:20];
+            wire[4:0]  rs1_index = ir[19:15];
+            wire[4:0]  rd_index = ir[11:7];
+            wire[31:0] shamt = {27'd0, rs2_index};
+            wire[6:0]  opcode = ir[6:0];
+            wire[11:0] csr_addr = ir[31:20];
+            wire[31:0] csr_uimm = {27'd0, rs1_index};
             
             wire [31:0] rs1 = (x_wreq && rs1_index[3:0]==x_windex) ? x_wdata : x[rs1_index[3:0]];
             wire [31:0] rs2 = (x_wreq && rs2_index[3:0]==x_windex) ? x_wdata : x[rs2_index[3:0]];
             
+            wire [3:0] csrsd_index = `CSR_ADDR_TO_IDX; // csr source & destination
+            wire [31:0] csrs = (csr_wreq && csrsd_index[3:0]==csr_windex) ? csr_wdata : csr[csrsd_index[3:0]];
+
             // branch conditions
             wire eq = (rs1==rs2);
             wire lt = ({(funct3[1] ^~ rs1[31]), rs1[30:0]}<{(funct3[1] ^~ rs2[31]), rs2[30:0]}); // unsigned comparison, for blt and bltu
             
-            assign stage_id_op = 
+            assign op =
+                // internal triggered dbg
+                (opcode[6:2]==OPCODE_SYSTEM && {funct3[1:0], rs2_index[4], rs2_index[1]}==4'b0000) ? OP_DBG : // ebreak
+                dm_haltreq ? OP_DBG : // external dbg req
+                // single step
+                e ? OP_IBUSFLT : // instruction bus error/fault
+                (mstatus_mie & mip_meip) ? OP_INT : // external interrupt
                 opcode[6:2]==OPCODE_LUI ? OP_CAL : // lui
                 opcode[6:2]==OPCODE_AUIPC ? OP_CAL : // auipc
                 opcode[6:2]==OPCODE_JAL ? OP_JMP : // jal
                 opcode[6:2]==OPCODE_JALR ? OP_JMP : // jalr
-                (opcode[6:2]==OPCODE_BRANCH && ( funct3[0] ^ (funct3[2] ? lt : eq) )) ? OP_JMP : // beq, bne, blt, bge, bltu, bgeu
+                opcode[6:2]==OPCODE_BRANCH ? (( funct3[0] ^ (funct3[2] ? lt : eq) ) ? OP_JMP : OP_CAL ) : // beq, bne, blt, bge, bltu, bgeu
                 opcode[6:2]==OPCODE_LOAD ? (funct3[1] ? OP_LW : funct3[0] ? OP_LH : OP_LB) : // lb, lh, lw, lbu, lhu
                 opcode[6:2]==OPCODE_STORE ? (funct3[1] ? OP_SW : funct3[0] ? OP_SH : OP_SB) : // sb, sh, sw
                 opcode[6:2]==OPCODE_IMMCAL ? OP_CAL : // addi, slti, sltiu, xori, ori, andi, slli, srli, srai
                 opcode[6:2]==OPCODE_CAL ? OP_CAL : // add, sub, sll, slt, sltu, xor, srl, sra, or, and
                 opcode[6:2]==OPCODE_FENCE ? OP_JMP : // fence.i
                 opcode[6:2]==OPCODE_SYSTEM ? (
-                    funct3[1:0]==2'b01 ? OP_CSRRW : // csrrw, csrrwi
-                    funct3[1:0]==2'b01 ? OP_CSRRS : // csrrs, csrrsi
-                    funct3[1:0]==2'b11 ? OP_CSRRC : // csrrc, csrrci
-                    {rs2_index[4], rs2_index[1]}==2'b01 ? OP_MRET : // mret
+                    funct3[1:0] ? OP_CSR : // csrrw, csrrwi, csrrs, csrrsi, csrrc, csrrci
                     {rs2_index[4], rs2_index[1]}==2'b11 ? OP_DRET : // dret
-                    OP_EBREAK // ebreak
+                    mip_meip ? OP_INTS : OP_MRET // mret
                 ) :
-                OP_TRAP_ILLI ; // illegal instruction
+                OP_ILLI ; // illegal instruction
 
-            assign stage_id_xrd =
-                opcode[6:2]==OPCODE_LUI ? rd_index[3:0] : // lui
-                opcode[6:2]==OPCODE_AUIPC ? rd_index[3:0] : // auipc
-                opcode[6:2]==OPCODE_JAL ? rd_index[3:0] : // jal
-                opcode[6:2]==OPCODE_JALR ? rd_index[3:0] : // jalr
-                (opcode[6:2]==OPCODE_BRANCH && ( funct3[0] ^ (funct3[2] ? lt : eq) )) ? 4'd0 : // beq, bne, blt, bge, bltu, bgeu
-                opcode[6:2]==OPCODE_LOAD ? rd_index[3:0] : // lb, lh, lw, lbu, lhu
-                opcode[6:2]==OPCODE_STORE ? 4'd0 : // sb, sh, sw
-                opcode[6:2]==OPCODE_IMMCAL ? rd_index[3:0] : // addi, slti, sltiu, xori, ori, andi, slli, srli, srai
-                opcode[6:2]==OPCODE_CAL ? rd_index[3:0] : // add, sub, sll, slt, sltu, xor, srl, sra, or, and
-                opcode[6:2]==OPCODE_FENCE ? rd_index[3:0] : // fence.i
-                opcode[6:2]==OPCODE_SYSTEM ? (
-                    funct3[1:0]==2'b01 ? rd_index[3:0] : // csrrw, csrrwi
-                    funct3[1:0]==2'b01 ? rd_index[3:0] : // csrrs, csrrsi
-                    funct3[1:0]==2'b11 ? rd_index[3:0] : // csrrc, csrrci
-                    4'd0 // mret, dret, ebreak
+            assign alu =
+                opcode[6:2]==OPCODE_LUI ? ALU_PASS : // lui
+                opcode[6:2]==OPCODE_AUIPC ? ALU_ADD : // auipc
+                opcode[6:2]==OPCODE_JAL ? ALU_ADD : // jal
+                opcode[6:2]==OPCODE_JALR ? ALU_ADD : // jalr
+                opcode[6:2]==OPCODE_BRANCH ? ALU_ADD : // beq, bne, blt, bge, bltu, bgeu
+                opcode[6:2]==OPCODE_LOAD ? ALU_ADD : // lb, lh, lw, lbu, lhu
+                opcode[6:2]==OPCODE_STORE ? ALU_ADD : // sb, sh, sw
+                opcode[6:2]==OPCODE_IMMCAL ? (
+                    funct3[1:0]==2'b01 ? {ir[30], funct3} : // alu op encoding should be carefully chosen - slli, srli, srai
+                    {1'b0, funct3} // alu op encoding should be carefully chosen - addi slti sltiu xori ori andi
                 ) :
-                4'd0 ; // illegal instruction
+                opcode[6:2]==OPCODE_CAL ? {ir[30], funct3} : // alu op encoding should be carefully chosen - add, sub, sll, slt, sltu, xor, srl, sra, or, and
+                opcode[6:2]==OPCODE_FENCE ? ALU_ADD : // fence.i
+                opcode[6:2]==OPCODE_SYSTEM ? (
+                    funct3[1:0]==2'b01 ? ALU_PASS : // csrrw, csrrwi
+                    funct3[1:0]==2'b01 ? ALU_OR : // csrrs, csrrsi
+                    ALU_CLR// csrrc, csrrci, mret (placeholder, ditto), dret, ebreak
+                ) :
+                ALU_CLR ; // illegal instruction (placeholder)
+
+            assign a =
+                opcode[6:2]==OPCODE_LUI ? rs1 : // lui (placeholder)
+                opcode[6:2]==OPCODE_AUIPC ? pc : // auipc
+                opcode[6:2]==OPCODE_JAL ? pc : // jal
+                opcode[6:2]==OPCODE_JALR ? rs1 : // jalr
+                opcode[6:2]==OPCODE_BRANCH ? pc : // beq, bne, blt, bge, bltu, bgeu
+                opcode[6:2]==OPCODE_LOAD ? rs1 : // lb, lh, lw, lbu, lhu
+                opcode[6:2]==OPCODE_STORE ? rs1 : // sb, sh, sw
+                opcode[6:2]==OPCODE_IMMCAL ? rs1 : // addi, slti, sltiu, xori, ori, andi, slli, srli, srai
+                opcode[6:2]==OPCODE_CAL ? rs1 : // add, sub, sll, slt, sltu, xor, srl, sra, or, and
+                opcode[6:2]==OPCODE_FENCE ? lr : // fence.i
+                opcode[6:2]==OPCODE_SYSTEM ? csrs : // csrrw, csrrwi, csrrs, csrrsi, csrrc, csrrci, mret (placeholder, ditto), dret, ebreak
+                rs1 ; // illegal instruction (placeholder)
                 
-            assign stage_id_a =
-                
-                    
+            assign b =
+                opcode[6:2]==OPCODE_LUI ? u_type_imm : // lui
+                opcode[6:2]==OPCODE_AUIPC ? u_type_imm : // auipc
+                opcode[6:2]==OPCODE_JAL ? j_type_imm : // jal
+                opcode[6:2]==OPCODE_JALR ? i_type_imm : // jalr, if-stage ensuring lsb bit is 0
+                opcode[6:2]==OPCODE_BRANCH ? b_type_imm : // beq, bne, blt, bge, bltu, bgeu
+                opcode[6:2]==OPCODE_LOAD ? i_type_imm : // lb, lh, lw, lbu, lhu
+                opcode[6:2]==OPCODE_STORE ? s_type_imm : // sb, sh, sw
+                opcode[6:2]==OPCODE_IMMCAL ? (
+                    funct3[1:0]==2'b01 ? shamt : // slli, srli, srai
+                    i_type_imm // addi, slti, sltiu, xori, ori, andi
+                ) :
+                opcode[6:2]==OPCODE_CAL ? rs2 : // add, sub, sll, slt, sltu, xor, srl, sra, or, and
+                opcode[6:2]==OPCODE_FENCE ? i_type_imm : // fence.i (std software shall zero imm - per riscv doc)
+                opcode[6:2]==OPCODE_SYSTEM ? (
+                    funct3[2] ? csr_uimm : // csrrwi, csrrsi, csrrci
+                    rs1 // csrrw, csrrs, csrrc
+                ) :
+                i_type_imm ; // illegal instruction (placeholder)
+
+            assign lr = pc + (c ? 32'd2 : 32'd4);
+
+            assign dbusif_req = (opcode[6:2]==OPCODE_LOAD || opcode[6:2]==OPCODE_STORE);
+
+
         end
     endgenerate
     
-    
+    generate
+        if (1) begin: GEN_hld
+            wire data_access_ongoing_post;
+            dff data_access_dff (
+                .clk (clk),
+                .rstn(rstn),
+                .set (dbusif_req),
+                .setv(1'b1),
+                .vld (dbusif_done),
+                .in  (1'b0),
+                .out (data_access_ongoing_post)
+            );
+            wire data_access_ongoing = (data_access_ongoing_post & ~dbusif_done);
+
+            wire exec_ongoing = stage_ex_bsy; // multi-cycle alu operation, trap entrance, etc.
+
+            assign hld = data_access_ongoing | exec_ongoing;
+        end
+    generate
+
+    generate
+        if (1) begin: GEN_jmp
+            assign jmp_ongoing =
+            (
+                stage_id_vld &&
+                (
+                    stage_id_op==OP_JMP ||
+                    stage_id_op==OP_DBG ||
+                    stage_id_op==OP_IBF ||
+                    stage_id_op==OP_DBF ||
+                    stage_id_op==OP_INT ||
+                    stage_id_op==OP_MRET ||
+                    stage_id_op==OP_DRET
+                )
+            );
+
+            dff jmp_dff (
+                .clk (clk),
+                .rstn(rstn),
+                .set (jmp),
+                .setv(1'b0),
+                .vld (jmp_ongoing),
+                .in  (1'b1),
+                .out (jmp)
+            );
+        end
+    endgenerate
+
+
     
     
 endmodule
