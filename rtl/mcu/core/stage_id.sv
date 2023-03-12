@@ -18,15 +18,11 @@ module stage_id (
     output wire [1:0]  dbusif_size,
     output wire [31:0] dbusif_addr,
     output wire [31:0] dbusif_wd,
-    input wire        dbusif_done,
-    input wire        dbusif_err,
 
     // pipeline ctrl interface
-    output wire        jmp,
-    output wire        hld,
-
-    // alu interface
-    input wire alu_bsy, // alu busy
+    input wire        jmp,
+    input wire        hld,
+    output wire       stage_id_hld,
 
     // xregfile-id interface
     input wire[31:0] x[0:15],
@@ -41,7 +37,6 @@ module stage_id (
     input wire [3:0] csr_windex,
 
     // id-ex interface
-    input wire stage_ex_bsy,
     output wire [31:0] stage_id_pc,
     output wire [31:0] stage_id_ir,
     output wire        stage_id_c,   // compressed flag
@@ -95,6 +90,7 @@ endgenerate
             wire [31:0] ir = stage_id_ir; // instruction register
             wire c = stage_id_c; // compressed flag
             wire e = stage_id_e; // error flag
+            wire vld = stage_if_vld;
 
             wire mip_meip = csr[CSR_IDX_MIP][`MEIP];
             wire mstatus_mie = csr[CSR_IDX_MSTATUS[`MIE];
@@ -126,11 +122,11 @@ endgenerate
             wire lt = ({(funct3[1] ^~ rs1[31]), rs1[30:0]}<{(funct3[1] ^~ rs2[31]), rs2[30:0]}); // unsigned comparison, for blt and bltu
             
             assign op =
-                // internal triggered dbg
+                // triggered dbg
                 (opcode[6:2]==OPCODE_SYSTEM && {funct3[1:0], rs2_index[4], rs2_index[1]}==4'b0000) ? OP_DBG : // ebreak
                 dm_haltreq ? OP_DBG : // external dbg req
                 // single step
-                e ? OP_IBUSFLT : // instruction bus error/fault
+                e ? OP_IFAULT : // instruction bus error/fault， data bus error is handled at ex stage
                 (mstatus_mie & mip_meip) ? OP_INT : // external interrupt
                 opcode[6:2]==OPCODE_LUI ? OP_CAL : // lui
                 opcode[6:2]==OPCODE_AUIPC ? OP_CAL : // auipc
@@ -145,7 +141,7 @@ endgenerate
                 opcode[6:2]==OPCODE_SYSTEM ? (
                     funct3[1:0] ? OP_CSR : // csrrw, csrrwi, csrrs, csrrsi, csrrc, csrrci
                     {rs2_index[4], rs2_index[1]}==2'b11 ? OP_DRET : // dret
-                    mip_meip ? OP_INTS : OP_MRET // mret
+                    mip_meip ? OP_INTS : OP_MRET // mret, interrupt succession is handled at ex stage
                 ) :
                 OP_ILLI ; // illegal instruction
 
@@ -206,57 +202,21 @@ endgenerate
 
             assign lr = pc + (c ? 32'd2 : 32'd4);
 
-            assign dbusif_req = (opcode[6:2]==OPCODE_LOAD || opcode[6:2]==OPCODE_STORE);
+            assign stage_id_hld =
+                vld && (
+                    op==OP_DBG |
+                    op==OP_IFAULT |
+                    op==OP_INT |
+                    op==OP_JMP |
+                    (opcode[6:2]==OPCODE_SYSTEM && funct3[1:0]==2'b00) | // dret, mret, ebreak
+                    opcode[6:2]==OPCODE_LOAD |
+                    opcode[6:2]==OPCODE_STORE
+                );
 
-
-        end
-    endgenerate
-    
-    generate
-        if (1) begin: GEN_hld
-            wire data_access_ongoing_post;
-            dff data_access_dff (
-                .clk (clk),
-                .rstn(rstn),
-                .set (dbusif_req),
-                .setv(1'b1),
-                .vld (dbusif_done),
-                .in  (1'b0),
-                .out (data_access_ongoing_post)
-            );
-            wire data_access_ongoing = (data_access_ongoing_post & ~dbusif_done);
-
-            wire exec_ongoing = stage_ex_bsy; // multi-cycle alu operation, trap entrance, etc.
-
-            assign hld = data_access_ongoing | exec_ongoing;
-        end
-    generate
-
-    generate
-        if (1) begin: GEN_jmp
-            assign jmp_ongoing =
-            (
-                stage_id_vld &&
-                (
-                    stage_id_op==OP_JMP ||
-                    stage_id_op==OP_DBG ||
-                    stage_id_op==OP_IBF ||
-                    stage_id_op==OP_DBF ||
-                    stage_id_op==OP_INT ||
-                    stage_id_op==OP_MRET ||
-                    stage_id_op==OP_DRET
-                )
-            );
-
-            dff jmp_dff (
-                .clk (clk),
-                .rstn(rstn),
-                .set (jmp),
-                .setv(1'b0),
-                .vld (jmp_ongoing),
-                .in  (1'b1),
-                .out (jmp)
-            );
+            assign dbusif_req = vld && (opcode[6:2]==OPCODE_LOAD || opcode[6:2]==OPCODE_STORE);
+            assign dbusif_w_rb = opcode[5];
+            assign dbusif_size = funct3[1:0];
+            assign dbusif_wd = rs2;
         end
     endgenerate
 

@@ -25,7 +25,7 @@ module dbusif (
 );
     assign haddr = data_addr;
     assign hprot = 1'b1; // always set "data access"
-    assign hsize = data_size;
+    assign hsize = {data_size[1], (data_size[0] & (~data_size[1]))}; // access width limited to 2'b10 (4-byte)
     assign hwrite = data_w_rb;
     assign htrans = data_req;
 
